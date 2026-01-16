@@ -1,3 +1,32 @@
+Metadata-Version: 2.4
+Name: fixdoc
+Version: 0.1.0
+Summary: Capture and search infrastructure fixes for cloud engineers
+Author: Fiyi
+License: MIT
+Keywords: devops,terraform,infrastructure,documentation,cli
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
 # FixDoc
 
 A CLI tool for cloud engineers to capture and search infrastructure fixes. Stop losing tribal knowledge in Slack threads and personal notes.
@@ -7,7 +36,7 @@ A CLI tool for cloud engineers to capture and search infrastructure fixes. Stop 
 Infrastructure bugs show themselves in many forms:
 - Azure portal errors (Key Vault RBAC issues, access policy problems)
 - Terraform resource misconfigurations that cause downstream failures
-- Kubernetes cluster issues (self-hosted agent permissions, secret/PAT problems) (I have personally faced these many many times)
+- Kubernetes cluster issues (self-hosted agent permissions, secret/PAT problems)
 
 When you fix these issues, the knowledge often disappears. FixDoc captures your fixes quickly and gives you:
 
@@ -22,10 +51,11 @@ When you fix these issues, the knowledge often disappears. FixDoc captures your 
 git clone <repo-url>
 cd fixdoc
 
-#I recommend you set up a python virtual environment to isolate your dependencies
-
 # Install in development mode
 pip install -e .
+
+# Or install with dev dependencies
+pip install -e ".[dev]"
 ```
 
 ## Quick Start
@@ -50,7 +80,7 @@ fixdoc search rbac
 fixdoc search "access denied"
 ```
 
-### Analyze Terraform Plans(In Development)
+### Analyze Terraform Plans
 
 Before running `terraform apply`, check for known issues:
 
@@ -97,17 +127,17 @@ When capturing a fix, you'll be prompted for:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| Issue | Yes | What was the problem? |
-| Resolution | Yes | How did you fix it? |
-| Error excerpt | No | Relevant error message or logs |
-| Tags |No | Comma-separated keywords (resource types, categories) |
-| Notes |No | Gotchas, misleading directions, additional context |
+| Issue | ✓ | What was the problem? |
+| Resolution | ✓ | How did you fix it? |
+| Error excerpt | | Relevant error message or logs |
+| Tags | | Comma-separated keywords (resource types, categories) |
+| Notes | | Gotchas, misleading directions, additional context |
 
 **Tip**: Use resource types as tags (e.g., `azurerm_storage_account`, `azurerm_key_vault`) to enable terraform plan analysis.
 
-## Storage(In Dev)
+## Storage
 
-FixDoc stores everything locally(will be migrated to cloud storage in the future):
+FixDoc stores everything locally:
 
 ```
 ~/.fixdoc/
@@ -126,8 +156,12 @@ Markdown files are generated alongside the JSON database, so you can:
 
 **Speed is everything.** Engineers won't document fixes if it takes too long. FixDoc is designed to capture information in seconds:
 
-- Quick mode for one-liner captures(my favorite feature)
+- Quick mode for one-liner captures
 - Optional fields you can skip
 - Tags for fast categorization
 
 The goal is to build a searchable knowledge base over time, not to write perfect documentation for each fix.
+
+## License
+
+MIT
