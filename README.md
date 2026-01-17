@@ -190,3 +190,57 @@ Markdown files are generated alongside the JSON database, so you can:
 - Tags for fast categorization
 
 The goal is to build a searchable knowledge base over time, not to write perfect documentation for each fix.
+
+## Roadmap
+
+### v2: Auto-detect context *(next)*
+
+Stop typing triggers manually. FixDoc will:
+
+- Scan `git diff` to find changed files/resources
+- Parse clipboard/terminal for error messages  
+- Suggest triggers for you to confirm
+
+
+### v3: Smart matching
+
+- Hook into `terraform plan` output directly
+- Parse structured Azure/AWS error responses
+- Fuzzy matching (find relevant fixes even without exact triggers)
+
+### v4: Fix suggestions
+
+When a match is found, show actionable commands:
+
+
+### v5: Auto-remediation
+
+
+
+### v6: Proactive prevention
+
+- **Pre-commit hook:** Block commits with known issues
+- **Terraform wrapper:** `fixdoc tf apply` checks before applying  
+- **CI integration:** Fail PRs that match known issues
+
+
+### v7: Team knowledge base
+
+- Central fix repository (sync across org)
+- Slack notifications for new fixes
+- Analytics: "Top 10 issues this month"
+- Search across all team fixes
+
+---
+
+## Current Status
+
+**v1 (current):** Manual capture, trigger matching, markdown storage, check command.
+
+**What works today:**
+- Capture fixes with triggers
+- Scan `.tf` files for known issues  
+- Search and list fixes
+- Store as markdown (shareable)
+
+**Main limitation:** Triggers are manually typed during capture.
