@@ -59,7 +59,7 @@ def show(fix_id: str):
     fix = repo.get(fix_id)
 
     if not fix:
-        click.echo(f"No fix found with ID starting with '{fix_id}'")
+        click.echo(f"No fix found with ID: '{fix_id}'")
         raise SystemExit(1)
 
     click.echo(fix_to_markdown(fix))

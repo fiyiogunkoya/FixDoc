@@ -1,4 +1,4 @@
-"""FixDoc - Capture and search infrastructure fixes for cloud engineers."""
+"""FixDoc - Capture and search infrastructure fixes for SRE/Devops engineers."""
 
 __version__ = "0.1.0"
 

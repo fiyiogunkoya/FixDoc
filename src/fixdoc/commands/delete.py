@@ -16,8 +16,6 @@ def get_repo() -> FixRepository:
 def delete(fix_id: str):
     """
     Delete a fix by ID.
-
-    Accepts full or partial fix ID.
     """
     repo = get_repo()
 

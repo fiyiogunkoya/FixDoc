@@ -55,7 +55,7 @@ def stats():
     for tag in all_tags:
         tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-    click.echo("📊 Fix Database Statistics\n")
+    click.echo(" Fix Database Statistics\n")
     click.echo(f"  Total fixes: {len(fixes)}")
     click.echo(f"  Fixes with tags: {sum(1 for f in fixes if f.tags)}")
     click.echo(f"  Fixes with error excerpts: {sum(1 for f in fixes if f.error_excerpt)}")

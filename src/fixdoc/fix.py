@@ -11,7 +11,6 @@ from .cli import create_cli
 
 
 def main():
-    """Main entry point for fixdoc."""
     cli = create_cli()
     cli()
 
