@@ -53,6 +53,8 @@ class TerraformAnalyzer:
         """Extract (resource_address, resource_type) tuples from a plan."""
         resources = []
 
+        print(plan)
+
         for change in plan.get("resource_changes", []):
             address = change.get("address", "")
             resource_type = change.get("type", "")
@@ -66,6 +68,8 @@ class TerraformAnalyzer:
             if (addr, rtype) not in seen:
                 seen.add((addr, rtype))
                 unique.append((addr, rtype))
+
+        print(unique)
 
         return unique
 

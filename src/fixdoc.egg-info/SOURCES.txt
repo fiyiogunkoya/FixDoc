@@ -7,6 +7,7 @@ src/fixdoc/fix.py
 src/fixdoc/formatter.py
 src/fixdoc/models.py
 src/fixdoc/storage.py
+src/fixdoc/terraform_parser.py
 src/fixdoc.egg-info/PKG-INFO
 src/fixdoc.egg-info/SOURCES.txt
 src/fixdoc.egg-info/dependency_links.txt
@@ -16,6 +17,7 @@ src/fixdoc.egg-info/top_level.txt
 src/fixdoc/commands/__init__.py
 src/fixdoc/commands/analyze.py
 src/fixdoc/commands/capture.py
+src/fixdoc/commands/capture_handlers.py
 src/fixdoc/commands/delete.py
 src/fixdoc/commands/manage.py
 src/fixdoc/commands/search.py

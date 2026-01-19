@@ -52,7 +52,7 @@ class Fix:
         """Return a one-line summary for list displays."""
         short_id = self.id[:8]
         tags_str = f" [{self.tags}]" if self.tags else ""
-        issue_preview = self.issue[:60] + "..." if len(self.issue) > 60 else self.issue
+        issue_preview = self.issue[:40] + "..." if len(self.issue) > 40 else self.issue
         return f"{short_id}{tags_str} - {issue_preview}"
 
     def matches(self, query: str) -> bool:

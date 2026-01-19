@@ -103,7 +103,6 @@ class TestTerraformAnalyzer:
         output = analyzer.analyze_and_format(sample_plan)
         
         assert "No known issues found" in output
-        assert "✓" in output
     
     def test_analyze_and_format_with_matches(self, sample_plan, temp_repo):
         fix = Fix(

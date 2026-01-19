@@ -37,6 +37,7 @@ class FixRepository:
         """Read the JSON database."""
         try:
             with open(self.db_path, "r") as f:
+                # print('--------------',json.load(f))
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             return []
@@ -55,9 +56,7 @@ class FixRepository:
 
     def save(self, fix: Fix) -> Fix:
         """Save a fix to the database and generate markdown."""
-        db = self._read_db()
-        fixes = db['fixes']
-        
+        fixes = self._read_db()        
 
         existing_idx = next(
             (i for i, f in enumerate(fixes) if f.get("id") == fix.id), None
