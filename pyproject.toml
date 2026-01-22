@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fixdoc"
 version = "0.1.0"
-description = "Capture and search infrastructure fixes for cloud engineers"
+description = "Capture and search infrastructure fixes for cloud/SRE engineers"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

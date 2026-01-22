@@ -71,3 +71,7 @@ class Fix:
         if not self.tags:
             return False
         return resource_type.lower() in self.tags.lower()
+
+    def touch(self) -> None:
+        """Update the updated_at timestamp."""
+        self.updated_at = _now_iso()

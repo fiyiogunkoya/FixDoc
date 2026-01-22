@@ -2,7 +2,7 @@
 
 import click
 
-from .commands import capture, search, show, analyze, list_fixes, stats, delete
+from .commands import capture, search, show, analyze, list_fixes, stats, delete, edit
 
 
 def create_cli() -> click.Group:
@@ -20,5 +20,6 @@ def create_cli() -> click.Group:
     cli.add_command(list_fixes)
     cli.add_command(stats)
     cli.add_command(delete)
+    cli.add_command(edit)
 
     return cli
