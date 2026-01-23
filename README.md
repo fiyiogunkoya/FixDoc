@@ -2,88 +2,33 @@
 
 A CLI tool for cloud engineers to capture and search infrastructure fixes. Stop losing tribal knowledge in Slack threads and personal notes.
 
-## The Problem and my proposed solution
+## The Problem
 
-Many bugs and issues in the devops/cloud domain today show themselves in different forms. You may realize an error in azure from the portal for example (a key vault rbac issue or an access policy issue), you may realize an error in your terraform in a resource block that had a firewall disabled when it should not have been and this causes errors down the line. Even in a Kubernetes cluster, your self-hosted agent goes down because of wrong permissions for your secret/PAT and then you log in to the cluster and fix it. Many errors show themselves in different ways. Fixdoc’s mission is to try and capture all these errors and give you a couple of things. 
+Infrastructure errors repeat. The same RBAC misconfiguration, the same Terraform state lock—solved six months ago, but the fix is buried in Slack or locked in someone's head. When engineers leave, the knowledge leaves with them. Teams waste hours debugging problems they've already solved.
 
+## The Solution
 
+FixDoc captures cloud fixes in seconds and makes them searchable. Pipe your Terraform error output directly to FixDoc, document what fixed it, and move on. Next time you—or a teammate—hit a similar issue, search your fix history instead of debugging from scratch.
 
-Reference to your old bugs that you have fixed before
-Suggestions when you’re writing terraform that references issues you have had in the past
-Capture your errors and actually turn them into documentation that can be searched through keywords
-Before running terraform apply, during the plan phase, show me different issues that could arise from previous work.
+**Core features:**
 
-
-Let’s run through a basic example:
-
-
-
-After terraform deployment, my developer comes to me and tells me they are having issues accessing a storage account and they show me an error excerpt, I take that error excerpt and then I am able to fix that error, maybe I needed to add them to a group in Active Directory that had storage blob data contributor. I should be able to run fix doc and potentially post that error excerpt or a very succinct version of it and then detail what I did to fix it. Or it may be machine to machine permissions so it may not be the user that needs permissions but another application like say data factory needed blob contributor access. Once this error is captured in fix doc, should I face any errors like this again, I should search my fix repo and see all the similar fixes and what I did to fix them. I should be able to search by text through the cli what I can do to fix it and finally should my terraform see any issues that may relate to an older issue I fixed, it should warn me that said line is an issue
-
-
-
-NB: At fix doc we must do it as quickly as possible as engineers do not like the overhead of detailing bugs while they’re working. We need to capture the information is as short a time as possible.
-
-
-
-
-
-Technical approach and methodologies:
-
-
-
-Tech stack:
-
-Python will be used for the cli
-Local storage will be used for the fix repo
-The documentation will be created using markdown
-
-
-The cli tool will detail a fix and have some flags/keywords
-
-
-
-Fixdoc capture will prompt the user for our “fix questions”(this is not exhaustive and some will be optional fields)
-
-
-
-What was the issue
-How was it resolved
-Error excerpt
-Misleading directions
-Extra info/tags
-
-
-Fix doc search will allow you to search our fix database/repo eventually it will be indexed but it does not need to start out so robust, we can do regex matching. 
-
-
-
-
-
-Fix doc analyze will take in a terraform plan as a json and analyze the plan for any issues seen with the terraform error tags and then give us an analysis on if there are any issues it has seen before. 
-
-
-
-A fix will be its own object and the object will be populated based on the user input from when a capture is sent. the entire “fix” object will be sent to create the markdown documentation and then the fix, with a unique id will then be stored in some form of local repo.
-
-
-
-We will use the src-layout approach in python.
-
-1. **Reference** to your old bugs that you've fixed before
-2. **Searchable documentation** through keywords
-3. **Proactive warnings** during `terraform plan` about issues you've encountered before
+- **Capture fixes fast** - Quick mode for one-liner captures, pipe terraform errors directly
+- **Search your history** - Find past fixes by keyword, tag, or error message
+- **Analyze terraform plans** - Get warnings about resources that have caused problems before
+- **Markdown export** - Every fix generates shareable documentation
 
 ## Installation
 
 ```bash
 # Clone the repo
-git clone <repo-url>
+git clone https://github.com/fiyiogunkoya/fixdoc.git
 cd fixdoc
 
-#I recommend you set up a python virtual environment to isolate your dependencies
+# Recommended: set up a virtual environment
+python -m venv venv
+source venv/bin/activate 
 
-# Install in development mode
+# Install 
 pip install -e .
 ```
 
@@ -91,14 +36,35 @@ pip install -e .
 
 ### Capture a Fix
 
-**Interactive mode** - guided prompts for all fields:
+**Pipe terraform errors directly:**
+```bash
+terraform apply 2>&1 | fixdoc capture
+```
+
+FixDoc parses the error, extracts the resource and error code, and prompts you only for the fix:
+
+```
+──────────────────────────────────────────────────
+Captured from terraform:
+
+  Resource: azurerm_databricks_workspace.main
+  File:     modules/databricks/main.tf:15
+  Error:    KeyVaultAccessDenied: The operation does not have permission...
+──────────────────────────────────────────────────
+
+What fixed it? > Added managed identity to Key Vault access policy
+
+Fix captured: a1b2c3d4(unique fix id)
+```
+
+**Interactive mode:**
 ```bash
 fixdoc capture
 ```
 
-**Quick mode** - for when you're in a hurry:
+**Quick mode:**
 ```bash
-fixdoc capture --quick "User couldn't access storage account | Added them to storage blob data contributor group" --tags azurerm_storage_account,rbac
+fixdoc capture -q "User couldn't access storage | Added blob contributor role" -t storage,rbac
 ```
 
 ### Search Your Fixes
@@ -109,27 +75,40 @@ fixdoc search rbac
 fixdoc search "access denied"
 ```
 
-### Analyze Terraform Plans(In Development)
+### Edit a Fix
+
+```bash
+# Update specific fields
+fixdoc edit a1b2c3d4 --resolution "Updated fix details"
+fixdoc edit a1b2c3d4 --tags "storage,rbac,new_tag"
+
+# Interactive edit
+fixdoc edit a1b2c3d4 -I
+```
+
+### Analyze Terraform Plans
 
 Before running `terraform apply`, check for known issues:
 
 ```bash
-# Generate plan JSON
 terraform plan -out=plan.tfplan
 terraform show -json plan.tfplan > plan.json
-
-# Analyze against your fix history
 fixdoc analyze plan.json
 ```
 
 Output:
 ```
-Found 1 potential issue(s) based on your fix history:
+Found 2 potential issue(s) based on your fix history:
 
-⚠  azurerm_storage_account.main may relate to FIX-a1b2c3d4
+X  azurerm_storage_account.main may relate to FIX-a1b2c3d4
    Previous issue: Users couldn't access blob storage
    Resolution: Added storage blob data contributor role
    Tags: azurerm_storage_account,rbac
+
+X  azurerm_key_vault.main may relate to FIX-b5c6d7e8
+   Previous issue: Key Vault access denied for Databricks
+   Resolution: Added access policy with wrapKey permission
+   Tags: azurerm_key_vault,rbac
 
 Run `fixdoc show <fix-id>` for full details on any fix.
 ```
@@ -137,36 +116,28 @@ Run `fixdoc show <fix-id>` for full details on any fix.
 ### Other Commands
 
 ```bash
-# List all fixes
-fixdoc list
-
-# Show full details of a fix
-fixdoc show a1b2c3d4
-
-# Delete a fix
-fixdoc delete a1b2c3d4
-
-# View statistics
-fixdoc stats
+fixdoc list                    # List all fixes
+fixdoc show a1b2c3d4           # Show full details
+fixdoc delete a1b2c3d4         # Delete a fix
+fixdoc delete --purge          # Delete all fixes
+fixdoc stats                   # View statistics
 ```
 
 ## Fix Fields
-
-When capturing a fix, you'll be prompted for:
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | Issue | Yes | What was the problem? |
 | Resolution | Yes | How did you fix it? |
 | Error excerpt | No | Relevant error message or logs |
-| Tags |No | Comma-separated keywords (resource types, categories) |
-| Notes |No | Gotchas, misleading directions, additional context |
+| Tags | No | Comma-separated keywords (resource types, categories) |
+| Notes | No | Gotchas, misleading directions, additional context |
 
 **Tip**: Use resource types as tags (e.g., `azurerm_storage_account`, `azurerm_key_vault`) to enable terraform plan analysis.
 
-## Storage(In Dev)
+## Storage
 
-FixDoc stores everything locally(will be migrated to cloud storage in the future):
+FixDoc stores everything locally, I will eventually move to cloud storage:
 
 ```
 ~/.fixdoc/
@@ -177,7 +148,7 @@ FixDoc stores everything locally(will be migrated to cloud storage in the future
 ```
 
 Markdown files are generated alongside the JSON database, so you can:
-- Push them to a wiki
+- Push them to a wiki/confluence
 - Commit them to a repo
 - Share them with your team
 
@@ -185,62 +156,82 @@ Markdown files are generated alongside the JSON database, so you can:
 
 **Speed is everything.** Engineers won't document fixes if it takes too long. FixDoc is designed to capture information in seconds:
 
-- Quick mode for one-liner captures(my favorite feature)
+- Pipe errors directly from terraform
+- Quick mode for one-liner captures
+- Auto-extract resource, file, and error code
 - Optional fields you can skip
-- Tags for fast categorization
 
 The goal is to build a searchable knowledge base over time, not to write perfect documentation for each fix.
 
-## Roadmap
+---
 
-### v2: Auto-detect context *(next)*
+## Roadmap for next couple of weeks
 
-Stop typing triggers manually. FixDoc will:
+### Week 1: Core Features & PyPI Release
 
-- Scan `git diff` to find changed files/resources
-- Parse clipboard/terminal for error messages  
-- Suggest triggers for you to confirm
+| Feature | Description |
+|---------|-------------|
+| Similar fix suggestions | Show matching fixes before creating duplicates |
+| Import/Export | `fixdoc export` and `fixdoc import --merge` |
+| Search filters | Filter by tags, date range |
+| Git context | Auto-capture repo, branch, commit |
+| Multi-cloud parsing | kubectl, AWS CLI, Azure CLI error parsers |
+| **PyPI publish** | `pip install fixdoc` |
+
+### Week 2: AI Integration & SDK
+
+| Feature | Description |
+|---------|-------------|
+| AI module | Support for Anthropic/OpenAI APIs |
+| AI-suggested fixes | `fixdoc capture --ai` suggests resolution from error + history |
+| Config system | `~/.fixdoc/config.yaml` for API keys and preferences |
+| SDK refactor | Use as library: `from fixdoc import FixDoc` |
+
+```python
+from fixdoc import FixDoc
+
+fd = FixDoc()
+fd.capture(issue="...", resolution="...", tags=["storage"])
+results = fd.search("rbac")
+suggestion = fd.suggest(error="KeyVaultAccessDenied")
+```
+
+### Week 3: Web UI & API
+
+| Feature | Description |
+|---------|-------------|
+| REST API | FastAPI backend: `/fixes`, `/search`, `/capture`, `/suggest` |
+| Web dashboard | List, search, view, and capture fixes |
+| AI in UI | "Suggest fix" button, semantic search |
+| Deploy | Docker compose, cloud deployment |
 
 
-### v3: Smart matching
 
-- Hook into `terraform plan` output directly
-- Parse structured Azure/AWS error responses
-- Fuzzy matching (find relevant fixes even without exact triggers)
+### Future
 
-### v4: Fix suggestions
-
-When a match is found, show actionable commands:
-
-
-### v5: Auto-remediation
-
-
-
-### v6: Proactive prevention
-
-- **Pre-commit hook:** Block commits with known issues
-- **Terraform wrapper:** `fixdoc tf apply` checks before applying  
-- **CI integration:** Fail PRs that match known issues
-
-
-### v7: Team knowledge base
-
-- Central fix repository (sync across org)
-- Slack notifications for new fixes
-- Analytics: "Top 10 issues this month"
-- Search across all team fixes
+- **Semantic search** - Find fixes by meaning, not just keywords
+- **Team sync** - Central repository, shared across org
+- **CI/CD integration** - GitHub Actions, Azure Pipelines
+- **Pre-commit hooks** - Block commits with known issues
+- **VS Code extension** - Inline warnings on .tf files
 
 ---
 
 ## Current Status
 
-**v1 (current):** Manual capture, trigger matching, markdown storage, check command.
+**v0.2.0 (current)**
 
-**What works today:**
-- Capture fixes with triggers
-- Scan `.tf` files for known issues  
-- Search and list fixes
-- Store as markdown (shareable)
+What works today:
+- Capture fixes (interactive, quick mode, piped terraform errors)
+- Auto-parse terraform apply output (resource, file, line, error code)
+- Search fixes by keyword
+- Edit existing fixes
+- Analyze terraform plans against fix history
+- Delete individual fixes or purge all
+- Store as JSON + markdown
 
-**Main limitation:** Triggers are manually typed during capture.
+---
+
+## Contributing
+
+Contributions welcome! Please open an issue or PR.
