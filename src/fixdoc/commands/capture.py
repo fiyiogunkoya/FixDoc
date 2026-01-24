@@ -1,6 +1,7 @@
 """Capture command for fixdoc CLI."""
 
 import sys
+import os
 from typing import Optional
 
 import click
@@ -17,7 +18,29 @@ from .capture_handlers import (
 
 
 def get_repo() -> FixRepository:
+    """Get the fix repository instance."""
     return FixRepository()
+
+
+def _reopen_stdin_from_terminal() -> bool:
+    """Reopen stdin from terminal after reading piped input. Returns True if successful."""
+    try:
+        # Unix/Mac
+        if os.path.exists('/dev/tty'):
+            sys.stdin = open('/dev/tty', 'r')
+            return True
+    except OSError:
+        pass
+
+    try:
+        # Windows
+        if sys.platform == 'win32':
+            sys.stdin = open('CON', 'r')
+            return True
+    except OSError:
+        pass
+
+    return False
 
 
 @click.command()
@@ -57,16 +80,24 @@ def capture(quick: Optional[str], tags: Optional[str]):
 
     if fix:
         saved = repo.save(fix)
-        click.echo(f"\n Fix captured: {saved.id[:8]}")
-        click.echo(f" Markdown: ~/.fixdoc/docs/{saved.id}.md")
+        click.echo(f"\n✓ Fix captured: {saved.id[:8]}")
+        click.echo(f"  Markdown: ~/.fixdoc/docs/{saved.id}.md")
 
 
 def _handle_piped_input(tags: Optional[str]) -> Optional[Fix]:
-    ## Route piped input to handler 
+    """Route piped input to appropriate handler."""
+    # Read all piped input first
     piped_input = sys.stdin.read()
 
     if not piped_input.strip():
         click.echo("No input received.", err=True)
+        return None
+
+    # Reopen stdin from terminal so we can prompt user
+    if not _reopen_stdin_from_terminal():
+        click.echo("Error: Cannot prompt for input in this environment.", err=True)
+        click.echo("Use quick mode instead:", err=True)
+        click.echo("  fixdoc capture -q 'issue | resolution' -t tags", err=True)
         return None
 
     if is_terraform_output(piped_input):

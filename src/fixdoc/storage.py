@@ -112,3 +112,17 @@ class FixRepository:
     def count(self) -> int:
         """Return the number of fixes in the database."""
         return len(self._read_db())
+
+    def purge(self) -> bool:
+        """Delete a fix by ID. Returns True if deleted."""
+        fixes = self._read_db()
+
+        for i, f in enumerate(fixes):
+            deleted_fix = fixes.pop(i)
+            self._write_db(fixes)
+
+            md_path = self.docs_path / f"{deleted_fix['id']}.md"
+            if md_path.exists():
+                md_path.unlink()
+            return True
+        return False
