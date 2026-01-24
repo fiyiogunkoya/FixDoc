@@ -8,7 +8,7 @@ from ..analyzer import TerraformAnalyzer
 
 
 @click.command()
-@click.argument("terraform_plan_file", type=click.Path(exists=True))
+@click.argument("plan_file", type=click.Path(exists=True))
 def analyze(plan_file: str):
     """
     Analyze a terraform plan for issues.

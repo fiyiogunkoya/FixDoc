@@ -27,26 +27,24 @@ def handle_terraform_capture(output: str, tags: Optional[str]) -> Optional[Fix]:
     click.echo("─" * 40)
 
     resolution = click.prompt(" What fixed?")
-    # issue = f"{err.resource_address}: {err.short_error()}"
-    issue = "Test"
+    issue = f"{err.resource_address}: {err.short_error()}"
 
     # Auto-generate tags
-    # auto_tags = err.resource_type
-    # if tags:
-    #     auto_tags = f"{err.resource_type},{tags}"
-    # if err.error_code:
-    #     auto_tags = f"{auto_tags},{err.error_code}"
+    auto_tags = err.resource_type
+    if tags:
+        auto_tags = f"{err.resource_type},{tags}"
+    if err.error_code:
+        auto_tags = f"{auto_tags},{err.error_code}"
 
-    # final_tags = click.prompt("Tags", default=auto_tags, show_default=True)
+    final_tags = click.prompt("Tags", default=auto_tags, show_default=True)
 
-    # return Fix(
-    #     issue=issue,
-    #     resolution=resolution,
-    #     error_excerpt=output[:2000],
-    #     tags=final_tags,
-    #     notes=f"File: {err.file}:{err.line}" if err.file else None,
-    # )
-    return Fix(issue="here",resolution="here",error_excerpt="kak")
+    return Fix(
+        issue=issue,
+        resolution=resolution,
+        error_excerpt=output[:2000],
+        tags=final_tags,
+        notes=f"File: {err.file}:{err.line}" if err.file else None,
+    )
 
 
 def handle_generic_piped_capture(piped_input: str, tags: Optional[str]) -> Fix:
