@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fixdoc.models import Fix
 from fixdoc.storage import FixRepository
-from fixdoc.analyzer import TerraformAnalyzer, AnalysisMatch
+from fixdoc.commands.analyze import TerraformAnalyzer, AnalysisMatch
 
 
 @pytest.fixture

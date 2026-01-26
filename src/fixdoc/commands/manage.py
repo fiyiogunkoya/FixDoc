@@ -21,8 +21,6 @@ def list_fixes(limit: int):
     repo = get_repo()
     fixes = repo.list_all()
 
-    print(fixes)
-
     if not fixes:
         click.echo("No fixes captured yet. Run `fixdoc capture` to add one.")
         return

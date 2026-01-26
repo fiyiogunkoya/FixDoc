@@ -8,10 +8,8 @@ import click
 
 from ..models import Fix
 from ..storage import FixRepository
-from ..terraform_parser import is_terraform_output
 from .capture_handlers import (
-    handle_terraform_capture,
-    handle_generic_piped_capture,
+    handle_piped_input,
     handle_quick_capture,
     handle_interactive_capture,
 )
@@ -85,7 +83,7 @@ def capture(quick: Optional[str], tags: Optional[str]):
 
 
 def _handle_piped_input(tags: Optional[str]) -> Optional[Fix]:
-    """Route piped input to appropriate handler."""
+    """Route piped input to appropriate handler using unified parser."""
     # Read all piped input first
     piped_input = sys.stdin.read()
 
@@ -100,7 +98,5 @@ def _handle_piped_input(tags: Optional[str]) -> Optional[Fix]:
         click.echo("  fixdoc capture -q 'issue | resolution' -t tags", err=True)
         return None
 
-    if is_terraform_output(piped_input):
-        return handle_terraform_capture(piped_input, tags)
-
-    return handle_generic_piped_capture(piped_input, tags)
+    # Use unified handler that auto-detects Terraform, K8s, Helm, etc.
+    return handle_piped_input(piped_input, tags)

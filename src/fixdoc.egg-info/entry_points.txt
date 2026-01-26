@@ -1,2 +1,0 @@
-[console_scripts]
-fixdoc = fixdoc.fix:main
