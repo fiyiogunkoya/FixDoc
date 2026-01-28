@@ -77,7 +77,7 @@ class TerraformParser(ErrorParser):
             r'terraform\s+(init|plan|apply)',
         ]
         text_lower = text.lower()
-        return any(re.search(pattern, text, re.IGNORECASE) for pattern in indicators)
+        return any(re.search(pattern, text, re.IGNORECASE) for pattern in indicators) #regex to determine if we can parse
 
     def parse(self, text: str) -> list[TerraformError]:
         """Parse Terraform output for all errors."""
