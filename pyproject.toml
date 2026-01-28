@@ -30,6 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.scripts]

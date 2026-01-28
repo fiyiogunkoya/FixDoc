@@ -10,8 +10,14 @@ def fix_to_markdown(fix: Fix) -> str:
         "",
         f"**Created:** {fix.created_at}",
         f"**Updated:** {fix.updated_at}",
-        "",
     ]
+
+    if fix.author:
+        lines.append(f"**Author:** {fix.author}")
+    if fix.author_email:
+        lines.append(f"**Author Email:** {fix.author_email}")
+
+    lines.append("")
 
     if fix.tags:
         lines.extend([f"**Tags:** `{fix.tags}`", ""])

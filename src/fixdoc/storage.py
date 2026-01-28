@@ -126,3 +126,21 @@ class FixRepository:
                 md_path.unlink()
             return True
         return False
+
+    def get_by_full_id(self, fix_id: str) -> Optional[Fix]:
+        """Get fix by exact ID match (for sync operations)."""
+        fixes = self._read_db()
+        for f in fixes:
+            if f["id"] == fix_id:
+                return Fix.from_dict(f)
+        return None
+
+    def list_markdown_files(self) -> list[Path]:
+        """List all markdown files in docs directory."""
+        if not self.docs_path.exists():
+            return []
+        return list(self.docs_path.glob("*.md"))
+
+    def get_fix_ids(self) -> set[str]:
+        """Get set of all fix IDs."""
+        return {f["id"] for f in self._read_db()}

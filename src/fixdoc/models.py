@@ -17,7 +17,7 @@ class Fix:
     Represents a fix.
 
     Required fields: issue, resolution
-    Optional fields: error_excerpt, tags, notes
+    Optional fields: error_excerpt, tags, notes, author, author_email
     Auto-generated: id, created_at, updated_at
     """
 
@@ -29,6 +29,9 @@ class Fix:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = field(default_factory=_now_iso)
     updated_at: str = field(default_factory=_now_iso)
+    author: Optional[str] = None
+    author_email: Optional[str] = None
+    is_private: bool = False
 
     def to_dict(self) -> dict:
         """Convert fix to dictionary for JSON serialization."""
@@ -46,6 +49,9 @@ class Fix:
             notes=data.get("notes"),
             created_at=data.get("created_at", _now_iso()),
             updated_at=data.get("updated_at", _now_iso()),
+            author=data.get("author"),
+            author_email=data.get("author_email"),
+            is_private=data.get("is_private", False),
         )
 
     def summary(self) -> str:
