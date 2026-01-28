@@ -6,6 +6,7 @@ from typing import Optional
 
 import click
 
+from ..config import ConfigManager
 from ..models import Fix
 from ..storage import FixRepository
 from .capture_handlers import (
@@ -77,6 +78,12 @@ def capture(quick: Optional[str], tags: Optional[str]):
         fix = handle_interactive_capture(tags)
 
     if fix:
+        # Set author from config if available
+        config = ConfigManager().load()
+        if config.user.name and not fix.author:
+            fix.author = config.user.name
+            fix.author_email = config.user.email
+
         saved = repo.save(fix)
         click.echo(f"\n✓ Fix captured: {saved.id[:8]}")
         click.echo(f"  Markdown: ~/.fixdoc/docs/{saved.id}.md")
