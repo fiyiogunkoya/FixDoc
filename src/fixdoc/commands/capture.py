@@ -85,7 +85,7 @@ def capture(quick: Optional[str], tags: Optional[str]):
             fix.author_email = config.user.email
 
         saved = repo.save(fix)
-        click.echo(f"\n✓ Fix captured: {saved.id[:8]}")
+        click.echo(f"\n----- Fix captured: {saved.id[:8]}")
         click.echo(f"  Markdown: ~/.fixdoc/docs/{saved.id}.md")
 
 

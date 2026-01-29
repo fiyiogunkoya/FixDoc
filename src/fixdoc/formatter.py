@@ -5,12 +5,7 @@ from .models import Fix
 
 def fix_to_markdown(fix: Fix) -> str:
     """Generate markdown documentation for a fix."""
-    lines = [
-        f"# Fix: {fix.id[:8]}",
-        "",
-        f"**Created:** {fix.created_at}",
-        f"**Updated:** {fix.updated_at}",
-    ]
+    lines = [f"# Fix: {fix.id[:8]}","",f"**Created:** {fix.created_at}","",f"**Updated:** {fix.updated_at}","",]
 
     if fix.author:
         lines.append(f"**Author:** {fix.author}")
