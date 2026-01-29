@@ -8,13 +8,15 @@ Infrastructure errors repeat. The same RBAC misconfiguration, the same Terraform
 
 ## The Solution
 
-FixDoc captures cloud fixes in seconds and makes them searchable. Pipe your Terraform error output directly to FixDoc, document what fixed it, and move on. Next time you—or a teammate—hit a similar issue, search your fix history instead of debugging from scratch.
+FixDoc captures cloud fixes in seconds and makes them searchable. Pipe your Terraform or kubectl error output directly to FixDoc, document what fixed it, and move on. Next time you or a teammate hit a similar issue, search your fix history instead of debugging from scratch.
 
 **Core features:**
 
-- **Capture fixes fast** - Quick mode for one-liner captures, pipe terraform errors directly
+- **Capture fixes fast** - Quick mode for one-liner captures, pipe errors directly from Terraform or kubectl
 - **Search your history** - Find past fixes by keyword, tag, or error message
 - **Analyze terraform plans** - Get warnings about resources that have caused problems before
+- **Multi-cloud error parsing** - Auto-detect and parse errors from Terraform (AWS, Azure, GCP) and Kubernetes
+- **Team sync via Git** - Share fixes across your team through a shared Git repo
 - **Markdown export** - Every fix generates shareable documentation
 
 ## Installation
@@ -26,11 +28,13 @@ cd fixdoc
 
 # Recommended: set up a virtual environment
 python -m venv venv
-source venv/bin/activate 
+source venv/bin/activate
 
-# Install 
+# Install
 pip install -e .
 ```
+
+Requires Python 3.9+.
 
 ## Quick Start
 
@@ -55,6 +59,11 @@ Captured from terraform:
 What fixed it? > Added managed identity to Key Vault access policy
 
 Fix captured: a1b2c3d4(unique fix id)
+```
+
+**Pipe kubectl errors:**
+```bash
+kubectl apply -f deployment.yaml 2>&1 | fixdoc capture
 ```
 
 **Interactive mode:**
@@ -113,6 +122,26 @@ X  azurerm_key_vault.main may relate to FIX-b5c6d7e8
 Run `fixdoc show <fix-id>` for full details on any fix.
 ```
 
+### Sync Fixes with Your Team
+
+Share fixes across your organization using a shared Git repository:
+
+```bash
+# Initialize sync with a remote repo
+fixdoc sync init git@github.com:your-org/team-fixes.git
+
+# Push your local fixes to the shared repo
+fixdoc sync push -m "Added storage account fixes"
+
+# Pull fixes from your team
+fixdoc sync pull
+
+# Check sync status
+fixdoc sync status
+```
+
+Fixes marked as private (`is_private`) are excluded from sync.
+
 ### Other Commands
 
 ```bash
@@ -137,11 +166,12 @@ fixdoc stats                   # View statistics
 
 ## Storage
 
-FixDoc stores everything locally, I will eventually move to cloud storage:
+FixDoc stores everything locally(cloud storage feature WIP):
 
 ```
 ~/.fixdoc/
 ├── fixes.json      # JSON database of all fixes
+├── config.yaml     # Sync and user configuration
 └── docs/           # Generated markdown files
     ├── <uuid>.md
     └── ...
@@ -150,13 +180,13 @@ FixDoc stores everything locally, I will eventually move to cloud storage:
 Markdown files are generated alongside the JSON database, so you can:
 - Push them to a wiki/confluence
 - Commit them to a repo
-- Share them with your team
+- Share them with your team via `fixdoc sync`
 
 ## Philosophy
 
 **Speed is everything.** Engineers won't document fixes if it takes too long. FixDoc is designed to capture information in seconds:
 
-- Pipe errors directly from terraform
+- Pipe errors directly from terraform or kubectl
 - Quick mode for one-liner captures
 - Auto-extract resource, file, and error code
 - Optional fields you can skip
@@ -165,73 +195,36 @@ The goal is to build a searchable knowledge base over time, not to write perfect
 
 ---
 
-## Roadmap for next couple of weeks
-
-### Week 1: Core Features & PyPI Release
+## Roadmap
 
 | Feature | Description |
 |---------|-------------|
 | Similar fix suggestions | Show matching fixes before creating duplicates |
 | Import/Export | `fixdoc export` and `fixdoc import --merge` |
 | Search filters | Filter by tags, date range |
-| Git context | Auto-capture repo, branch, commit |
-| Multi-cloud parsing | kubectl, AWS CLI, Azure CLI error parsers |
-| **PyPI publish** | `pip install fixdoc` |
-
-### Week 2: AI Integration & SDK
-
-| Feature | Description |
-|---------|-------------|
-| AI module | Support for Anthropic/OpenAI APIs |
-| AI-suggested fixes | `fixdoc capture --ai` suggests resolution from error + history |
-| Config system | `~/.fixdoc/config.yaml` for API keys and preferences |
+| Additional CLI parsers | AWS CLI, Azure CLI error parsers |
+| AI-suggested fixes | Suggest resolutions from error context + fix history |
 | SDK refactor | Use as library: `from fixdoc import FixDoc` |
-
-```python
-from fixdoc import FixDoc
-
-fd = FixDoc()
-fd.capture(issue="...", resolution="...", tags=["storage"])
-results = fd.search("rbac")
-suggestion = fd.suggest(error="KeyVaultAccessDenied")
-```
-
-### Week 3: Web UI & API
-
-| Feature | Description |
-|---------|-------------|
-| REST API | FastAPI backend: `/fixes`, `/search`, `/capture`, `/suggest` |
-| Web dashboard | List, search, view, and capture fixes |
-| AI in UI | "Suggest fix" button, semantic search |
-| Deploy | Docker compose, cloud deployment |
-
-
-
-### Future
-
-- **Semantic search** - Find fixes by meaning, not just keywords
-- **Team sync** - Central repository, shared across org
-- **CI/CD integration** - GitHub Actions, Azure Pipelines
-- **Pre-commit hooks** - Block commits with known issues
-- **VS Code extension** - Inline warnings on .tf files
 
 ---
 
 ## Current Status
 
-**v0.2.0 (current)**
+**v0.0.1 (Alpha)**
 
 What works today:
-- Capture fixes (interactive, quick mode, piped terraform errors)
-- Auto-parse terraform apply output (resource, file, line, error code)
+- Capture fixes (interactive, quick mode, piped input)
+- Auto-parse Terraform apply output (resource, file, line, error code) for AWS, Azure, and GCP
+- Auto-parse Kubernetes/kubectl errors
 - Search fixes by keyword
 - Edit existing fixes
 - Analyze terraform plans against fix history
 - Delete individual fixes or purge all
+- Git-based team sync (init, push, pull, status)
 - Store as JSON + markdown
 
 ---
 
 ## Contributing
 
-Contributions welcome! Please open an issue or PR.
+Contributions are welcome and encouraged! Please open an issue or PR.
