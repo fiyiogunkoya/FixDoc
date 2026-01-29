@@ -55,11 +55,12 @@ class SyncEngine:
         self.git = git
         self.config_manager = config_manager
 
-    def prepare_push(self) -> List[Fix]:
+    def prepare_push(self, push_all: bool = False) -> List[Fix]:
         """
         Identify fixes that need to be pushed.
-        - All non-private fixes
-        - Excludes fixes in config.private_fixes
+
+        By default, only returns fixes that are new or have been modified
+        since the last push. Use push_all=True to push all non-private fixes.
         """
         config = self.config_manager.load()
         all_fixes = self.repo.list_all()
@@ -72,7 +73,21 @@ class SyncEngine:
                 continue
             pushable.append(fix)
 
-        return pushable
+        if push_all:
+            return pushable
+
+        # Filter to only new or changed fixes by comparing generated
+        # markdown against what's already committed in HEAD.
+        changed = []
+        for fix in pushable:
+            current_md = fix_to_markdown(fix)
+            committed_md = self.git.get_file_content_at_ref(
+                f"docs/{fix.id}.md", "HEAD"
+            )
+            if committed_md is None or committed_md != current_md:
+                changed.append(fix)
+
+        return changed
 
     def execute_push(self, fixes: List[Fix], commit_message: Optional[str] = None) -> SyncResult:
         """
@@ -298,7 +313,7 @@ class SyncEngine:
 
         git_status = self.git.get_status(branch=config.sync.branch)
         all_fixes = self.repo.list_all()
-        pushable = self.prepare_push()
+        pushable = self.prepare_push(push_all=False)
         private_count = len([f for f in all_fixes if f.is_private or f.id in config.private_fixes])
 
         return {

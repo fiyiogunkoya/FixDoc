@@ -138,10 +138,10 @@ def push(message: Optional[str], push_all: bool):
             click.echo("Conflicts detected. Please resolve with 'fixdoc sync pull' first.", err=True)
             raise SystemExit(1)
 
-    fixes = engine.prepare_push()
+    fixes = engine.prepare_push(push_all=push_all)
 
     if not fixes:
-        click.echo("No fixes to push. All fixes are either synced or marked private.")
+        click.echo("No new or modified fixes to push.")
         return
 
     click.echo(f"Pushing {len(fixes)} fix(es)...")
