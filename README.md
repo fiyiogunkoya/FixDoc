@@ -4,7 +4,7 @@ A CLI tool for cloud engineers to capture and search infrastructure fixes. Stop 
 
 ## The Problem
 
-Infrastructure errors repeat. The same S3 bucket naming collision, the same Kubernetes CrashLoopBackOff, the same Terraform state lock — solved six months ago, but the fix is buried in Slack or locked in someone's head. When engineers leave, the knowledge leaves with them. Teams waste hours re-debugging problems they've already solved.
+Infrastructure errors repeat. The same S3 bucket naming collision, the same Kubernetes CrashLoopBackOff, the same Terraform state lock, solved six months ago, but the fix is buried in Slack or locked in someone's head. When engineers leave, the knowledge leaves with them. Teams waste hours re-debugging problems they've already solved.
 
 ## What FixDoc Does
 
@@ -25,7 +25,7 @@ Captured from Terraform:
   Error:    BucketAlreadyExists: error creating S3 Bucket...
 
   Suggestions:
-    - S3 bucket names are globally unique — use a different name
+    - S3 bucket names are globally unique. Use a different name
     - Add a random suffix to the bucket name
 ──────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ $ fixdoc search "S3"
 - **Search your fix history** by keyword, tag, or error message
 - **Analyze Terraform plans** against your fix history before `apply`
 - **Sync with your team** via a shared Git repo
-- **Markdown export** — every fix generates a shareable `.md` file
+- **Markdown export** -  every fix generates a shareable `.md` file
 
 ## Try It Now (Demo)
 
@@ -62,11 +62,11 @@ fixdoc demo tour
 
 The tour walks you through 5 steps:
 
-1. **Capture a Terraform error** — A sample `BucketAlreadyExists` error is piped through the parser. You see the auto-extracted provider, resource, file, and error code, then type a resolution.
-2. **Capture a Kubernetes error** — A `CrashLoopBackOff` error goes through the same pipeline, extracting the pod name, namespace, restart count, and status.
-3. **Search** — Searches your database for "S3" and shows matching fixes.
-4. **List and stats** — Shows all stored fixes and tag frequency.
-5. **Analyze a Terraform plan** — A sample plan JSON with 3 resources is analyzed against your fix history, flagging resources that have caused issues before.
+1. **Capture a Terraform error** : A sample `BucketAlreadyExists` error is piped through the parser. You see the auto-extracted provider, resource, file, and error code, then type a resolution.
+2. **Capture a Kubernetes error** : A `CrashLoopBackOff` error goes through the same pipeline, extracting the pod name, namespace, restart count, and status.
+3. **Search** : Searches your database for "S3" and shows matching fixes.
+4. **List and stats** : Shows all stored fixes and tag frequency.
+5. **Analyze a Terraform plan** : A sample plan JSON with 3 resources is analyzed against your fix history, flagging resources that have caused issues before.
 
 Fixes captured during the tour are real entries saved to your local database, so you can explore them afterwards with `fixdoc list`, `fixdoc show`, and `fixdoc search`.
 
@@ -227,7 +227,7 @@ The sync system pushes markdown files to a shared repo. On pull, `fixdoc` parses
 
 **Speed is everything.** Engineers won't document fixes if it takes more than a few seconds. FixDoc is designed around this:
 
-- Pipe errors directly — no manual copy-paste
+- Pipe errors directly; no manual copy-paste
 - Auto-extract structured data from error output
 - Quick mode for one-liner captures
 - Optional fields you can skip
