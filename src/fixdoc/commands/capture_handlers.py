@@ -12,6 +12,8 @@ from ..parsers import (
     TerraformError,
     KubernetesError,
 )
+from ..storage import FixRepository
+from ..suggestions import prompt_similar_fixes
 
 
 def handle_piped_input(output: str, tags: Optional[str]) -> Optional[Fix]:

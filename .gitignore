@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 src/fixdoc.egg-info/
+dist/
+.claude/
+CLAUDE.md
+.gitignore

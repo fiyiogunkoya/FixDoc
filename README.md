@@ -4,64 +4,108 @@ A CLI tool for cloud engineers to capture and search infrastructure fixes. Stop 
 
 ## The Problem
 
-Infrastructure errors repeat. The same RBAC misconfiguration, the same Terraform state lock—solved six months ago, but the fix is buried in Slack or locked in someone's head. When engineers leave, the knowledge leaves with them. Teams waste hours debugging problems they've already solved.
+Infrastructure errors repeat. The same S3 bucket naming collision, the same Kubernetes CrashLoopBackOff, the same Terraform state lock — solved six months ago, but the fix is buried in Slack or locked in someone's head. When engineers leave, the knowledge leaves with them. Teams waste hours re-debugging problems they've already solved.
 
-## The Solution
+## What FixDoc Does
 
-FixDoc captures cloud fixes in seconds and makes them searchable. Pipe your Terraform or kubectl error output directly to FixDoc, document what fixed it, and move on. Next time you or a teammate hit a similar issue, search your fix history instead of debugging from scratch.
+Pipe your Terraform or kubectl error output directly into FixDoc. It auto-detects the error source, extracts the provider, resource type, file, line number, and error code, then prompts you for the resolution. Next time you or a teammate hits a similar issue, search your fix history instead of starting from scratch.
 
-**Core features:**
-
-- **Capture fixes fast** - Quick mode for one-liner captures, pipe errors directly from Terraform or kubectl
-- **Search your history** - Find past fixes by keyword, tag, or error message
-- **Analyze terraform plans** - Get warnings about resources that have caused problems before
-- **Multi-cloud error parsing** - Auto-detect and parse errors from Terraform (AWS, Azure, GCP) and Kubernetes
-- **Team sync via Git** - Share fixes across your team through a shared Git repo
-- **Markdown export** - Every fix generates shareable documentation
-
-## Installation
-
-```bash
-# Clone the repo
-git clone https://github.com/fiyiogunkoya/fixdoc.git
-cd fixdoc
-
-# Recommended: set up a virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install
-pip install -e .
-```
-
-Requires Python 3.9+.
-
-## Quick Start
-
-### Capture a Fix
-
-**Pipe terraform errors directly:**
 ```bash
 terraform apply 2>&1 | fixdoc capture
 ```
 
-FixDoc parses the error, extracts the resource and error code, and prompts you only for the fix:
-
 ```
 ──────────────────────────────────────────────────
-Captured from terraform:
+Captured from Terraform:
 
-  Resource: azurerm_databricks_workspace.main
-  File:     modules/databricks/main.tf:15
-  Error:    KeyVaultAccessDenied: The operation does not have permission...
+  Provider: AWS
+  Resource: aws_s3_bucket.data
+  File:     storage.tf:12
+  Code:     BucketAlreadyExists
+  Error:    BucketAlreadyExists: error creating S3 Bucket...
+
+  Suggestions:
+    - S3 bucket names are globally unique — use a different name
+    - Add a random suffix to the bucket name
 ──────────────────────────────────────────────────
 
-What fixed it? > Added managed identity to Key Vault access policy
+ What fixed this?: Added account ID suffix to bucket name
+ Tags [comma-separated]: terraform,aws,s3
 
-Fix captured: a1b2c3d4(unique fix id)
+Fix captured: a1b2c3d4
 ```
 
-**Pipe kubectl errors:**
+Then later:
+
+```bash
+$ fixdoc search "S3"
+  [a1b2c3d4] Terraform AWS: S3 BucketAlreadyExists  (terraform,aws,s3)
+```
+
+## Features
+
+- **Pipe errors directly** from `terraform apply` or `kubectl` — no copy-pasting
+- **Auto-parse errors** from Terraform (AWS, Azure, GCP) and Kubernetes
+- **Search your fix history** by keyword, tag, or error message
+- **Analyze Terraform plans** against your fix history before `apply`
+- **Sync with your team** via a shared Git repo
+- **Markdown export** — every fix generates a shareable `.md` file
+
+## Try It Now (Demo)
+
+You don't need a live cloud environment to try FixDoc. The built-in demo walks you through the real capture pipeline with sample errors:
+
+```bash
+pip install fixdoc
+fixdoc demo tour
+```
+
+The tour walks you through 5 steps:
+
+1. **Capture a Terraform error** — A sample `BucketAlreadyExists` error is piped through the parser. You see the auto-extracted provider, resource, file, and error code, then type a resolution.
+2. **Capture a Kubernetes error** — A `CrashLoopBackOff` error goes through the same pipeline, extracting the pod name, namespace, restart count, and status.
+3. **Search** — Searches your database for "S3" and shows matching fixes.
+4. **List and stats** — Shows all stored fixes and tag frequency.
+5. **Analyze a Terraform plan** — A sample plan JSON with 3 resources is analyzed against your fix history, flagging resources that have caused issues before.
+
+Fixes captured during the tour are real entries saved to your local database, so you can explore them afterwards with `fixdoc list`, `fixdoc show`, and `fixdoc search`.
+
+You can also seed sample data without the interactive walkthrough:
+
+```bash
+fixdoc demo seed          # Add 6 realistic sample fixes
+fixdoc demo seed --clean  # Remove old demo data first
+```
+
+## Installation
+
+**From PyPI (recommended):**
+
+```bash
+pip install fixdoc
+```
+
+**From source (for development):**
+
+```bash
+git clone https://github.com/fiyiogunkoya/fixdoc.git
+cd fixdoc
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Requires Python 3.9+.
+
+## Usage
+
+### Capture a Fix
+
+**Pipe from Terraform:**
+```bash
+terraform apply 2>&1 | fixdoc capture
+```
+
+**Pipe from kubectl:**
 ```bash
 kubectl apply -f deployment.yaml 2>&1 | fixdoc capture
 ```
@@ -71,33 +115,22 @@ kubectl apply -f deployment.yaml 2>&1 | fixdoc capture
 fixdoc capture
 ```
 
-**Quick mode:**
+**Quick one-liner:**
 ```bash
-fixdoc capture -q "User couldn't access storage | Added blob contributor role" -t storage,rbac
+fixdoc capture -q "S3 bucket name collision | Added account ID suffix" -t terraform,aws,s3
 ```
 
-### Search Your Fixes
+### Search
 
 ```bash
-fixdoc search "storage account"
+fixdoc search "bucket"
 fixdoc search rbac
-fixdoc search "access denied"
-```
-
-### Edit a Fix
-
-```bash
-# Update specific fields
-fixdoc edit a1b2c3d4 --resolution "Updated fix details"
-fixdoc edit a1b2c3d4 --tags "storage,rbac,new_tag"
-
-# Interactive edit
-fixdoc edit a1b2c3d4 -I
+fixdoc search "CrashLoopBackOff"
 ```
 
 ### Analyze Terraform Plans
 
-Before running `terraform apply`, check for known issues:
+Check a plan against your fix history before applying:
 
 ```bash
 terraform plan -out=plan.tfplan
@@ -105,38 +138,38 @@ terraform show -json plan.tfplan > plan.json
 fixdoc analyze plan.json
 ```
 
-Output:
 ```
 Found 2 potential issue(s) based on your fix history:
 
-X  azurerm_storage_account.main may relate to FIX-a1b2c3d4
-   Previous issue: Users couldn't access blob storage
-   Resolution: Added storage blob data contributor role
-   Tags: azurerm_storage_account,rbac
+X  aws_s3_bucket.app_data may relate to FIX-a1b2c3d4
+   Previous issue: S3 BucketAlreadyExists
+   Resolution: Added account ID suffix to bucket name
+   Tags: terraform,aws,s3
 
-X  azurerm_key_vault.main may relate to FIX-b5c6d7e8
-   Previous issue: Key Vault access denied for Databricks
-   Resolution: Added access policy with wrapKey permission
-   Tags: azurerm_key_vault,rbac
+X  aws_security_group.web_sg may relate to FIX-b5c6d7e8
+   Previous issue: Security group rule conflict
+   Resolution: Added lifecycle ignore_changes for ingress rules
+   Tags: terraform,aws,security_group
 
 Run `fixdoc show <fix-id>` for full details on any fix.
 ```
 
-### Sync Fixes with Your Team
-
-Share fixes across your organization using a shared Git repository:
+### Edit a Fix
 
 ```bash
-# Initialize sync with a remote repo
+fixdoc edit a1b2c3d4 --resolution "Updated fix details"
+fixdoc edit a1b2c3d4 --tags "terraform,aws,s3,naming"
+fixdoc edit a1b2c3d4 -I   # Interactive edit
+```
+
+### Team Sync via Git
+
+Share fixes across your team through a shared Git repository:
+
+```bash
 fixdoc sync init git@github.com:your-org/team-fixes.git
-
-# Push your local fixes to the shared repo
-fixdoc sync push -m "Added storage account fixes"
-
-# Pull fixes from your team
+fixdoc sync push -m "Added S3 naming fixes"
 fixdoc sync pull
-
-# Check sync status
 fixdoc sync status
 ```
 
@@ -146,27 +179,24 @@ Fixes marked as private (`is_private`) are excluded from sync.
 
 ```bash
 fixdoc list                    # List all fixes
-fixdoc show a1b2c3d4           # Show full details
+fixdoc show a1b2c3d4           # Show full details of a fix
+fixdoc stats                   # View fix statistics
 fixdoc delete a1b2c3d4         # Delete a fix
 fixdoc delete --purge          # Delete all fixes
-fixdoc stats                   # View statistics
 ```
 
-## Fix Fields
+## How It Works
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| Issue | Yes | What was the problem? |
-| Resolution | Yes | How did you fix it? |
-| Error excerpt | No | Relevant error message or logs |
-| Tags | No | Comma-separated keywords (resource types, categories) |
-| Notes | No | Gotchas, misleading directions, additional context |
+### Parser Pipeline
 
-**Tip**: Use resource types as tags (e.g., `azurerm_storage_account`, `azurerm_key_vault`) to enable terraform plan analysis.
+When you pipe error output to `fixdoc capture`, the router auto-detects the error source (Terraform vs Kubernetes vs generic) using heuristics, then delegates to the appropriate parser. Parsers extract:
 
-## Storage
+- **Terraform**: cloud provider, resource type, file + line number, error code, and generate fix suggestions
+- **Kubernetes**: pod name, namespace, status, restart count, exit code
 
-FixDoc stores everything locally(cloud storage feature WIP):
+### Storage
+
+Everything is stored locally at `~/.fixdoc/`:
 
 ```
 ~/.fixdoc/
@@ -177,54 +207,68 @@ FixDoc stores everything locally(cloud storage feature WIP):
     └── ...
 ```
 
-Markdown files are generated alongside the JSON database, so you can:
-- Push them to a wiki/confluence
-- Commit them to a repo
-- Share them with your team via `fixdoc sync`
+Each fix is a JSON object with these fields:
 
-## Philosophy
+| Field | Required | Description |
+|-------|----------|-------------|
+| Issue | Yes | What was the problem? |
+| Resolution | Yes | How did you fix it? |
+| Error excerpt | No | Relevant error output or logs |
+| Tags | No | Comma-separated keywords (resource types, categories) |
+| Notes | No | Gotchas, context, misleading directions |
 
-**Speed is everything.** Engineers won't document fixes if it takes too long. FixDoc is designed to capture information in seconds:
+Use resource types as tags (e.g., `aws_s3_bucket`, `azurerm_key_vault`) to enable Terraform plan analysis.
 
-- Pipe errors directly from terraform or kubectl
+### Git Sync
+
+The sync system pushes markdown files to a shared repo. On pull, `fixdoc` parses them back into Fix objects and merges with local data. Conflict detection handles both-modified and deleted-on-one-side cases.
+
+## Design Philosophy
+
+**Speed is everything.** Engineers won't document fixes if it takes more than a few seconds. FixDoc is designed around this:
+
+- Pipe errors directly — no manual copy-paste
+- Auto-extract structured data from error output
 - Quick mode for one-liner captures
-- Auto-extract resource, file, and error code
 - Optional fields you can skip
 
-The goal is to build a searchable knowledge base over time, not to write perfect documentation for each fix.
-
----
+The goal is to build a searchable knowledge base over time, not to write perfect documentation for every fix.
 
 ## Roadmap
 
 | Feature | Description |
 |---------|-------------|
 | Similar fix suggestions | Show matching fixes before creating duplicates |
-| Import/Export | `fixdoc export` and `fixdoc import --merge` |
-| Search filters | Filter by tags, date range |
-| Additional CLI parsers | AWS CLI, Azure CLI error parsers |
+| Import/Export | `fixdoc export` and `fixdoc import --merge` for portability |
+| Search filters | Filter by tags, date range, provider |
+| Additional parsers | AWS CLI, Azure CLI, Ansible error parsers |
 | AI-suggested fixes | Suggest resolutions from error context + fix history |
-| SDK refactor | Use as library: `from fixdoc import FixDoc` |
 
----
+## Development
 
-## Current Status
+```bash
+git clone https://github.com/fiyiogunkoya/fixdoc.git
+cd fixdoc
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 
-**v0.0.1 (Alpha)**
+# Run tests
+pytest
 
-What works today:
-- Capture fixes (interactive, quick mode, piped input)
-- Auto-parse Terraform apply output (resource, file, line, error code) for AWS, Azure, and GCP
-- Auto-parse Kubernetes/kubectl errors
-- Search fixes by keyword
-- Edit existing fixes
-- Analyze terraform plans against fix history
-- Delete individual fixes or purge all
-- Git-based team sync (init, push, pull, status)
-- Store as JSON + markdown
+# Run with coverage
+pytest --cov=fixdoc tests/
 
----
+# Format
+black src/ tests/
+
+# Lint
+ruff check src/ tests/
+```
 
 ## Contributing
 
-Contributions are welcome and encouraged! Please open an issue or PR.
+Contributions are welcome. Please open an issue or PR.
+
+## License
+
+MIT
