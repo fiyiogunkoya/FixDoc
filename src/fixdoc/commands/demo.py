@@ -23,7 +23,7 @@ def _get_repo() -> FixRepository:
 
 @click.group()
 def demo():
-    """Demo utilities — seed sample fixes or take a guided tour."""
+    """Demo utilities :seed sample fixes or take a guided tour."""
     pass
 
 
