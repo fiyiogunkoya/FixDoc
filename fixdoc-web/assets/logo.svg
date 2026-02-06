@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="12" fill="#2563eb"/>
+
+  <!-- Document icon -->
+  <path d="M20 12h16l12 12v28a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z" fill="white" fill-opacity="0.9"/>
+
+  <!-- Document fold -->
+  <path d="M36 12v12h12" fill="none" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+
+  <!-- Checkmark/fix indicator -->
+  <circle cx="28" cy="38" r="10" fill="#2563eb"/>
+  <path d="M24 38l3 3 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Text lines on document -->
+  <rect x="22" y="26" width="14" height="2" rx="1" fill="#2563eb" fill-opacity="0.3"/>
+  <rect x="22" y="31" width="10" height="2" rx="1" fill="#2563eb" fill-opacity="0.3"/>
+</svg>
