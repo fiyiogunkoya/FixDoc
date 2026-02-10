@@ -1,7 +1,7 @@
 """Capture command for fixdoc CLI."""
 
-import sys
 import os
+import sys
 from typing import Optional
 
 import click
@@ -10,9 +10,9 @@ from ..config import ConfigManager
 from ..models import Fix
 from ..storage import FixRepository
 from .capture_handlers import (
+    handle_interactive_capture,
     handle_piped_input,
     handle_quick_capture,
-    handle_interactive_capture,
 )
 
 
@@ -22,7 +22,7 @@ def get_repo() -> FixRepository:
 
 
 def _reopen_stdin_from_terminal() -> bool:
-    """Reopen stdin from terminal after reading piped input. Returns True if successful."""
+    """Reopen stdin from terminal after reading piped input."""
     try:
         # Unix/Mac
         if os.path.exists('/dev/tty'):
@@ -71,11 +71,11 @@ def capture(quick: Optional[str], tags: Optional[str]):
 
     # Check for piped input
     if not sys.stdin.isatty():
-        fix = _handle_piped_input(tags)
+        fix = _handle_piped_input(tags, repo)
     elif quick:
-        fix = handle_quick_capture(quick, tags)
+        fix = handle_quick_capture(quick, tags, repo)
     else:
-        fix = handle_interactive_capture(tags)
+        fix = handle_interactive_capture(tags, repo)
 
     if fix:
         # Set author from config if available
@@ -89,7 +89,9 @@ def capture(quick: Optional[str], tags: Optional[str]):
         click.echo(f"  Markdown: ~/.fixdoc/docs/{saved.id}.md")
 
 
-def _handle_piped_input(tags: Optional[str]) -> Optional[Fix]:
+def _handle_piped_input(
+    tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Route piped input to appropriate handler using unified parser."""
     # Read all piped input first
     piped_input = sys.stdin.read()
@@ -106,4 +108,4 @@ def _handle_piped_input(tags: Optional[str]) -> Optional[Fix]:
         return None
 
     # Use unified handler that auto-detects Terraform, K8s, Helm, etc.
-    return handle_piped_input(piped_input, tags)
+    return handle_piped_input(piped_input, tags, repo)

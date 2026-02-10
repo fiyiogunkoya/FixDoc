@@ -6,17 +6,18 @@ import click
 
 from ..models import Fix
 from ..parsers import (
-    detect_error_source,
-    detect_and_parse,
     ErrorSource,
-    TerraformError,
     KubernetesError,
+    detect_and_parse,
+    detect_error_source,
 )
 from ..storage import FixRepository
 from ..suggestions import prompt_similar_fixes
 
 
-def handle_piped_input(output: str, tags: Optional[str]) -> Optional[Fix]:
+def handle_piped_input(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """
     Handle piped input by detecting the source and routing appropriately.
 
@@ -26,14 +27,16 @@ def handle_piped_input(output: str, tags: Optional[str]) -> Optional[Fix]:
     source = detect_error_source(output)
 
     if source == ErrorSource.TERRAFORM:
-        return handle_terraform_capture(output, tags)
+        return handle_terraform_capture(output, tags, repo)
     elif source in (ErrorSource.KUBERNETES, ErrorSource.HELM):
-        return handle_kubernetes_capture(output, tags)
+        return handle_kubernetes_capture(output, tags, repo)
     else:
-        return handle_generic_piped_capture(output, tags)
+        return handle_generic_piped_capture(output, tags, repo)
 
 
-def handle_terraform_capture(output: str, tags: Optional[str]) -> Optional[Fix]:
+def handle_terraform_capture(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Handle Terraform output with multi-cloud support."""
     errors = detect_and_parse(output)
 
@@ -67,11 +70,22 @@ def handle_terraform_capture(output: str, tags: Optional[str]) -> Optional[Fix]:
     if len(errors) > 1:
         click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
 
+    # Check for similar existing fixes before prompting for resolution
+    if repo:
+        auto_tags = err.generate_tags()
+        if tags:
+            auto_tags = f"{auto_tags},{tags}"
+        existing_fix = prompt_similar_fixes(repo, output, auto_tags)
+        if existing_fix:
+            click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
+            click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
+            return None  # Don't create a new fix
+
     # Prompt for resolution
     resolution = click.prompt("\n What fixed this?")
     issue = err.to_issue_string()
 
-    # Auto-generate tags
+    # Auto-generate tags (recalculate since we may not have hit similar fixes)
     auto_tags = err.generate_tags()
     if tags:
         auto_tags = f"{auto_tags},{tags}"
@@ -96,7 +110,9 @@ def handle_terraform_capture(output: str, tags: Optional[str]) -> Optional[Fix]:
     )
 
 
-def handle_kubernetes_capture(output: str, tags: Optional[str]) -> Optional[Fix]:
+def handle_kubernetes_capture(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Handle Kubernetes (kubectl/Helm) output."""
     errors = detect_and_parse(output)
 
@@ -151,11 +167,22 @@ def handle_kubernetes_capture(output: str, tags: Optional[str]) -> Optional[Fix]
     if len(errors) > 1:
         click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
 
+    # Check for similar existing fixes before prompting for resolution
+    if repo:
+        auto_tags = err.generate_tags()
+        if tags:
+            auto_tags = f"{auto_tags},{tags}"
+        existing_fix = prompt_similar_fixes(repo, output, auto_tags)
+        if existing_fix:
+            click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
+            click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
+            return None  # Don't create a new fix
+
     # Prompt for resolution
     resolution = click.prompt("\n What fixed this?")
     issue = err.to_issue_string()
 
-    # Auto-generate tags
+    # Auto-generate tags (recalculate since we may not have hit similar fixes)
     auto_tags = err.generate_tags()
     if tags:
         auto_tags = f"{auto_tags},{tags}"
@@ -184,11 +211,22 @@ def handle_kubernetes_capture(output: str, tags: Optional[str]) -> Optional[Fix]
     )
 
 
-def handle_generic_piped_capture(piped_input: str, tags: Optional[str]) -> Fix:
+def handle_generic_piped_capture(
+    piped_input: str, tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Handle generic piped input - treat as error excerpt."""
     click.echo("─" * 50)
     click.echo("Captured generic input (unknown source)")
     click.echo("─" * 50)
+
+    # Check for similar existing fixes before prompting for details
+    if repo:
+        existing_fix = prompt_similar_fixes(repo, piped_input, tags)
+        if existing_fix:
+            click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
+            click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
+            return None  # Don't create a new fix
+
     click.echo("\nPlease provide fix details:\n")
 
     issue = click.prompt("What was the issue?")
@@ -208,8 +246,18 @@ def handle_generic_piped_capture(piped_input: str, tags: Optional[str]) -> Fix:
     )
 
 
-def handle_quick_capture(quick: str, tags: Optional[str]) -> Fix:
+def handle_quick_capture(
+    quick: str, tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Handle quick capture mode."""
+    # Check for similar existing fixes before creating new one
+    if repo:
+        existing_fix = prompt_similar_fixes(repo, quick, tags)
+        if existing_fix:
+            click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
+            click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
+            return None  # Don't create a new fix
+
     if "|" in quick:
         parts = quick.split("|", 1)
         issue = parts[0].strip()
@@ -221,7 +269,9 @@ def handle_quick_capture(quick: str, tags: Optional[str]) -> Fix:
     return Fix(issue=issue, resolution=resolution, tags=tags)
 
 
-def handle_interactive_capture(tags: Optional[str]) -> Fix:
+def handle_interactive_capture(
+    tags: Optional[str], repo: Optional[FixRepository] = None
+) -> Optional[Fix]:
     """Handle interactive capture mode."""
     click.echo("─" * 50)
     click.echo("Capturing a new fix...")
@@ -229,6 +279,15 @@ def handle_interactive_capture(tags: Optional[str]) -> Fix:
     click.echo()
 
     issue = click.prompt("What was the issue?")
+
+    # Check for similar existing fixes after user enters issue
+    if repo:
+        existing_fix = prompt_similar_fixes(repo, issue, tags)
+        if existing_fix:
+            click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
+            click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
+            return None  # Don't create a new fix
+
     resolution = click.prompt("How was it resolved?")
 
     error_excerpt = click.prompt(
