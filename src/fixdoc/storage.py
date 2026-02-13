@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from .config import resolve_base_path
 from .models import Fix
 from .formatter import fix_to_markdown
 
@@ -18,10 +19,8 @@ class FixRepository:
             docs/           # Generated markdown files
     """
 
-    DEFAULT_PATH = Path.home() / ".fixdoc"
-
     def __init__(self, base_path: Optional[Path] = None):
-        self.base_path = base_path or self.DEFAULT_PATH
+        self.base_path = base_path or resolve_base_path()
         self.db_path = self.base_path / "fixes.json"
         self.docs_path = self.base_path / "docs"
         self._ensure_paths()

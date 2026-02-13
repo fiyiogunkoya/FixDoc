@@ -1,10 +1,19 @@
 """Tests for fixdoc configuration management."""
 
+import os
 import pytest
 from pathlib import Path
-import tempfile
 
-from fixdoc.config import ConfigManager, FixDocConfig, SyncConfig, UserConfig
+from fixdoc.config import (
+    ConfigManager,
+    FixDocConfig,
+    SyncConfig,
+    UserConfig,
+    DisplayConfig,
+    CaptureConfig,
+    SuggestionWeights,
+    resolve_base_path,
+)
 
 
 class TestFixDocConfig:
@@ -17,6 +26,29 @@ class TestFixDocConfig:
         assert config.user.name is None
         assert config.user.email is None
         assert config.private_fixes == []
+
+    def test_default_display_config(self):
+        config = FixDocConfig()
+
+        assert config.display.search_result_limit == 10
+        assert config.display.list_result_limit == 20
+        assert config.display.top_tags_limit == 10
+
+    def test_default_capture_config(self):
+        config = FixDocConfig()
+
+        assert config.capture.error_excerpt_max_chars == 2000
+        assert config.capture.max_suggestions_shown == 3
+        assert config.capture.similar_fix_limit == 5
+
+    def test_default_suggestion_weights(self):
+        config = FixDocConfig()
+
+        assert config.suggestion_weights.tag_weight == 10
+        assert config.suggestion_weights.error_code_weight == 15
+        assert config.suggestion_weights.issue_keyword_weight == 3
+        assert config.suggestion_weights.resolution_keyword_weight == 2
+        assert config.suggestion_weights.resource_type_weight == 8
 
     def test_to_dict(self):
         config = FixDocConfig(
@@ -38,6 +70,22 @@ class TestFixDocConfig:
         assert d["user"]["email"] == "john@example.com"
         assert d["private_fixes"] == ["fix-1", "fix-2"]
 
+    def test_to_dict_includes_new_sections(self):
+        config = FixDocConfig(
+            display=DisplayConfig(search_result_limit=5),
+            capture=CaptureConfig(error_excerpt_max_chars=3000),
+            suggestion_weights=SuggestionWeights(tag_weight=20),
+        )
+
+        d = config.to_dict()
+
+        assert d["display"]["search_result_limit"] == 5
+        assert d["display"]["list_result_limit"] == 20
+        assert d["capture"]["error_excerpt_max_chars"] == 3000
+        assert d["capture"]["max_suggestions_shown"] == 3
+        assert d["suggestion_weights"]["tag_weight"] == 20
+        assert d["suggestion_weights"]["error_code_weight"] == 15
+
     def test_from_dict(self):
         data = {
             "sync": {
@@ -57,6 +105,7 @@ class TestFixDocConfig:
         assert config.private_fixes == ["abc123"]
 
     def test_from_dict_with_defaults(self):
+        """Empty dict produces correct defaults for all fields (backward compat)."""
         data = {}
 
         config = FixDocConfig.from_dict(data)
@@ -65,6 +114,68 @@ class TestFixDocConfig:
         assert config.sync.branch == "main"
         assert config.user.name is None
         assert config.private_fixes == []
+        # New fields should also get defaults
+        assert config.display.search_result_limit == 10
+        assert config.display.list_result_limit == 20
+        assert config.display.top_tags_limit == 10
+        assert config.capture.error_excerpt_max_chars == 2000
+        assert config.capture.max_suggestions_shown == 3
+        assert config.capture.similar_fix_limit == 5
+        assert config.suggestion_weights.tag_weight == 10
+        assert config.suggestion_weights.error_code_weight == 15
+        assert config.suggestion_weights.issue_keyword_weight == 3
+        assert config.suggestion_weights.resolution_keyword_weight == 2
+        assert config.suggestion_weights.resource_type_weight == 8
+
+    def test_from_dict_partial_config(self):
+        """Only display section present, others get defaults."""
+        data = {
+            "display": {"search_result_limit": 5},
+        }
+
+        config = FixDocConfig.from_dict(data)
+
+        assert config.display.search_result_limit == 5
+        assert config.display.list_result_limit == 20
+        assert config.display.top_tags_limit == 10
+        assert config.capture.error_excerpt_max_chars == 2000
+        assert config.suggestion_weights.tag_weight == 10
+        assert config.sync.remote_url is None
+
+    def test_from_dict_with_new_sections(self):
+        data = {
+            "display": {
+                "search_result_limit": 25,
+                "list_result_limit": 50,
+                "top_tags_limit": 15,
+            },
+            "capture": {
+                "error_excerpt_max_chars": 5000,
+                "max_suggestions_shown": 5,
+                "similar_fix_limit": 10,
+            },
+            "suggestion_weights": {
+                "tag_weight": 20,
+                "error_code_weight": 25,
+                "issue_keyword_weight": 5,
+                "resolution_keyword_weight": 4,
+                "resource_type_weight": 12,
+            },
+        }
+
+        config = FixDocConfig.from_dict(data)
+
+        assert config.display.search_result_limit == 25
+        assert config.display.list_result_limit == 50
+        assert config.display.top_tags_limit == 15
+        assert config.capture.error_excerpt_max_chars == 5000
+        assert config.capture.max_suggestions_shown == 5
+        assert config.capture.similar_fix_limit == 10
+        assert config.suggestion_weights.tag_weight == 20
+        assert config.suggestion_weights.error_code_weight == 25
+        assert config.suggestion_weights.issue_keyword_weight == 5
+        assert config.suggestion_weights.resolution_keyword_weight == 4
+        assert config.suggestion_weights.resource_type_weight == 12
 
 
 class TestConfigManager:
@@ -89,6 +200,28 @@ class TestConfigManager:
         assert loaded.sync.remote_url == "git@github.com:test/repo.git"
         assert loaded.user.name == "Test User"
         assert loaded.user.email == "test@example.com"
+
+    def test_save_and_load_with_new_sections(self, tmp_path):
+        """Round-trip: save config with custom values, load it back, verify."""
+        manager = ConfigManager(tmp_path)
+        config = FixDocConfig(
+            display=DisplayConfig(search_result_limit=5, list_result_limit=50),
+            capture=CaptureConfig(error_excerpt_max_chars=3000, max_suggestions_shown=7),
+            suggestion_weights=SuggestionWeights(tag_weight=20, error_code_weight=30),
+        )
+
+        manager.save(config)
+        loaded = manager.load()
+
+        assert loaded.display.search_result_limit == 5
+        assert loaded.display.list_result_limit == 50
+        assert loaded.display.top_tags_limit == 10  # default
+        assert loaded.capture.error_excerpt_max_chars == 3000
+        assert loaded.capture.max_suggestions_shown == 7
+        assert loaded.capture.similar_fix_limit == 5  # default
+        assert loaded.suggestion_weights.tag_weight == 20
+        assert loaded.suggestion_weights.error_code_weight == 30
+        assert loaded.suggestion_weights.issue_keyword_weight == 3  # default
 
     def test_is_sync_configured(self, tmp_path):
         manager = ConfigManager(tmp_path)
@@ -141,3 +274,28 @@ class TestConfigManager:
 
         assert nested_path.exists()
         assert (nested_path / "config.yaml").exists()
+
+
+class TestResolveBasePath:
+    def test_default_path(self, monkeypatch):
+        monkeypatch.delenv("FIXDOC_HOME", raising=False)
+
+        path = resolve_base_path()
+
+        assert path == Path.home() / ".fixdoc"
+
+    def test_env_var_override(self, monkeypatch, tmp_path):
+        custom_path = str(tmp_path / "custom_fixdoc")
+        monkeypatch.setenv("FIXDOC_HOME", custom_path)
+
+        path = resolve_base_path()
+
+        assert path == Path(custom_path)
+
+    def test_env_var_empty_string_uses_default(self, monkeypatch):
+        monkeypatch.setenv("FIXDOC_HOME", "")
+
+        path = resolve_base_path()
+
+        # Empty string is falsy, should fall back to default
+        assert path == Path.home() / ".fixdoc"

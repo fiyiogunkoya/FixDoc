@@ -11,9 +11,11 @@ from ..storage import FixRepository
 from ..sync_engine import SyncEngine
 
 
-def get_sync_context():
+def get_sync_context(base_path: Optional[Path] = None):
     """Get shared objects for sync commands."""
-    base_path = Path.home() / ".fixdoc"
+    if base_path is None:
+        from ..config import resolve_base_path
+        base_path = resolve_base_path()
     return {
         "repo": FixRepository(base_path),
         "config_manager": ConfigManager(base_path),
@@ -22,7 +24,8 @@ def get_sync_context():
 
 
 @click.group()
-def sync():
+@click.pass_context
+def sync(ctx):
     """Sync fixes with a shared Git repository."""
     pass
 
@@ -32,7 +35,8 @@ def sync():
 @click.option("--branch", "-b", default="main", help="Branch to sync with")
 @click.option("--name", "-n", default=None, help="Your name for attribution")
 @click.option("--email", "-e", default=None, help="Your email for attribution")
-def init(repo_url: str, branch: str, name: Optional[str], email: Optional[str]):
+@click.pass_context
+def init(ctx, repo_url: str, branch: str, name: Optional[str], email: Optional[str]):
     """
     Initialize sync with a shared Git repository.
 
@@ -41,7 +45,7 @@ def init(repo_url: str, branch: str, name: Optional[str], email: Optional[str]):
         fixdoc sync init git@github.com:mycompany/infra-fixes.git
         fixdoc sync init https://github.com/mycompany/infra-fixes.git
     """
-    ctx = get_sync_context()
+    ctx = get_sync_context(ctx.obj["base_path"])
     config_manager = ctx["config_manager"]
     git = ctx["git"]
 
@@ -114,7 +118,8 @@ def init(repo_url: str, branch: str, name: Optional[str], email: Optional[str]):
 @sync.command()
 @click.option("--message", "-m", default=None, help="Commit message")
 @click.option("--all", "-a", "push_all", is_flag=True, help="Push all local fixes")
-def push(message: Optional[str], push_all: bool):
+@click.pass_context
+def push(ctx, message: Optional[str], push_all: bool):
     """
     Push local fixes to the shared repository.
 
@@ -123,7 +128,7 @@ def push(message: Optional[str], push_all: bool):
         fixdoc sync push
         fixdoc sync push -m "Added storage account fix"
     """
-    ctx = get_sync_context()
+    ctx = get_sync_context(ctx.obj["base_path"])
     engine = SyncEngine(ctx["repo"], ctx["git"], ctx["config_manager"])
 
     if not ctx["config_manager"].is_sync_configured():
@@ -164,7 +169,8 @@ def push(message: Optional[str], push_all: bool):
 
 @sync.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite local changes on conflict")
-def pull(force: bool):
+@click.pass_context
+def pull(ctx, force: bool):
     """
     Pull fixes from the shared repository.
 
@@ -173,7 +179,7 @@ def pull(force: bool):
         fixdoc sync pull
         fixdoc sync pull --force  # Accept all remote changes
     """
-    ctx = get_sync_context()
+    ctx = get_sync_context(ctx.obj["base_path"])
     engine = SyncEngine(ctx["repo"], ctx["git"], ctx["config_manager"])
 
     if not ctx["config_manager"].is_sync_configured():
@@ -207,7 +213,8 @@ def pull(force: bool):
 
 
 @sync.command()
-def status():
+@click.pass_context
+def status(ctx):
     """
     Show sync status (ahead/behind commits, local changes).
 
@@ -215,7 +222,7 @@ def status():
     Example:
         fixdoc sync status
     """
-    ctx = get_sync_context()
+    ctx = get_sync_context(ctx.obj["base_path"])
     engine = SyncEngine(ctx["repo"], ctx["git"], ctx["config_manager"])
 
     status_info = engine.get_sync_status()

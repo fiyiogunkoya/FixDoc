@@ -1,10 +1,22 @@
-"""Configuration management for fixdoc sync."""
+"""Configuration management for fixdoc."""
 
+import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional
 
 import yaml
+
+
+def resolve_base_path() -> Path:
+    """Resolve the fixdoc base path.
+
+    Checks FIXDOC_HOME env var first, falls back to ~/.fixdoc.
+    """
+    env_home = os.environ.get("FIXDOC_HOME")
+    if env_home:
+        return Path(env_home)
+    return Path.home() / ".fixdoc"
 
 
 @dataclass
@@ -25,11 +37,43 @@ class UserConfig:
 
 
 @dataclass
+class DisplayConfig:
+    """Configuration for display/output limits."""
+
+    search_result_limit: int = 10
+    list_result_limit: int = 20
+    top_tags_limit: int = 10
+
+
+@dataclass
+class CaptureConfig:
+    """Configuration for the capture pipeline."""
+
+    error_excerpt_max_chars: int = 2000
+    max_suggestions_shown: int = 3
+    similar_fix_limit: int = 5
+
+
+@dataclass
+class SuggestionWeights:
+    """Scoring weights for similar-fix matching."""
+
+    tag_weight: int = 10
+    error_code_weight: int = 15
+    issue_keyword_weight: int = 3
+    resolution_keyword_weight: int = 2
+    resource_type_weight: int = 8
+
+
+@dataclass
 class FixDocConfig:
     """Root configuration object."""
 
     sync: SyncConfig = field(default_factory=SyncConfig)
     user: UserConfig = field(default_factory=UserConfig)
+    display: DisplayConfig = field(default_factory=DisplayConfig)
+    capture: CaptureConfig = field(default_factory=CaptureConfig)
+    suggestion_weights: SuggestionWeights = field(default_factory=SuggestionWeights)
     private_fixes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -37,6 +81,9 @@ class FixDocConfig:
         return {
             "sync": asdict(self.sync),
             "user": asdict(self.user),
+            "display": asdict(self.display),
+            "capture": asdict(self.capture),
+            "suggestion_weights": asdict(self.suggestion_weights),
             "private_fixes": self.private_fixes,
         }
 
@@ -45,6 +92,9 @@ class FixDocConfig:
         """Create config from dictionary loaded from YAML."""
         sync_data = data.get("sync", {})
         user_data = data.get("user", {})
+        display_data = data.get("display", {})
+        capture_data = data.get("capture", {})
+        weights_data = data.get("suggestion_weights", {})
         private_fixes = data.get("private_fixes", [])
 
         return cls(
@@ -57,6 +107,23 @@ class FixDocConfig:
                 name=user_data.get("name"),
                 email=user_data.get("email"),
             ),
+            display=DisplayConfig(
+                search_result_limit=display_data.get("search_result_limit", 10),
+                list_result_limit=display_data.get("list_result_limit", 20),
+                top_tags_limit=display_data.get("top_tags_limit", 10),
+            ),
+            capture=CaptureConfig(
+                error_excerpt_max_chars=capture_data.get("error_excerpt_max_chars", 2000),
+                max_suggestions_shown=capture_data.get("max_suggestions_shown", 3),
+                similar_fix_limit=capture_data.get("similar_fix_limit", 5),
+            ),
+            suggestion_weights=SuggestionWeights(
+                tag_weight=weights_data.get("tag_weight", 10),
+                error_code_weight=weights_data.get("error_code_weight", 15),
+                issue_keyword_weight=weights_data.get("issue_keyword_weight", 3),
+                resolution_keyword_weight=weights_data.get("resolution_keyword_weight", 2),
+                resource_type_weight=weights_data.get("resource_type_weight", 8),
+            ),
             private_fixes=private_fixes,
         )
 
@@ -67,13 +134,15 @@ class ConfigManager:
     CONFIG_FILE = "config.yaml"
 
     def __init__(self, base_path: Optional[Path] = None):
-        self.base_path = base_path or Path.home() / ".fixdoc"
+        self.base_path = base_path or resolve_base_path()
         self.config_path = self.base_path / self.CONFIG_FILE
 
     def load(self) -> FixDocConfig:
-        """Load config from YAML, return defaults if not exists."""
+        """Load config from YAML, create with defaults if not exists."""
         if not self.config_path.exists():
-            return FixDocConfig()
+            config = FixDocConfig()
+            self.save(config)
+            return config
 
         try:
             with open(self.config_path, "r") as f:

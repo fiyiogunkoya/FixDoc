@@ -6,7 +6,6 @@ from typing import Optional
 
 import click
 
-from ..config import ConfigManager
 from ..models import Fix
 from ..storage import FixRepository
 from .capture_handlers import (
@@ -14,11 +13,6 @@ from .capture_handlers import (
     handle_piped_input,
     handle_quick_capture,
 )
-
-
-def get_repo() -> FixRepository:
-    """Get the fix repository instance."""
-    return FixRepository()
 
 
 def _reopen_stdin_from_terminal() -> bool:
@@ -51,7 +45,8 @@ def _reopen_stdin_from_terminal() -> bool:
     "--tags", "-t", type=str, default=None,
     help="Tags (comma-separated)",
 )
-def capture(quick: Optional[str], tags: Optional[str]):
+@click.pass_context
+def capture(ctx, quick: Optional[str], tags: Optional[str]):
     """
     Capture a new fix.
 
@@ -67,11 +62,12 @@ def capture(quick: Optional[str], tags: Optional[str]):
     Quick:
         fixdoc capture -q "issue | resolution" -t storage,rbac
     """
-    repo = get_repo()
+    config = ctx.obj["config"]
+    repo = FixRepository(ctx.obj["base_path"])
 
     # Check for piped input
     if not sys.stdin.isatty():
-        fix = _handle_piped_input(tags, repo)
+        fix = _handle_piped_input(tags, repo, config)
     elif quick:
         fix = handle_quick_capture(quick, tags, repo)
     else:
@@ -79,7 +75,6 @@ def capture(quick: Optional[str], tags: Optional[str]):
 
     if fix:
         # Set author from config if available
-        config = ConfigManager().load()
         if config.user.name and not fix.author:
             fix.author = config.user.name
             fix.author_email = config.user.email
@@ -90,7 +85,7 @@ def capture(quick: Optional[str], tags: Optional[str]):
 
 
 def _handle_piped_input(
-    tags: Optional[str], repo: Optional[FixRepository] = None
+    tags: Optional[str], repo: Optional[FixRepository] = None, config=None
 ) -> Optional[Fix]:
     """Route piped input to appropriate handler using unified parser."""
     # Read all piped input first
@@ -108,4 +103,4 @@ def _handle_piped_input(
         return None
 
     # Use unified handler that auto-detects Terraform, K8s, Helm, etc.
-    return handle_piped_input(piped_input, tags, repo)
+    return handle_piped_input(piped_input, tags, repo, config=config)

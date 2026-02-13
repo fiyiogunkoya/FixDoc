@@ -112,25 +112,30 @@ class TestSampleErrorsParseable:
 
 
 class TestDemoSeedCommand:
-    def test_seed_command(self, runner, tmp_path, monkeypatch):
-        repo = FixRepository(base_path=tmp_path / ".fixdoc")
-        monkeypatch.setattr(_demo_mod, "_get_repo", lambda: repo)
+    def test_seed_command(self, runner, tmp_path):
+        base_path = tmp_path / ".fixdoc"
+        from fixdoc.config import FixDocConfig
 
-        result = runner.invoke(demo, ["seed"])
+        obj = {"base_path": base_path, "config": FixDocConfig()}
+        result = runner.invoke(demo, ["seed"], obj=obj)
         assert result.exit_code == 0
         assert "Seeded 6 demo fixes" in result.output
+        repo = FixRepository(base_path=base_path)
         assert repo.count() == 6
 
-    def test_seed_clean_flag(self, runner, tmp_path, monkeypatch):
-        repo = FixRepository(base_path=tmp_path / ".fixdoc")
-        monkeypatch.setattr(_demo_mod, "_get_repo", lambda: repo)
+    def test_seed_clean_flag(self, runner, tmp_path):
+        base_path = tmp_path / ".fixdoc"
+        from fixdoc.config import FixDocConfig
+
+        obj = {"base_path": base_path, "config": FixDocConfig()}
 
         # Seed once
-        runner.invoke(demo, ["seed"])
+        runner.invoke(demo, ["seed"], obj=obj)
+        repo = FixRepository(base_path=base_path)
         assert repo.count() == 6
 
         # Seed again with --clean
-        result = runner.invoke(demo, ["seed", "--clean"])
+        result = runner.invoke(demo, ["seed", "--clean"], obj=obj)
         assert result.exit_code == 0
         assert "Removed" in result.output
         assert repo.count() == 6  # old removed, new added
