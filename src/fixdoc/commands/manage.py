@@ -5,20 +5,19 @@ import click
 from ..storage import FixRepository
 
 
-def get_repo() -> FixRepository:
-    """Get the fix repository instance."""
-    return FixRepository()
-
-
 @click.command(name="list")
-@click.option("--limit", "-l", type=int, default=20, help="Max fixes to show")
-def list_fixes(limit: int):
+@click.option("--limit", "-l", type=int, default=None, help="Max fixes to show")
+@click.pass_context
+def list_fixes(ctx, limit: int):
     """
     List all captured fixes.
 
     Shows a summary of each fix, most recent first.
     """
-    repo = get_repo()
+    config = ctx.obj["config"]
+    limit = limit if limit is not None else config.display.list_result_limit
+
+    repo = FixRepository(ctx.obj["base_path"])
     fixes = repo.list_all()
 
     if not fixes:
@@ -37,9 +36,11 @@ def list_fixes(limit: int):
 
 
 @click.command()
-def stats():
+@click.pass_context
+def stats(ctx):
     """Show statistics about your fix database."""
-    repo = get_repo()
+    config = ctx.obj["config"]
+    repo = FixRepository(ctx.obj["base_path"])
     fixes = repo.list_all()
 
     if not fixes:
@@ -63,5 +64,5 @@ def stats():
     if tag_counts:
         click.echo("\n  Top tags:")
         sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
-        for tag, count in sorted_tags[:10]:
+        for tag, count in sorted_tags[:config.display.top_tags_limit]:
             click.echo(f"    {tag}: {count}")

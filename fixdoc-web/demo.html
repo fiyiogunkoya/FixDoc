@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - FixDoc</title>
+    <meta name="description" content="See FixDoc in action. Watch how to capture, search, and share infrastructure fixes.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#1e40af',
+                        accent: '#3b82f6',
+                        dark: '#0f172a',
+                        light: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark text-gray-100">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-dark/95 backdrop-blur-sm border-b border-gray-800 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">FD</span>
+                </div>
+                <span class="text-xl font-bold">FixDoc</span>
+            </a>
+            <div class="hidden md:flex space-x-8">
+                <a href="index.html#features" class="text-gray-400 hover:text-white transition">Features</a>
+                <a href="index.html#use-cases" class="text-gray-400 hover:text-white transition">Use Cases</a>
+                <a href="demo.html" class="text-white transition">Demo</a>
+            </div>
+            <a href="index.html#get-started" class="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg transition">
+                Get Started
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-12 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                See FixDoc in action
+            </h1>
+            <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                Watch how infrastructure engineers capture, search, and share fixes directly from the terminal.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Demo -->
+    <section class="py-12 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="bg-gray-900 rounded-2xl overflow-hidden border border-gray-800">
+                <div class="bg-gray-800 px-4 py-3 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="ml-4 text-gray-400 text-sm font-medium">Full Demo Tour</span>
+                </div>
+                <div class="p-6 font-mono text-sm space-y-6 overflow-x-auto">
+                    <!-- Step 1: Seed demo data -->
+                    <div>
+                        <div class="text-gray-500 mb-1"># Step 1: Seed sample fixes</div>
+                        <div class="text-green-400">$ fixdoc demo seed</div>
+                        <div class="text-white mt-2">Seeding 6 sample fixes...</div>
+                        <div class="text-green-400">Done! 6 fixes added to your library.</div>
+                        <div class="text-gray-500">Run 'fixdoc list' to see them, or 'fixdoc demo tour' for a guided walkthrough.</div>
+                    </div>
+
+                    <!-- Step 2: Capture a Terraform error -->
+                    <div class="border-t border-gray-800 pt-4">
+                        <div class="text-gray-500 mb-1"># Step 2: Capture a Terraform error</div>
+                        <div class="text-green-400">$ terraform apply 2>&1 | fixdoc capture</div>
+                        <div class="mt-2">
+                            <div class="text-red-400">&#x2502; Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:</div>
+                            <div class="text-red-400">&#x2502;   The requested bucket name is not available.</div>
+                            <div class="text-red-400">&#x2502;</div>
+                            <div class="text-red-400">&#x2502;   with aws_s3_bucket.data,</div>
+                            <div class="text-red-400">&#x2502;   on storage.tf line 12, in resource "aws_s3_bucket" "data":</div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-primary">Detected: Terraform AWS error (S3 BucketAlreadyExists)</div>
+                            <div class="text-primary">Suggested tags: terraform, aws, s3, aws_s3_bucket</div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-yellow-400">Similar fixes found:</div>
+                            <div class="text-gray-300 pl-2">  [1] Terraform Azure: StorageAccountAlreadyTaken (score: 0.62)</div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-gray-400">Resolution: <span class="text-white">Add a random suffix with account ID: "my-app-data-${data.aws_caller_identity.current.account_id}"</span></div>
+                        </div>
+                        <div class="mt-2 text-green-400">Fix captured and saved! (ID: fix_a3c7e291)</div>
+                    </div>
+
+                    <!-- Step 3: Search -->
+                    <div class="border-t border-gray-800 pt-4">
+                        <div class="text-gray-500 mb-1"># Step 3: Search your fixes</div>
+                        <div class="text-green-400">$ fixdoc search "S3 bucket"</div>
+                        <div class="text-white mt-2">Found 1 matching fix:</div>
+                        <div class="mt-2 pl-3 border-l-2 border-primary">
+                            <div class="text-white">[fix_a3c7e291] Terraform AWS: S3 BucketAlreadyExists</div>
+                            <div class="text-gray-500 text-xs">terraform, aws, s3 | just now</div>
+                            <div class="text-gray-400 mt-1">Resolution: Add a random suffix with account ID...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-gray-500 mt-4 text-sm">
+                The interactive demo walks you through capturing a Terraform error, adding a resolution, and searching your fixes.
+            </p>
+        </div>
+    </section>
+
+    <!-- Individual Demos -->
+    <section class="py-16 px-4">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-2xl font-bold text-center mb-12">Step-by-step workflows</h2>
+
+            <div class="space-y-16">
+                <!-- Terraform Capture -->
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="text-sm text-primary font-medium mb-2">WORKFLOW 1</div>
+                        <h3 class="text-2xl font-bold mb-4">Capture Terraform errors</h3>
+                        <p class="text-gray-400 mb-4">
+                            Pipe your Terraform output directly to FixDoc. It automatically detects
+                            the error type, extracts relevant details, and prompts for your resolution.
+                        </p>
+                        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+                            <div class="text-green-400">$ terraform apply 2>&1 | fixdoc capture</div>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-gray-400">
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Auto-detects AWS, GCP, Azure providers
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Extracts resource type and error codes
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Suggests relevant tags automatically
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+                        <div class="bg-gray-800 px-4 py-2 flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="p-4 font-mono text-sm overflow-x-auto">
+                            <div class="text-green-400">$ terraform apply 2>&1 | fixdoc capture</div>
+                            <div class="mt-2">
+                                <div class="text-red-400">&#x2502; Error: creating EC2 Instance: InsufficientInstanceCapacity:</div>
+                                <div class="text-red-400">&#x2502;   We currently do not have sufficient capacity in the</div>
+                                <div class="text-red-400">&#x2502;   Availability Zone you requested (us-east-1a).</div>
+                                <div class="text-red-400">&#x2502;</div>
+                                <div class="text-red-400">&#x2502;   with aws_instance.web_server,</div>
+                                <div class="text-red-400">&#x2502;   on compute.tf line 25, in resource "aws_instance" "web_server":</div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-primary">Detected: Terraform AWS error (EC2 InsufficientInstanceCapacity)</div>
+                                <div class="text-primary">Suggested tags: terraform, aws, ec2, aws_instance</div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="text-gray-400">Resolution: <span class="text-white">Try a different AZ or instance type. Add multiple subnets for auto-placement.</span></div>
+                            </div>
+                            <div class="mt-2 text-green-400">Fix captured and saved! (ID: fix_b8d4f102)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Flow -->
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div class="order-2 md:order-1 bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+                        <div class="bg-gray-800 px-4 py-2 flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="p-4 font-mono text-sm overflow-x-auto">
+                            <div class="text-green-400">$ fixdoc search "access denied"</div>
+                            <div class="text-white mt-2">Found 2 matching fixes:</div>
+                            <div class="mt-2 pl-3 border-l-2 border-primary">
+                                <div class="text-white">[fix_a1b2c3d4] S3 bucket AccessDenied error</div>
+                                <div class="text-gray-500 text-xs">terraform, aws, s3, iam | 2 weeks ago</div>
+                            </div>
+                            <div class="mt-2 pl-3 border-l-2 border-gray-600">
+                                <div class="text-gray-300">[fix_e5f6a7b8] Cross-account S3 access issue</div>
+                                <div class="text-gray-500 text-xs">aws, s3, cross-account | 1 month ago</div>
+                            </div>
+                            <div class="mt-4 text-green-400">$ fixdoc show a1b2c3d4</div>
+                            <div class="mt-2 border border-gray-700 rounded p-3">
+                                <div class="text-primary font-bold">S3 bucket AccessDenied error</div>
+                                <div class="text-gray-500 text-xs mt-1">ID: fix_a1b2c3d4 | Tags: terraform, aws, s3, iam</div>
+                                <div class="mt-2 text-gray-400">Issue: <span class="text-gray-300">AccessDenied when putting objects to S3 bucket</span></div>
+                                <div class="mt-1 text-gray-400">Resolution: <span class="text-white">Added bucket policy with GetObject and PutObject permissions for the IAM role</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="order-1 md:order-2">
+                        <div class="text-sm text-primary font-medium mb-2">WORKFLOW 2</div>
+                        <h3 class="text-2xl font-bold mb-4">Search and find fixes</h3>
+                        <p class="text-gray-400 mb-4">
+                            Instant full-text search across all your captured fixes. Find by error message,
+                            tags, or any keyword. View the full fix with one command.
+                        </p>
+                        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm space-y-2">
+                            <div class="text-green-400">$ fixdoc search "access denied"</div>
+                            <div class="text-green-400">$ fixdoc show 1</div>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-gray-400">
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Search by error text, tags, or keywords
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Results ranked by relevance
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                View full fix details instantly
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Quick Capture -->
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="text-sm text-primary font-medium mb-2">WORKFLOW 3</div>
+                        <h3 class="text-2xl font-bold mb-4">Quick one-liner fixes</h3>
+                        <p class="text-gray-400 mb-4">
+                            For fast fixes, use the quick capture mode. Add an issue and resolution
+                            in a single command without any interactive prompts.
+                        </p>
+                        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+                            <div class="text-green-400 break-all">$ fixdoc capture -q "Pod CrashLoopBackOff" "Increased memory limit to 512Mi"</div>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-gray-400">
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                No interactive prompts
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Perfect for scripting and automation
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <svg class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Add tags with -t flag
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+                        <div class="bg-gray-800 px-4 py-2 flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="p-4 font-mono text-sm">
+                            <div class="text-gray-400"># Quick capture with tags</div>
+                            <div class="text-green-400">$ fixdoc capture -q \</div>
+                            <div class="text-green-400 pl-4">"OOMKilled in production" \</div>
+                            <div class="text-green-400 pl-4">"Increased memory limit" \</div>
+                            <div class="text-green-400 pl-4">-t kubernetes -t memory</div>
+                            <div class="mt-4 text-white">Fix captured!</div>
+                            <div class="text-gray-500">ID: fix_abc123</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Try it Yourself -->
+    <section class="py-16 px-4 bg-gray-900/50">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-2xl font-bold mb-4">Try it yourself</h2>
+            <p class="text-gray-400 mb-8">
+                Install FixDoc and run the interactive demo to experience the full workflow.
+            </p>
+            <div class="bg-gray-900 rounded-xl p-6 border border-gray-800 text-left font-mono text-sm">
+                <div class="text-gray-400"># Install FixDoc</div>
+                <div class="text-green-400 mb-4">$ pip install fixdoc</div>
+
+                <div class="text-gray-400"># Seed sample data and take the tour</div>
+                <div class="text-green-400">$ fixdoc demo seed</div>
+                <div class="text-green-400">$ fixdoc demo tour</div>
+            </div>
+            <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="https://github.com/fiyiogunkoya/FixDoc" class="bg-primary hover:bg-secondary text-white px-8 py-3 rounded-lg text-lg font-medium transition">
+                    Get Started on GitHub
+                </a>
+                <a href="index.html" class="border border-gray-600 hover:border-gray-400 text-white px-8 py-3 rounded-lg text-lg font-medium transition">
+                    Learn More
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 px-4 border-t border-gray-800">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 bg-primary rounded flex items-center justify-center">
+                    <span class="text-white font-bold text-xs">FD</span>
+                </div>
+                <span class="font-medium">FixDoc</span>
+            </div>
+            <div class="flex space-x-6 text-gray-400 text-sm">
+                <a href="https://github.com/fiyiogunkoya/FixDoc" class="hover:text-white transition">GitHub</a>
+                <a href="demo.html" class="hover:text-white transition">Demo</a>
+                <a href="index.html#get-started" class="hover:text-white transition">Install</a>
+            </div>
+            <div class="text-gray-500 text-sm">
+                Built for infrastructure engineers
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -7,10 +7,6 @@ from ..models import Fix
 from ..storage import FixRepository
 
 
-def get_repo() -> FixRepository:
-    return FixRepository()
-
-
 @click.command()
 @click.argument("fix_id")
 @click.option("--issue", "-i", type=str, help="Update the issue description")
@@ -19,7 +15,9 @@ def get_repo() -> FixRepository:
 @click.option("--notes", "-n", type=str, help="Update notes")
 @click.option("--error", "-e", type=str, help="Update error excerpt")
 @click.option("--interactive", "-I", is_flag=True, help="Edit all fields interactively")
+@click.pass_context
 def edit(
+    ctx,
     fix_id: str,
     issue: Optional[str],
     resolution: Optional[str],
@@ -37,7 +35,7 @@ def edit(
         fixdoc edit a1b2c3d4 --tags "storage,rbac,new_tag"
         fixdoc edit a1b2c3d4 -I  # Interactive mode
     """
-    repo = get_repo()
+    repo = FixRepository(ctx.obj["base_path"])
 
     fix = repo.get(fix_id)
     if not fix:

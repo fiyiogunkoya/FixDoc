@@ -259,7 +259,8 @@ class TerraformAnalyzer:
 @click.argument("plan_file", type=click.Path(exists=True))
 @click.option("--summary", "-s", is_flag=True, help="Show plan summary instead of analysis")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-def analyze(plan_file: str, summary: bool, verbose: bool):
+@click.pass_context
+def analyze(ctx, plan_file: str, summary: bool, verbose: bool):
     """
     Analyze a terraform plan for issues.
 
@@ -274,7 +275,7 @@ def analyze(plan_file: str, summary: bool, verbose: bool):
         --summary    Show resource summary by provider/action
         --verbose    Show detailed match information
     """
-    analyzer = TerraformAnalyzer()
+    analyzer = TerraformAnalyzer(repo=FixRepository(ctx.obj["base_path"]))
     plan_path = Path(plan_file)
 
     try:

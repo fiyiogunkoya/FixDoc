@@ -6,15 +6,11 @@ from ..storage import FixRepository
 from ..formatter import fix_to_markdown
 
 
-def get_repo() -> FixRepository:
-    """Get the fix repository instance."""
-    return FixRepository()
-
-
 @click.command()
 @click.argument("query")
-@click.option("--limit", "-l", type=int, default=10, help="Max results to show")
-def search(query: str, limit: int):
+@click.option("--limit", "-l", type=int, default=None, help="Max results to show")
+@click.pass_context
+def search(ctx, query: str, limit: int):
     """
     Search your fixes by keyword.
 
@@ -25,7 +21,10 @@ def search(query: str, limit: int):
         fixdoc search "storage account"
         fixdoc search rbac
     """
-    repo = get_repo()
+    config = ctx.obj["config"]
+    limit = limit if limit is not None else config.display.search_result_limit
+
+    repo = FixRepository(ctx.obj["base_path"])
     results = repo.search(query)
 
     if not results:
@@ -45,7 +44,8 @@ def search(query: str, limit: int):
 
 @click.command()
 @click.argument("fix_id")
-def show(fix_id: str):
+@click.pass_context
+def show(ctx, fix_id: str):
     """
     Show full details of a fix.
 
@@ -55,7 +55,7 @@ def show(fix_id: str):
     Example:
         fixdoc show a1b2c3d4
     """
-    repo = get_repo()
+    repo = FixRepository(ctx.obj["base_path"])
     fix = repo.get(fix_id)
 
     if not fix:

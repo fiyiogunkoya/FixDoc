@@ -4,6 +4,7 @@ from typing import Optional
 
 import click
 
+from ..config import FixDocConfig
 from ..models import Fix
 from ..parsers import (
     ErrorSource,
@@ -15,8 +16,30 @@ from ..storage import FixRepository
 from ..suggestions import prompt_similar_fixes
 
 
+def _excerpt_limit(config: Optional[FixDocConfig] = None) -> int:
+    """Return the error excerpt max chars from config or default."""
+    if config:
+        return config.capture.error_excerpt_max_chars
+    return 2000
+
+
+def _suggestions_limit(config: Optional[FixDocConfig] = None) -> int:
+    """Return the max suggestions shown from config or default."""
+    if config:
+        return config.capture.max_suggestions_shown
+    return 3
+
+
+def _similar_fix_limit(config: Optional[FixDocConfig] = None) -> int:
+    """Return the similar fix limit from config or default."""
+    if config:
+        return config.capture.similar_fix_limit
+    return 5
+
+
 def handle_piped_input(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
     """
     Handle piped input by detecting the source and routing appropriately.
@@ -27,15 +50,16 @@ def handle_piped_input(
     source = detect_error_source(output)
 
     if source == ErrorSource.TERRAFORM:
-        return handle_terraform_capture(output, tags, repo)
+        return handle_terraform_capture(output, tags, repo, config=config)
     elif source in (ErrorSource.KUBERNETES, ErrorSource.HELM):
-        return handle_kubernetes_capture(output, tags, repo)
+        return handle_kubernetes_capture(output, tags, repo, config=config)
     else:
-        return handle_generic_piped_capture(output, tags, repo)
+        return handle_generic_piped_capture(output, tags, repo, config=config)
 
 
 def handle_terraform_capture(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
     """Handle Terraform output with multi-cloud support."""
     errors = detect_and_parse(output)
@@ -46,6 +70,8 @@ def handle_terraform_capture(
 
     # Use the first error (or could prompt to select)
     err = errors[0]
+
+    max_suggestions = _suggestions_limit(config)
 
     # Display captured error info
     click.echo("─" * 50)
@@ -61,7 +87,7 @@ def handle_terraform_capture(
     # Show suggestions if available
     if err.suggestions:
         click.echo("\n  Suggestions:")
-        for suggestion in err.suggestions[:3]:
+        for suggestion in err.suggestions[:max_suggestions]:
             click.echo(f"    • {suggestion}")
 
     click.echo("─" * 50)
@@ -75,7 +101,9 @@ def handle_terraform_capture(
         auto_tags = err.generate_tags()
         if tags:
             auto_tags = f"{auto_tags},{tags}"
-        existing_fix = prompt_similar_fixes(repo, output, auto_tags)
+        existing_fix = prompt_similar_fixes(
+            repo, output, auto_tags, limit=_similar_fix_limit(config),
+        )
         if existing_fix:
             click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
             click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
@@ -104,14 +132,15 @@ def handle_terraform_capture(
     return Fix(
         issue=issue,
         resolution=resolution,
-        error_excerpt=output[:2000],
+        error_excerpt=output[:_excerpt_limit(config)],
         tags=final_tags,
         notes=notes or None,
     )
 
 
 def handle_kubernetes_capture(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
     """Handle Kubernetes (kubectl/Helm) output."""
     errors = detect_and_parse(output)
@@ -121,6 +150,8 @@ def handle_kubernetes_capture(
         return None
 
     err = errors[0]
+
+    max_suggestions = _suggestions_limit(config)
 
     # Display captured error info
     click.echo("─" * 50)
@@ -158,7 +189,7 @@ def handle_kubernetes_capture(
     # Show suggestions if available
     if err.suggestions:
         click.echo("\n  Suggestions:")
-        for suggestion in err.suggestions[:3]:
+        for suggestion in err.suggestions[:max_suggestions]:
             click.echo(f"    • {suggestion}")
 
     click.echo("─" * 50)
@@ -172,7 +203,9 @@ def handle_kubernetes_capture(
         auto_tags = err.generate_tags()
         if tags:
             auto_tags = f"{auto_tags},{tags}"
-        existing_fix = prompt_similar_fixes(repo, output, auto_tags)
+        existing_fix = prompt_similar_fixes(
+            repo, output, auto_tags, limit=_similar_fix_limit(config),
+        )
         if existing_fix:
             click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
             click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
@@ -205,14 +238,15 @@ def handle_kubernetes_capture(
     return Fix(
         issue=issue,
         resolution=resolution,
-        error_excerpt=output[:2000],
+        error_excerpt=output[:_excerpt_limit(config)],
         tags=final_tags,
         notes=notes or None,
     )
 
 
 def handle_generic_piped_capture(
-    piped_input: str, tags: Optional[str], repo: Optional[FixRepository] = None
+    piped_input: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
     """Handle generic piped input - treat as error excerpt."""
     click.echo("─" * 50)
@@ -221,7 +255,9 @@ def handle_generic_piped_capture(
 
     # Check for similar existing fixes before prompting for details
     if repo:
-        existing_fix = prompt_similar_fixes(repo, piped_input, tags)
+        existing_fix = prompt_similar_fixes(
+            repo, piped_input, tags, limit=_similar_fix_limit(config),
+        )
         if existing_fix:
             click.echo(f"\n Using existing fix: {existing_fix.id[:8]}")
             click.echo(f"  Resolution: {existing_fix.resolution[:80]}...")
@@ -240,7 +276,7 @@ def handle_generic_piped_capture(
     return Fix(
         issue=issue,
         resolution=resolution,
-        error_excerpt=piped_input[:2000],
+        error_excerpt=piped_input[:_excerpt_limit(config)],
         tags=tags or None,
         notes=notes or None,
     )

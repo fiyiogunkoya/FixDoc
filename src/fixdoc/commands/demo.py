@@ -17,12 +17,9 @@ from ..storage import FixRepository
 from .capture_handlers import handle_piped_input
 
 
-def _get_repo() -> FixRepository:
-    return FixRepository()
-
-
 @click.group()
-def demo():
+@click.pass_context
+def demo(ctx):
     """Demo utilities :seed sample fixes or take a guided tour."""
     pass
 
@@ -34,9 +31,10 @@ def demo():
     default=False,
     help="Remove previously seeded demo fixes before adding new ones.",
 )
-def seed(clean: bool):
+@click.pass_context
+def seed(ctx, clean: bool):
     """Populate the fix database with realistic sample fixes."""
-    repo = _get_repo()
+    repo = FixRepository(ctx.obj["base_path"])
 
     if clean:
         _clean_demo_fixes(repo)
@@ -66,9 +64,11 @@ def _clean_demo_fixes(repo: FixRepository) -> None:
 
 
 @demo.command()
-def tour():
+@click.pass_context
+def tour(ctx):
     """Interactive guided walkthrough of fixdoc's capture flow."""
-    repo = _get_repo()
+    config = ctx.obj.get("config")
+    repo = FixRepository(ctx.obj["base_path"])
 
     # -- Welcome --
     click.echo("=" * 56)
@@ -106,7 +106,7 @@ def tour():
     click.pause("Press Enter to start the capture flow...")
     click.echo()
 
-    tf_fix = handle_piped_input(TERRAFORM_AWS_ERROR, None)
+    tf_fix = handle_piped_input(TERRAFORM_AWS_ERROR, None, config=config)
     if tf_fix:
         repo.save(tf_fix)
         click.echo(f"\nFix saved! (id: {tf_fix.id[:8]})")
@@ -126,7 +126,7 @@ def tour():
     click.pause("Press Enter to start the capture flow...")
     click.echo()
 
-    k8s_fix = handle_piped_input(KUBERNETES_CRASHLOOP_ERROR, None)
+    k8s_fix = handle_piped_input(KUBERNETES_CRASHLOOP_ERROR, None, config=config)
     if k8s_fix:
         repo.save(k8s_fix)
         click.echo(f"\nFix saved! (id: {k8s_fix.id[:8]})")

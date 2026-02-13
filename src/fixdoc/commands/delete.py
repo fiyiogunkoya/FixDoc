@@ -5,16 +5,12 @@ import click
 from ..storage import FixRepository
 
 
-def get_repo() -> FixRepository:
-    """Get the fix repository instance."""
-    return FixRepository()
-
-
 @click.command()
 @click.argument("fix_id", required=False)
 @click.option("--purge", is_flag=True, help="Delete all fixes")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
-def delete(fix_id: str, purge: bool, yes: bool):
+@click.pass_context
+def delete(ctx, fix_id: str, purge: bool, yes: bool):
     """
     Delete a fix by ID, or purge all fixes.
 
@@ -24,7 +20,7 @@ def delete(fix_id: str, purge: bool, yes: bool):
         fixdoc delete --purge
         fixdoc delete --purge -y
     """
-    repo = get_repo()
+    repo = FixRepository(ctx.obj["base_path"])
 
     if purge:
         _purge_all(repo, yes)

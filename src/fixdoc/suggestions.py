@@ -5,6 +5,7 @@ This module finds fixes similar to a new error before creating duplicates.
 from typing import Optional
 import click
 
+from .config import SuggestionWeights
 from .models import Fix
 from .storage import FixRepository
 
@@ -14,6 +15,7 @@ def find_similar_fixes(
     error_text: str,
     tags: Optional[str] = None,
     limit: int = 5,
+    weights: Optional[SuggestionWeights] = None,
 ) -> list[Fix]:
     """
     Find fixes similar to the given error text and tags.
@@ -22,12 +24,15 @@ def find_similar_fixes(
     if not all_fixes:
         return []
 
+    if weights is None:
+        weights = SuggestionWeights()
+
     scored_fixes: list[tuple[Fix, int]] = []
-    
+
     # Extract keywords from error text
     error_keywords = _extract_keywords(error_text)
     error_lower = error_text.lower()
-    
+
     # Parse input tags
     input_tags = set()
     if tags:
@@ -35,43 +40,43 @@ def find_similar_fixes(
 
     for fix in all_fixes:
         score = 0
-        
+
         # Tag matching (highest weight)
         if fix.tags:
             fix_tags = {t.strip().lower() for t in fix.tags.split(",") if t.strip()}
             tag_overlap = input_tags & fix_tags
-            score += len(tag_overlap) * 10
-        
+            score += len(tag_overlap) * weights.tag_weight
+
         # Error excerpt matching
         if fix.error_excerpt:
             excerpt_lower = fix.error_excerpt.lower()
             # Check for common error codes
             for code in _extract_error_codes(error_lower):
                 if code in excerpt_lower:
-                    score += 15
-        
+                    score += weights.error_code_weight
+
         # Keyword matching in issue
         issue_keywords = _extract_keywords(fix.issue)
         keyword_overlap = error_keywords & issue_keywords
-        score += len(keyword_overlap) * 3
-        
+        score += len(keyword_overlap) * weights.issue_keyword_weight
+
         # Keyword matching in resolution
         resolution_keywords = _extract_keywords(fix.resolution)
         resolution_overlap = error_keywords & resolution_keywords
-        score += len(resolution_overlap) * 2
-        
+        score += len(resolution_overlap) * weights.resolution_keyword_weight
+
         # Resource type matching (from error text)
         resource_types = _extract_resource_types(error_lower)
         for rt in resource_types:
             if fix.tags and rt in fix.tags.lower():
-                score += 8
+                score += weights.resource_type_weight
 
         if score > 0:
             scored_fixes.append((fix, score))
 
     # Sort by score descending
     scored_fixes.sort(key=lambda x: x[1], reverse=True)
-    
+
     return [fix for fix, score in scored_fixes[:limit]]
 
 
@@ -79,11 +84,12 @@ def prompt_similar_fixes(
     repo: FixRepository,
     error_text: str,
     tags: Optional[str] = None,
+    limit: int = 5,
 ) -> Optional[Fix]:
     """
     Find similar fixes and prompt user to select one or create new.
     """
-    similar = find_similar_fixes(repo, error_text, tags)
+    similar = find_similar_fixes(repo, error_text, tags, limit=limit)
     
     if not similar:
         return None
