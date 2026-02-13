@@ -1,0 +1,8 @@
+[build]
+dockerfilePath = "fixdoc-web/Dockerfile"
+watchPatterns = ["fixdoc-web/**"]
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
