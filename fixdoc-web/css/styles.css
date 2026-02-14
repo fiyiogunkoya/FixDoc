@@ -197,6 +197,91 @@ textarea:focus {
     stroke-dashoffset: 0;
 }
 
+/* Copy button on code blocks */
+.code-block-wrapper {
+    position: relative;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #475569;
+    color: #e2e8f0;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    z-index: 10;
+}
+
+.copy-btn:hover {
+    background: #64748b;
+}
+
+.copy-btn.copied {
+    background: #22c55e;
+    color: white;
+}
+
+/* Coming Soon badge */
+.badge-coming-soon {
+    display: inline-block;
+    background: #854d0e;
+    color: #fde047;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+}
+
+/* Contrast cards (is / is not) */
+.contrast-card {
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    background: rgba(30, 41, 59, 0.5);
+}
+
+.contrast-card-is-not {
+    border: 2px solid #ef4444;
+}
+
+.contrast-card-is {
+    border: 2px solid #22c55e;
+}
+
+/* Step number circles */
+.step-number {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0 auto 0.75rem;
+}
+
+/* Trust callout bar */
+.trust-callout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
 /* Print styles */
 @media print {
     nav,
