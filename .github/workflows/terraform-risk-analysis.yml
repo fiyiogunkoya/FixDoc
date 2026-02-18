@@ -1,0 +1,29 @@
+name: Terraform Risk Analysis
+
+on:
+  pull_request:
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars"
+
+jobs:
+  risk-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install fixdoc
+        run: pip install fixdoc
+      - name: Terraform Init
+        run: terraform init
+      - name: Terraform Plan
+        run: terraform plan -out=plan.tfplan
+      - name: Analyze Risk
+        run: |
+          terraform show -json plan.tfplan > plan.json
+          fixdoc blast-radius plan.json --exit-on high
