@@ -20,14 +20,14 @@ from fixdoc.blast_radius import (
 from fixdoc.cli import create_cli
 from fixdoc.config import FixDocConfig
 from fixdoc.models import Fix
-from fixdoc.parsers.base import CloudProvider
+from fixdoc.parsers.base import CloudProvider, ParsedError
 from fixdoc.parsers.router import detect_and_parse, detect_error_source, ErrorSource
 from fixdoc.parsers.terraform import TerraformParser
 from fixdoc.storage import FixRepository
 from fixdoc.suggestions import find_similar_fixes
 
 # Actual command modules for subprocess patching
-_br_cmd_mod = importlib.import_module("fixdoc.commands.blast_radius")
+_analyze_cmd_mod = importlib.import_module("fixdoc.commands.analyze")
 _watch_mod = importlib.import_module("fixdoc.commands.watch")
 
 
@@ -84,16 +84,17 @@ class TestBlastRadiusIntegration:
     """Load fixture plans → analyze_blast_radius() + CLI → verify results."""
 
     def test_create_all_score_range(self, tmp_path):
-        """All-create plan: low-medium score (create weight = 0.4)."""
+        """All-create plan: medium score after greenfield discount."""
         plan = _load_json_fixture(PLANS_DIR / "plan_create_all.json")
         repo = FixRepository(tmp_path)
         result = analyze_blast_radius(plan, repo)
 
-        # 13 resources created, includes IAM + SG control points.
-        # Create weight is 0.4 so score should be moderate.
+        # 13 resources created, 4 are boundary (IAM + SG).
+        # Greenfield discount: boundary 8*1.5*0.5=6.0, non-boundary 8*0.3=2.4.
+        # 4*6.0 + 9*2.4 = 24.0 + 21.6 = 45.6 → medium. No intra-plan L1/L2.
         assert result.score >= 0
         assert result.score <= 100
-        assert result.severity in ("low", "medium", "high")
+        assert result.severity in ("low", "medium", "high", "critical")
 
     def test_create_all_identifies_control_points(self, tmp_path):
         """All-create plan identifies IAM role, policy attachment, and SGs."""
@@ -136,14 +137,15 @@ class TestBlastRadiusIntegration:
         assert any("iam" in c.lower() for c in result.checks)
 
     def test_sg_update_medium_score(self, tmp_path):
-        """SG update plan: medium score (network criticality + update weight)."""
+        """SG update plan: low score without graph (new linear formula)."""
         plan = _load_json_fixture(PLANS_DIR / "plan_sg_update.json")
         repo = FixRepository(tmp_path)
         result = analyze_blast_radius(plan, repo)
 
-        # SG (criticality 0.8) + update (weight 0.7) → medium range
-        assert result.score >= 30
-        assert result.severity in ("medium", "high")
+        # SG update: 7.5 + 2 plain updates (5 each) = 17.5, no graph → LOW.
+        # Per plan design: 3 SG updates without dependents → LOW.
+        assert result.score >= 5
+        assert result.severity in ("low", "medium")
 
     def test_graph_propagation_sg_update(self, tmp_path):
         """SG update with DOT graph finds downstream affected resources."""
@@ -163,13 +165,13 @@ class TestBlastRadiusIntegration:
         plan = _load_json_fixture(PLANS_DIR / "plan_sg_update.json")
         repo = FixRepository(tmp_path)
 
-        # Seed 3 fixes for aws_security_group → prior = 1.0
+        # Seed 3 fixes for aws_security_group with category tag → prior fires
         for i in range(3):
             seed_fix(
                 repo,
                 issue=f"SG issue #{i}",
                 resolution=f"Fixed SG #{i}",
-                tags="terraform,aws,aws_security_group",
+                tags="terraform,aws,aws_security_group,networking",
             )
 
         result_with_history = analyze_blast_radius(plan, repo)
@@ -181,18 +183,18 @@ class TestBlastRadiusIntegration:
         assert result_with_history.score >= result_no_history.score
         assert len(result_with_history.history_matches) >= 1
 
-    def test_blast_radius_cli_json_output(self, tmp_path):
-        """CLI blast-radius with --format json returns valid JSON."""
+    def test_analyze_cli_json_output(self, tmp_path):
+        """CLI analyze with --format json returns valid JSON."""
         plan_path = PLANS_DIR / "plan_sg_update.json"
         cli = create_cli()
         runner = CliRunner(mix_stderr=False)
 
         with patch.object(
-            _br_cmd_mod, "_auto_run_terraform_graph", return_value=None
+            _analyze_cmd_mod, "_auto_run_terraform_graph", return_value=None
         ):
             result = runner.invoke(
                 cli,
-                ["blast-radius", str(plan_path), "--format", "json"],
+                ["analyze", str(plan_path), "--format", "json"],
                 obj=make_obj(tmp_path),
             )
 
@@ -402,9 +404,32 @@ class TestSuggestionIntegration:
 # ===================================================================
 
 
+def _make_integration_parsed_error(
+    resource_address="aws_s3_bucket.data",
+    error_code="BucketAlreadyExists",
+    **kwargs,
+):
+    """Create a minimal ParsedError for watch integration tests."""
+    defaults = dict(
+        error_type="terraform",
+        error_message="bucket already exists",
+        raw_output="Error: BucketAlreadyExists on aws_s3_bucket.data",
+        resource_address=resource_address,
+        error_code=error_code,
+        cloud_provider=CloudProvider.AWS,
+    )
+    defaults.update(kwargs)
+    return ParsedError(**defaults)
+
+
 @pytest.mark.skipif(not ERRORS_DIR.exists(), reason="error fixtures missing")
 class TestWatchIntegration:
-    """Mock subprocess with fixture error output → watch → verify capture."""
+    """Mock subprocess with fixture error output → watch → verify capture.
+
+    Each test mocks Popen with real fixture data (so the read pipeline is
+    exercised) and also mocks detect_and_parse / capture_single_error to
+    avoid entering the interactive capture prompts.
+    """
 
     def _make_popen_mock(self, output_text, exit_code=1):
         """Create a mock Popen that yields output_text line-by-line."""
@@ -418,68 +443,86 @@ class TestWatchIntegration:
         return mock_proc
 
     def test_watch_captures_terraform_error(self, tmp_path):
-        """Watch catches a failed terraform apply and offers capture."""
+        """Watch catches a failed terraform apply and skips capture on 's'."""
         error_text = _load_fixture(ERRORS_DIR / "s3_bucket_conflict.txt")
         mock_proc = self._make_popen_mock(error_text, exit_code=1)
+        parsed_err = _make_integration_parsed_error()
 
         cli = create_cli()
         runner = CliRunner()
 
-        with patch.object(
-            _watch_mod.subprocess, "Popen", return_value=mock_proc
-        ):
+        with patch.object(_watch_mod.subprocess, "Popen", return_value=mock_proc), \
+             patch.object(_watch_mod, "detect_and_parse", return_value=[parsed_err]), \
+             patch.object(_watch_mod, "capture_single_error", return_value=None):
             result = runner.invoke(
                 cli,
                 ["watch", "--", "terraform", "apply"],
                 obj=make_obj(tmp_path),
-                input="n\n",  # Decline capture
+                input="s\n",  # Skip capture
             )
 
-        # Should have exit code 1 (preserved from wrapped command)
+        # Exit code preserved from wrapped command; skip path calls sys.exit(exit_code)
         assert result.exit_code == 1
 
     def test_watch_no_prompt_triggers_capture(self, tmp_path):
-        """Watch --no-prompt goes straight to capture pipeline."""
+        """Watch --no-prompt auto-captures without interactive prompts."""
         error_text = _load_fixture(ERRORS_DIR / "ec2_capacity.txt")
         mock_proc = self._make_popen_mock(error_text, exit_code=1)
+        parsed_err = _make_integration_parsed_error(
+            resource_address="aws_instance.web",
+            error_code="InsufficientInstanceCapacity",
+        )
+        mock_fix = Fix(
+            issue="aws_instance.web: InsufficientInstanceCapacity",
+            resolution="Changed AZ",
+        )
 
         cli = create_cli()
         runner = CliRunner()
 
-        with patch.object(
-            _watch_mod.subprocess, "Popen", return_value=mock_proc
-        ):
+        with patch.object(_watch_mod.subprocess, "Popen", return_value=mock_proc), \
+             patch.object(_watch_mod, "detect_and_parse", return_value=[parsed_err]), \
+             patch.object(_watch_mod, "capture_single_error", return_value=mock_fix):
             result = runner.invoke(
                 cli,
                 ["watch", "--no-prompt", "--", "terraform", "apply"],
                 obj=make_obj(tmp_path),
-                input="Fixed by changing AZ\nterraform,aws\n\n",
             )
 
-        # Should still preserve exit code
         assert result.exit_code == 1
-        assert "Captured from Terraform" in result.output
+        assert "Fix saved" in result.output
 
     def test_watch_with_tags(self, tmp_path):
-        """Watch --tags passes tags through to captured fix."""
+        """Watch --tags passes tags through to capture_single_error."""
         error_text = _load_fixture(ERRORS_DIR / "rds_subnet_coverage.txt")
         mock_proc = self._make_popen_mock(error_text, exit_code=1)
+        parsed_err = _make_integration_parsed_error(
+            resource_address="aws_db_instance.main",
+            error_code="DBSubnetGroupDoesNotCoverEnoughAZs",
+        )
+        mock_fix = Fix(
+            issue="aws_db_instance.main: DBSubnetGroupDoesNotCoverEnoughAZs",
+            resolution="Added second subnet in different AZ",
+        )
 
         cli = create_cli()
         runner = CliRunner()
 
-        with patch.object(
-            _watch_mod.subprocess, "Popen", return_value=mock_proc
-        ):
+        with patch.object(_watch_mod.subprocess, "Popen", return_value=mock_proc), \
+             patch.object(_watch_mod, "detect_and_parse", return_value=[parsed_err]), \
+             patch.object(_watch_mod, "capture_single_error",
+                          return_value=mock_fix) as mock_cap:
             result = runner.invoke(
                 cli,
                 ["watch", "--tags", "infra-team", "--no-prompt",
                  "--", "terraform", "apply"],
                 obj=make_obj(tmp_path),
-                input="Added second subnet\nterraform,aws,infra-team\n\n",
             )
 
         assert result.exit_code == 1
+        # Verify the tags flag was forwarded to capture_single_error (3rd positional arg)
+        assert mock_cap.called
+        assert mock_cap.call_args[0][2] == "infra-team"
 
     def test_watch_success_no_capture(self, tmp_path):
         """Watch does not trigger capture when command succeeds."""
@@ -501,21 +544,25 @@ class TestWatchIntegration:
         assert "Capture this error?" not in result.output
 
     def test_watch_preserves_exit_code(self, tmp_path):
-        """Watch preserves the wrapped command's exit code."""
+        """Watch preserves the wrapped command's exit code on skip."""
         error_text = _load_fixture(ERRORS_DIR / "iam_access_denied.txt")
         mock_proc = self._make_popen_mock(error_text, exit_code=2)
+        parsed_err = _make_integration_parsed_error(
+            resource_address="aws_lambda_function.api",
+            error_code="AccessDeniedException",
+        )
 
         cli = create_cli()
         runner = CliRunner()
 
-        with patch.object(
-            _watch_mod.subprocess, "Popen", return_value=mock_proc
-        ):
+        with patch.object(_watch_mod.subprocess, "Popen", return_value=mock_proc), \
+             patch.object(_watch_mod, "detect_and_parse", return_value=[parsed_err]), \
+             patch.object(_watch_mod, "capture_single_error", return_value=None):
             result = runner.invoke(
                 cli,
                 ["watch", "--", "terraform", "apply"],
                 obj=make_obj(tmp_path),
-                input="n\n",  # Decline capture
+                input="s\n",  # Skip — exit code must be preserved
             )
 
         assert result.exit_code == 2

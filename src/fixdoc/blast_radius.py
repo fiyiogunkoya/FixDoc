@@ -7,7 +7,6 @@ fix history into a weighted BlastScore (0-100) with explainable
 propagation paths.
 """
 
-import math
 import re
 import uuid
 from collections import deque
@@ -15,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
+from .models import Fix
 from .storage import FixRepository
 
 # ---------------------------------------------------------------------------
@@ -73,6 +73,31 @@ CATEGORY_CHECKS: dict[str, list[str]] = {
 
 DELETE_CHECKS = ["Confirm resource is not referenced by other stacks"]
 
+# Category tags that indicate a fix is relevant to a specific concern domain.
+# Resource-type-only tags (e.g. "aws_instance") are NOT sufficient — a fix must
+# have at least one of these to surface in Phase 2 history matching.
+_HISTORY_CATEGORY_TAGS: frozenset = frozenset({
+    "networking", "network", "rbac", "iam", "dns", "quota", "state",
+    "state-lock", "auth", "authentication", "authorization", "acl",
+    "route", "routing", "connectivity", "ingress", "egress", "security",
+    "firewall", "k8s", "kubernetes", "key_vault", "vault", "certificate",
+    "cert", "database", "db", "storage", "permissions",
+})
+
+# Action points for the linear scoring formula
+ACTION_POINTS = {
+    "delete": 20,
+    "replace": 25,
+    "update": 5,
+    "create": 8,
+}
+
+# Discount multipliers for all-create (greenfield) plans.
+# Creating new resources poses lower risk than modifying existing ones.
+GREENFIELD_MULTIPLIER = 0.3           # non-boundary creates
+GREENFIELD_BOUNDARY_MULTIPLIER = 0.5  # boundary creates (smaller discount — still risky if misconfigured)
+GREENFIELD_IMPACT_MULTIPLIER = 0.25   # fraction of normal L1/L2 weight for cross-boundary edges
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -85,7 +110,7 @@ class BlastNode:
 
     address: str
     resource_type: str
-    action: str  # create, update, delete, no-op
+    action: str  # create, update, delete, replace, no-op
     cloud_provider: str = "unknown"
     is_control_point: bool = False
     criticality: float = 0.0
@@ -143,6 +168,11 @@ def classify_control_point(resource_type: str) -> Optional[tuple[str, float]]:
             best_match = (category, criticality)
             best_len = len(prefix)
     return best_match
+
+
+def is_boundary_resource(resource_type: str) -> bool:
+    """Check if a resource type is a boundary/control-point resource."""
+    return classify_control_point(resource_type) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -252,57 +282,131 @@ def compute_affected_set(
     return [ar for ar in visited.values() if ar.address not in start_nodes]
 
 
+def compute_tiered_affected(
+    changed_nodes: list[BlastNode],
+    adjacency: dict[str, set[str]],
+    max_depth: int = 5,
+) -> tuple[list[AffectedResource], list[AffectedResource]]:
+    """Compute tiered affected sets: L1 (direct) and L2 (indirect).
+
+    L2 is only populated if any L0 node is a boundary resource or
+    involves a delete/replace action.
+
+    Returns (l1_affected, l2_affected).
+    """
+    start_addrs = [n.address for n in changed_nodes]
+
+    # Always compute L1 (depth 1)
+    all_affected = compute_affected_set(start_addrs, adjacency, max_depth=max_depth)
+    l1 = [ar for ar in all_affected if ar.depth == 1]
+    l2 = [ar for ar in all_affected if ar.depth >= 2]
+
+    # Gate L2: only include if L0 has boundary resources or delete/replace
+    has_boundary = any(is_boundary_resource(n.resource_type) for n in changed_nodes)
+    has_destructive = any(n.action in ("delete", "replace") for n in changed_nodes)
+
+    if not (has_boundary or has_destructive):
+        l2 = []
+
+    return l1, l2
+
+
 # ---------------------------------------------------------------------------
-# Blast score formula
+# Blast score formula — linear
 # ---------------------------------------------------------------------------
 
-# Hardcoded coefficients
-_A = 1.5   # affected-count weight
-_B = 2.0   # criticality weight
-_C = 1.8   # change-action weight
-_D = 1.0   # history-prior weight
-_OFFSET = 3.0  # centering offset
 
-_ACTION_WEIGHTS = {
-    "delete": 1.0,
-    "update": 0.7,
-    "create": 0.4,
-    "no-op": 0.0,
-    "unknown": 0.3,
-}
+def _normalize_action(actions: list[str]) -> str:
+    """Normalize a Terraform actions list to a single action string.
 
-
-def _sigmoid(x: float) -> float:
-    """Standard sigmoid function."""
-    return 1.0 / (1.0 + math.exp(-x))
+    Treats ["create", "delete"] as "replace".
+    """
+    action_set = set(actions)
+    if "create" in action_set and "delete" in action_set:
+        return "replace"
+    if "delete" in action_set:
+        return "delete"
+    if "update" in action_set:
+        return "update"
+    if "create" in action_set:
+        return "create"
+    return "no-op"
 
 
 def compute_blast_score(
-    affected_count: int,
-    max_criticality: float,
-    actions: list[str],
-    history_prior: float,
+    changed_nodes: list[BlastNode],
+    l1_count: int,
+    l2_count: int,
+    history_match_count: int,
 ) -> float:
-    """Compute blast score 0-100.
+    """Compute blast score 0-100 using linear formula.
 
-    BlastScore = 100 * sigmoid(a*ln(1+R) + b*C + c*delta + d*H - offset)
+    Score components:
+    1. Action points for each changed (L0) resource
+    2. Impact points from dependents (L1 + L2)
+    3. History overlay
+
+    For greenfield plans (all creates):
+    - Non-boundary creates: GREENFIELD_MULTIPLIER (0.3x)
+    - Boundary creates: GREENFIELD_BOUNDARY_MULTIPLIER (0.5x) — smaller discount
+    - L1/L2: caller pre-filters to cross-boundary existing-infra edges only,
+      weighted at 1.5 * GREENFIELD_IMPACT_MULTIPLIER (0.375x normal)
     """
-    r = affected_count
-    c = max_criticality
-    delta = max((_ACTION_WEIGHTS.get(a, 0.3) for a in actions), default=0.0)
-    h = history_prior
+    score = 0.0
 
-    raw = _A * math.log(1 + r) + _B * c + _C * delta + _D * h - _OFFSET
-    return round(100.0 * _sigmoid(raw), 1)
+    # No-ops/reads are already excluded by analyze_blast_radius() before this call.
+    # Greenfield: all active changes are creates.
+    is_greenfield = bool(changed_nodes) and all(
+        node.action == "create" for node in changed_nodes
+    )
+
+    # 1. Action points for each L0 resource
+    all_updates_no_boundary = True
+    action_points = 0.0
+
+    for node in changed_nodes:
+        points = ACTION_POINTS.get(node.action, 0)
+        if is_boundary_resource(node.resource_type):
+            points *= 1.5
+            if is_greenfield:
+                points *= GREENFIELD_BOUNDARY_MULTIPLIER
+        else:
+            if is_greenfield:
+                points *= GREENFIELD_MULTIPLIER
+        if node.action != "update" or is_boundary_resource(node.resource_type):
+            all_updates_no_boundary = False
+        action_points += points
+
+    score += action_points
+
+    # 2. Impact points from dependents
+    # For greenfield: l1_count/l2_count are pre-filtered by analyze_blast_radius()
+    # to only count resources NOT in the plan (cross-boundary existing-infra edges).
+    impacted_count = min(l1_count + l2_count, 25)
+    if is_greenfield:
+        # New resources touching existing infra: low weight (0.25 × normal 1.5)
+        impact_multiplier = 1.5 * GREENFIELD_IMPACT_MULTIPLIER
+    elif all_updates_no_boundary:
+        impact_multiplier = 0.5
+    else:
+        impact_multiplier = 1.5
+    score += impacted_count * impact_multiplier
+
+    # 3. History overlay
+    score += min(history_match_count * 5, 15)
+
+    # Clamp
+    score = min(100.0, max(0.0, score))
+    return round(score, 1)
 
 
 def severity_label(score: float) -> str:
     """Map blast score to severity label."""
-    if score >= 80:
+    if score >= 75:
         return "critical"
-    if score >= 60:
+    if score >= 50:
         return "high"
-    if score >= 35:
+    if score >= 25:
         return "medium"
     return "low"
 
@@ -312,31 +416,90 @@ def severity_label(score: float) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _history_cluster_key(fix: Fix) -> str:
+    """Return dedup cluster key: first CamelCase error token, or first 4 words."""
+    issue = fix.issue or ""
+    m = re.search(r'[A-Z][a-z]+(?:[A-Z][a-z]+)+', issue)
+    if m:
+        return m.group()
+    words = re.sub(r'[^\w\s]', '', issue).lower().split()[:4]
+    return ' '.join(words)
+
+
+def _dedup_history_candidates(
+    candidates: list[tuple[Fix, str]]
+) -> list[tuple[Fix, str]]:
+    """Cluster by error fingerprint; keep most-complete fix per cluster.
+
+    Most complete = has error_excerpt, then most recent created_at.
+    """
+    clusters: dict[str, tuple[Fix, str]] = {}
+    for fix, rt in candidates:
+        key = _history_cluster_key(fix)
+        if key not in clusters:
+            clusters[key] = (fix, rt)
+        else:
+            existing_fix, _ = clusters[key]
+            existing_score = (1 if existing_fix.error_excerpt else 0, existing_fix.created_at)
+            new_score = (1 if fix.error_excerpt else 0, fix.created_at)
+            if new_score > existing_score:
+                clusters[key] = (fix, rt)
+    return list(clusters.values())
+
+
 def compute_history_prior(
     changed_resource_types: list[str],
+    changed_nodes: list[BlastNode],
     repo: FixRepository,
-) -> tuple[float, list[dict]]:
-    """Compute history prior from fix database.
+) -> tuple[int, list[dict]]:
+    """Compute history match count from fix database.
 
-    Returns (prior_0_to_1, list_of_matching_fix_dicts).
+    Returns (match_count, list_of_matching_fix_dicts).
+    Only returns matches when:
+    - A changed resource is a control point (boundary), OR
+    - Any action is delete/replace, OR
+    - A fix's issue/error_excerpt mentions a changed resource address exactly.
+    Matches are category-tag filtered, deduped, and capped at 3.
     """
-    all_matches = []
-    seen_ids: set[str] = set()
+    has_boundary = any(is_boundary_resource(n.resource_type) for n in changed_nodes)
+    has_destructive = any(n.action in ("delete", "replace") for n in changed_nodes)
+    changed_addresses = {n.address.lower() for n in changed_nodes}
 
-    for rt in changed_resource_types:
-        for fix in repo.find_by_resource_type(rt):
+    seen_ids: set[str] = set()
+    candidates: list[tuple[Fix, str]] = []  # (fix, resource_type)
+
+    # Phase 1: Address-match override — works even without gate
+    for fix in repo.list_all():
+        fix_searchable = " ".join(filter(None, [fix.issue, fix.error_excerpt])).lower()
+        if any(addr in fix_searchable for addr in changed_addresses):
             if fix.id not in seen_ids:
                 seen_ids.add(fix.id)
-                all_matches.append(
-                    {
-                        "id": fix.id[:8],
-                        "issue": fix.issue,
-                        "resource_type": rt,
-                    }
-                )
+                candidates.append((fix, ""))
 
-    prior = min(1.0, len(all_matches) / 3.0)
-    return prior, all_matches
+    # Phase 2: Resource-type + category tag — only when gate passes
+    if has_boundary or has_destructive:
+        for rt in changed_resource_types:
+            for fix in repo.find_by_resource_type(rt):
+                if fix.id in seen_ids:
+                    continue
+                if not fix.tags:
+                    continue
+                fix_tags = {t.strip().lower() for t in fix.tags.split(",") if t.strip()}
+                if fix_tags & _HISTORY_CATEGORY_TAGS:
+                    seen_ids.add(fix.id)
+                    candidates.append((fix, rt))
+
+    if not candidates:
+        return 0, []
+
+    # Dedup and cap at 3
+    deduped = _dedup_history_candidates(candidates)[:3]
+
+    result = [
+        {"id": fix.id[:8], "issue": fix.issue, "resource_type": rt}
+        for fix, rt in deduped
+    ]
+    return len(result), result
 
 
 # ---------------------------------------------------------------------------
@@ -450,14 +613,26 @@ def analyze_blast_radius(
     analyzer = TerraformAnalyzer(repo=repo)
     resources = analyzer.extract_resources(plan)
 
-    # Build nodes and identify control points
+    # Build nodes and identify control points — changed only
     nodes: list[BlastNode] = []
     control_points: list[BlastNode] = []
     changes: list[dict] = []
 
     for res in resources:
-        if res.action == "no-op":
+        action = res.action
+        if action in ("no-op", "read", "refresh-only", "unknown"):
             continue
+
+        # Detect replace: ["create", "delete"]
+        # The action is already normalized by TerraformAnalyzer, but
+        # we check the raw plan for the create+delete combo
+        raw_actions = []
+        for rc in plan.get("resource_changes", []):
+            if rc.get("address") == res.address:
+                raw_actions = rc.get("change", {}).get("actions", [])
+                break
+        if "create" in raw_actions and "delete" in raw_actions:
+            action = "replace"
 
         cp_info = classify_control_point(res.resource_type)
         is_cp = cp_info is not None
@@ -467,7 +642,7 @@ def analyze_blast_radius(
         node = BlastNode(
             address=res.address,
             resource_type=res.resource_type,
-            action=res.action,
+            action=action,
             cloud_provider=res.cloud_provider.value,
             is_control_point=is_cp,
             criticality=criticality,
@@ -482,7 +657,7 @@ def analyze_blast_radius(
             {
                 "address": res.address,
                 "resource_type": res.resource_type,
-                "action": res.action,
+                "action": action,
                 "cloud_provider": res.cloud_provider.value,
                 "is_control_point": is_cp,
                 "category": category,
@@ -491,35 +666,45 @@ def analyze_blast_radius(
         )
 
     # BFS propagation if graph is available
-    affected: list[AffectedResource] = []
-    if dot_text and control_points:
-        forward, reverse = parse_dot_graph(dot_text)
-        # Use both directions — control point changes can affect dependents
-        combined: dict[str, set[str]] = {}
-        for adj in (forward, reverse):
-            for k, v in adj.items():
-                combined.setdefault(k, set()).update(v)
+    l1_affected: list[AffectedResource] = []
+    l2_affected: list[AffectedResource] = []
+    all_affected: list[AffectedResource] = []
 
-        start_addrs = [cp.address for cp in control_points]
-        affected = compute_affected_set(start_addrs, combined, max_depth)
+    if dot_text and nodes:
+        _forward, reverse = parse_dot_graph(dot_text)
+        # Use reverse adjacency only: reverse[X] = things that depend on X.
+        # This ensures BFS traverses downstream dependents, not upstream
+        # dependencies (subnet, VPC) that are not impacted by a change to X.
+        l1_affected, l2_affected = compute_tiered_affected(
+            nodes, reverse, max_depth
+        )
+        all_affected = l1_affected + l2_affected
 
     # History prior
     changed_types = list({n.resource_type for n in nodes})
-    history_prior, history_matches = compute_history_prior(changed_types, repo)
+    history_count, history_matches = compute_history_prior(changed_types, nodes, repo)
 
-    # Blast score
-    actions = [n.action for n in nodes]
-    max_crit = max((cp.criticality for cp in control_points), default=0.0)
-    score = compute_blast_score(len(affected), max_crit, actions, history_prior)
+    # Blast score — linear formula.
+    # Filter L1/L2 to only count resources NOT in the plan itself, so that
+    # intra-plan dependency edges (new resource → new resource) don't inflate
+    # the score. For greenfield plans this removes all intra-plan L1/L2 noise;
+    # only cross-boundary edges to existing infra are counted (at reduced weight).
+    changed_addresses = {n.address for n in nodes}
+    l1_score_count = sum(1 for ar in l1_affected if ar.address not in changed_addresses)
+    l2_score_count = sum(1 for ar in l2_affected if ar.address not in changed_addresses)
+
+    score = compute_blast_score(
+        nodes, l1_score_count, l2_score_count, history_count
+    )
     sev = severity_label(score)
 
     # Recommended checks
-    has_deletes = any(n.action == "delete" for n in nodes)
+    has_deletes = any(n.action in ("delete", "replace") for n in nodes)
     checks = generate_checks(control_points, has_deletes)
 
     # Build why-paths for affected resources
     why_paths = []
-    for ar in affected[:20]:  # Cap at 20 for readability
+    for ar in all_affected[:20]:  # Cap at 20 for readability
         why_paths.append(
             {
                 "target": ar.address,
@@ -532,7 +717,7 @@ def analyze_blast_radius(
     plan_summary = {
         "total_changes": len(nodes),
         "control_points": len(control_points),
-        "affected_resources": len(affected),
+        "affected_resources": len(all_affected),
         "by_action": {},
     }
     for n in nodes:
@@ -560,7 +745,7 @@ def analyze_blast_radius(
                 "depth": ar.depth,
                 "path": ar.path,
             }
-            for ar in affected
+            for ar in all_affected
         ],
         why_paths=why_paths,
         checks=checks,

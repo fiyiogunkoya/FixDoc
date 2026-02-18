@@ -18,18 +18,19 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+  s3_use_path_style           = true
 
   endpoints {
-    dynamodb       = "http://localhost:4566"
-    ec2            = "http://localhost:4566"
-    iam            = "http://localhost:4566"
-    lambda         = "http://localhost:4566"
-    s3             = "http://localhost:4566"
-    sns            = "http://localhost:4566"
-    sqs            = "http://localhost:4566"
-    sts            = "http://localhost:4566"
-    secretsmanager = "http://localhost:4566"
-    cloudwatch     = "http://localhost:4566"
+    dynamodb       = "http://127.0.0.1:4566"
+    ec2            = "http://127.0.0.1:4566"
+    iam            = "http://127.0.0.1:4566"
+    lambda         = "http://127.0.0.1:4566"
+    s3             = "http://127.0.0.1:4566"
+    sns            = "http://127.0.0.1:4566"
+    sqs            = "http://127.0.0.1:4566"
+    sts            = "http://127.0.0.1:4566"
+    secretsmanager = "http://127.0.0.1:4566"
+    cloudwatch     = "http://127.0.0.1:4566"
   }
 }
 
@@ -45,6 +46,7 @@ resource "aws_iam_role" "service_execution" {
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
+      # Effect = "Deny"
       Principal = {
         Service = "lambda.amazonaws.com"
       }
@@ -354,7 +356,7 @@ resource "aws_sqs_queue" "archive" {
 resource "aws_lambda_event_source_mapping" "archive_trigger" {
   event_source_arn = aws_sqs_queue.archive.arn
   function_name    = aws_lambda_function.archiver.arn
-  batch_size       = 25
+  batch_size       = 10
 }
 
 # ---------------------------------------------------------------------------

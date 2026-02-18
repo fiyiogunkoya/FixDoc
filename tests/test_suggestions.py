@@ -2,6 +2,7 @@
 
 import pytest
 
+from fixdoc.config import SuggestionWeights
 from fixdoc.models import Fix
 from fixdoc.storage import FixRepository
 from fixdoc.suggestions import (
@@ -9,6 +10,7 @@ from fixdoc.suggestions import (
     _extract_keywords,
     _extract_error_codes,
     _extract_resource_types,
+    _dedup_cluster,
 )
 
 
@@ -58,6 +60,7 @@ class TestFindSimilarFixes:
         similar = find_similar_fixes(
             repo_with_fixes,
             "Error: BucketAlreadyExists when creating S3 bucket",
+            min_score=1,
         )
 
         assert len(similar) > 0
@@ -68,8 +71,9 @@ class TestFindSimilarFixes:
         """Should find fixes with matching tags."""
         similar = find_similar_fixes(
             repo_with_fixes,
-            "some error",
+            "some terraform error",
             tags="terraform,azure",
+            min_score=1,
         )
 
         assert len(similar) > 0
@@ -82,6 +86,7 @@ class TestFindSimilarFixes:
         similar = find_similar_fixes(
             repo_with_fixes,
             "AuthorizationFailed: User does not have permissions",
+            min_score=1,
         )
 
         assert len(similar) > 0
@@ -90,7 +95,6 @@ class TestFindSimilarFixes:
 
     def test_find_by_resource_type(self, temp_repo):
         """Should find fixes with matching resource types in tags."""
-        # Create a fix with actual terraform resource type in tags
         fix = Fix(
             issue="S3 bucket error",
             resolution="Fix bucket config",
@@ -102,28 +106,62 @@ class TestFindSimilarFixes:
         similar = find_similar_fixes(
             temp_repo,
             "Error with aws_s3_bucket resource",
+            min_score=1,
         )
 
         assert len(similar) > 0
-        # The fix with aws_s3_bucket tag should match
         assert any("aws_s3_bucket" in fix.tags.lower() for fix in similar)
+
+    def test_find_by_resource_address(self, temp_repo):
+        """Should find fixes when error text contains a resource address."""
+        fix = Fix(
+            issue="aws_s3_bucket.data: BucketAlreadyExists",
+            resolution="Used unique bucket name",
+            tags="aws_s3_bucket,terraform",
+            error_excerpt="aws_s3_bucket.data: BucketAlreadyExists",
+        )
+        temp_repo.save(fix)
+
+        similar = find_similar_fixes(
+            temp_repo,
+            "Error on aws_s3_bucket.data: The requested bucket name",
+            resource_address="aws_s3_bucket.data",
+            min_score=1,
+        )
+
+        assert len(similar) >= 1
+        assert similar[0].id == fix.id
 
     def test_empty_repository(self, temp_repo):
         """Should return empty list for empty repository."""
         similar = find_similar_fixes(temp_repo, "any error")
         assert similar == []
 
-    def test_no_matches(self, repo_with_fixes):
-        """Should return empty when no fixes match."""
+    def test_no_matches_below_threshold(self, repo_with_fixes):
+        """Should return empty when no fixes meet min_score threshold."""
         similar = find_similar_fixes(
             repo_with_fixes,
             "xyz123 completely unrelated error",
             tags="nonexistent,tags",
+            min_score=15,
         )
+        assert similar == []
 
-        # May return some results due to common words, but low scores
-        # Just verify it doesn't crash
-        assert isinstance(similar, list)
+    def test_min_score_filters(self, temp_repo):
+        """Min score threshold should filter out low-relevance matches."""
+        temp_repo.save(Fix(
+            issue="Some vague issue about permissions",
+            resolution="Fixed permissions",
+            tags="terraform",
+        ))
+
+        # With high threshold, vague match is excluded
+        similar_high = find_similar_fixes(
+            temp_repo,
+            "timeout connecting to database",
+            min_score=20,
+        )
+        assert similar_high == []
 
     def test_limit_results(self, repo_with_fixes):
         """Should respect the limit parameter."""
@@ -131,119 +169,172 @@ class TestFindSimilarFixes:
             repo_with_fixes,
             "terraform error",
             limit=2,
+            min_score=1,
         )
 
         assert len(similar) <= 2
 
     def test_results_sorted_by_score(self, repo_with_fixes):
         """Results should be sorted by relevance score (descending)."""
-        # This is an indirect test - the most relevant fix should be first
         similar = find_similar_fixes(
             repo_with_fixes,
             "CrashLoopBackOff kubernetes pod error",
             tags="kubernetes",
+            min_score=1,
         )
 
         if len(similar) >= 2:
-            # The kubernetes fix should be ranked first
             assert "kubernetes" in similar[0].tags.lower()
+
+    def test_custom_weights(self, temp_repo):
+        """Custom weights should change ranking."""
+        temp_repo.save(Fix(
+            issue="IAM role issue",
+            resolution="Fixed role policy",
+            tags="aws_iam_role,terraform",
+            error_excerpt="Error: AccessDenied on aws_iam_role.app",
+        ))
+
+        # With high resource_address_weight
+        weights = SuggestionWeights(resource_address_weight=50)
+        similar = find_similar_fixes(
+            temp_repo,
+            "Error on aws_iam_role.app: AccessDenied",
+            weights=weights,
+            min_score=1,
+        )
+        assert len(similar) >= 1
+
+
+class TestDedupCluster:
+    def test_dedup_identical_fixes(self, temp_repo):
+        """Near-identical fixes should be deduped to highest scorer."""
+        for i in range(3):
+            temp_repo.save(Fix(
+                issue=f"InsufficientInstanceCapacity on aws_instance.web #{i}",
+                resolution=f"Changed instance type #{i}",
+                tags="aws_instance,terraform,InsufficientInstanceCapacity",
+                error_excerpt="InsufficientInstanceCapacity",
+            ))
+
+        similar = find_similar_fixes(
+            temp_repo,
+            "Error: InsufficientInstanceCapacity on aws_instance.web",
+            tags="aws_instance,terraform",
+            min_score=1,
+        )
+
+        # Should be deduped to 1 result
+        assert len(similar) == 1
+
+    def test_different_errors_not_deduped(self, temp_repo):
+        """Fixes with different error codes should not be deduped."""
+        temp_repo.save(Fix(
+            issue="S3 BucketAlreadyExists",
+            resolution="Use unique name",
+            tags="aws_s3_bucket",
+            error_excerpt="BucketAlreadyExists",
+        ))
+        temp_repo.save(Fix(
+            issue="S3 AccessDenied on bucket",
+            resolution="Fix IAM policy",
+            tags="aws_s3_bucket",
+            error_excerpt="AccessDenied",
+        ))
+
+        similar = find_similar_fixes(
+            temp_repo,
+            "Error with aws_s3_bucket: AccessDenied and BucketAlreadyExists",
+            min_score=1,
+        )
+
+        assert len(similar) == 2
 
 
 class TestExtractKeywords:
     def test_extract_basic_keywords(self):
-        """Should extract meaningful words from text."""
         keywords = _extract_keywords("Error creating storage account")
-
         assert "creating" in keywords
         assert "storage" in keywords
         assert "account" in keywords
 
     def test_filter_stop_words(self):
-        """Should filter out common stop words."""
         keywords = _extract_keywords("The error is in the configuration")
-
         assert "the" not in keywords
         assert "is" not in keywords
         assert "in" not in keywords
         assert "configuration" in keywords
 
     def test_filter_short_words(self):
-        """Should filter words with 2 or fewer characters."""
         keywords = _extract_keywords("An S3 bucket in us-east-1")
-
         assert "an" not in keywords
         assert "in" not in keywords
 
     def test_lowercase_conversion(self):
-        """Should convert keywords to lowercase."""
         keywords = _extract_keywords("STORAGE Account ERROR")
-
         assert "storage" in keywords
         assert "STORAGE" not in keywords
 
     def test_empty_text(self):
-        """Should handle empty text."""
         assert _extract_keywords("") == set()
         assert _extract_keywords(None) == set()
 
 
 class TestExtractErrorCodes:
     def test_extract_azure_error_code(self):
-        """Should extract Azure-style error codes."""
         codes = _extract_error_codes('Code: "AuthorizationFailed"')
-
         assert "authorizationfailed" in codes
 
     def test_extract_http_status_codes(self):
-        """Should extract HTTP status codes."""
         codes = _extract_error_codes("Request failed with status 403 Forbidden")
-
         assert "403" in codes
 
     def test_extract_common_error_names(self):
-        """Should extract common error pattern names."""
         codes = _extract_error_codes("accessdenied error when accessing resource")
-
         assert "accessdenied" in codes
 
     def test_multiple_codes(self):
-        """Should extract multiple error codes."""
         codes = _extract_error_codes("Error 404 NotFound, Code: Forbidden 403")
-
         assert "404" in codes
         assert "403" in codes
+
+    def test_terraform_error_pattern(self):
+        codes = _extract_error_codes("Error: InvalidGroup.NotFound")
+        assert "invalidgroup.notfound" in codes
+
+    def test_xml_code_pattern(self):
+        codes = _extract_error_codes("<Code>BucketAlreadyExists</Code>")
+        assert "bucketalreadyexists" in codes
+
+    def test_status_code_pattern(self):
+        codes = _extract_error_codes("StatusCode: 429")
+        assert "429" in codes
+
+    def test_api_error_pattern(self):
+        codes = _extract_error_codes("api error AccessDenied")
+        assert "accessdenied" in codes
 
 
 class TestExtractResourceTypes:
     def test_extract_aws_resource_types(self):
-        """Should extract AWS resource types."""
         types = _extract_resource_types("Error with aws_s3_bucket resource")
-
         assert "aws_s3_bucket" in types
 
     def test_extract_azure_resource_types(self):
-        """Should extract Azure resource types."""
         types = _extract_resource_types("azurerm_storage_account creation failed")
-
         assert "azurerm_storage_account" in types
 
     def test_extract_gcp_resource_types(self):
-        """Should extract GCP resource types."""
         types = _extract_resource_types("google_compute_instance error")
-
         assert "google_compute_instance" in types
 
     def test_multiple_resource_types(self):
-        """Should extract multiple resource types."""
         types = _extract_resource_types(
             "Error with aws_iam_role and aws_s3_bucket"
         )
-
         assert "aws_iam_role" in types
         assert "aws_s3_bucket" in types
 
     def test_case_insensitive(self):
-        """Should be case insensitive."""
         types = _extract_resource_types("AWS_S3_BUCKET error")
-
         assert "aws_s3_bucket" in types

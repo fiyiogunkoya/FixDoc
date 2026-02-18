@@ -12,8 +12,9 @@ from ..parsers import (
     detect_and_parse,
     detect_error_source,
 )
+from ..parsers.base import ParsedError
 from ..storage import FixRepository
-from ..suggestions import prompt_similar_fixes
+from ..suggestions import find_similar_fixes, prompt_similar_fixes
 
 
 def _excerpt_limit(config: Optional[FixDocConfig] = None) -> int:
@@ -37,40 +38,35 @@ def _similar_fix_limit(config: Optional[FixDocConfig] = None) -> int:
     return 5
 
 
-def handle_piped_input(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+def get_similar_fixes_for_error(
+    err: ParsedError,
+    tags: Optional[str],
+    repo: Optional[FixRepository],
+    config: Optional[FixDocConfig] = None,
+) -> list:
+    """Find similar fixes for a parsed error without prompting."""
+    if not repo:
+        return []
+    auto_tags = err.generate_tags()
+    if tags:
+        auto_tags = f"{auto_tags},{tags}"
+    return find_similar_fixes(
+        repo, err.raw_output, auto_tags, limit=_similar_fix_limit(config)
+    )
+
+
+def capture_single_error(
+    err: ParsedError,
+    output: str,
+    tags: Optional[str],
+    repo: Optional[FixRepository] = None,
     config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
+    """Display a single Terraform error and prompt for resolution.
+
+    This is the reusable core of error capture: show the error card,
+    check for similar fixes, prompt for resolution/tags/notes, return Fix.
     """
-    Handle piped input by detecting the source and routing appropriately.
-
-    This is the main entry point for piped input handling. It detects
-    whether the input is from Terraform, Kubernetes, or another source.
-    """
-    source = detect_error_source(output)
-
-    if source == ErrorSource.TERRAFORM:
-        return handle_terraform_capture(output, tags, repo, config=config)
-    elif source in (ErrorSource.KUBERNETES, ErrorSource.HELM):
-        return handle_kubernetes_capture(output, tags, repo, config=config)
-    else:
-        return handle_generic_piped_capture(output, tags, repo, config=config)
-
-
-def handle_terraform_capture(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
-    config: Optional[FixDocConfig] = None,
-) -> Optional[Fix]:
-    """Handle Terraform output with multi-cloud support."""
-    errors = detect_and_parse(output)
-
-    if not errors:
-        click.echo("No Terraform errors found in input", err=True)
-        return None
-
-    # Use the first error (or could prompt to select)
-    err = errors[0]
-
     max_suggestions = _suggestions_limit(config)
 
     # Display captured error info
@@ -92,10 +88,6 @@ def handle_terraform_capture(
 
     click.echo("─" * 50)
 
-    # If multiple errors, show count
-    if len(errors) > 1:
-        click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
-
     # Check for similar existing fixes before prompting for resolution
     if repo:
         auto_tags = err.generate_tags()
@@ -113,7 +105,7 @@ def handle_terraform_capture(
     resolution = click.prompt("\n What fixed this?")
     issue = err.to_issue_string()
 
-    # Auto-generate tags (recalculate since we may not have hit similar fixes)
+    # Auto-generate tags
     auto_tags = err.generate_tags()
     if tags:
         auto_tags = f"{auto_tags},{tags}"
@@ -138,19 +130,14 @@ def handle_terraform_capture(
     )
 
 
-def handle_kubernetes_capture(
-    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+def capture_single_k8s_error(
+    err: ParsedError,
+    output: str,
+    tags: Optional[str],
+    repo: Optional[FixRepository] = None,
     config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
-    """Handle Kubernetes (kubectl/Helm) output."""
-    errors = detect_and_parse(output)
-
-    if not errors:
-        click.echo("No Kubernetes errors found in input", err=True)
-        return None
-
-    err = errors[0]
-
+    """Display a single Kubernetes error and prompt for resolution."""
     max_suggestions = _suggestions_limit(config)
 
     # Display captured error info
@@ -194,10 +181,6 @@ def handle_kubernetes_capture(
 
     click.echo("─" * 50)
 
-    # If multiple errors, show count
-    if len(errors) > 1:
-        click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
-
     # Check for similar existing fixes before prompting for resolution
     if repo:
         auto_tags = err.generate_tags()
@@ -215,7 +198,7 @@ def handle_kubernetes_capture(
     resolution = click.prompt("\n What fixed this?")
     issue = err.to_issue_string()
 
-    # Auto-generate tags (recalculate since we may not have hit similar fixes)
+    # Auto-generate tags
     auto_tags = err.generate_tags()
     if tags:
         auto_tags = f"{auto_tags},{tags}"
@@ -242,6 +225,68 @@ def handle_kubernetes_capture(
         tags=final_tags,
         notes=notes or None,
     )
+
+
+def handle_piped_input(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
+) -> Optional[Fix]:
+    """
+    Handle piped input by detecting the source and routing appropriately.
+
+    This is the main entry point for piped input handling. It detects
+    whether the input is from Terraform, Kubernetes, or another source.
+    """
+    source = detect_error_source(output)
+
+    if source == ErrorSource.TERRAFORM:
+        return handle_terraform_capture(output, tags, repo, config=config)
+    elif source in (ErrorSource.KUBERNETES, ErrorSource.HELM):
+        return handle_kubernetes_capture(output, tags, repo, config=config)
+    else:
+        return handle_generic_piped_capture(output, tags, repo, config=config)
+
+
+def handle_terraform_capture(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
+) -> Optional[Fix]:
+    """Handle Terraform output with multi-cloud support."""
+    errors = detect_and_parse(output)
+
+    if not errors:
+        click.echo("No Terraform errors found in input", err=True)
+        return None
+
+    err = errors[0]
+    fix = capture_single_error(err, output, tags, repo, config)
+
+    # If multiple errors, show count (backward compat for pipe usage)
+    if len(errors) > 1:
+        click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
+
+    return fix
+
+
+def handle_kubernetes_capture(
+    output: str, tags: Optional[str], repo: Optional[FixRepository] = None,
+    config: Optional[FixDocConfig] = None,
+) -> Optional[Fix]:
+    """Handle Kubernetes (kubectl/Helm) output."""
+    errors = detect_and_parse(output)
+
+    if not errors:
+        click.echo("No Kubernetes errors found in input", err=True)
+        return None
+
+    err = errors[0]
+    fix = capture_single_k8s_error(err, output, tags, repo, config)
+
+    # If multiple errors, show count (backward compat for pipe usage)
+    if len(errors) > 1:
+        click.echo(f"\n  ({len(errors) - 1} additional error(s) not shown)\n")
+
+    return fix
 
 
 def handle_generic_piped_capture(
@@ -342,54 +387,3 @@ def handle_interactive_capture(
         tags=tags or None,
         notes=notes or None,
     )
-
-
-def handle_multi_error_capture(output: str, tags: Optional[str]) -> list[Fix]:
-    """
-    Handle output with multiple errors, creating a fix for each.
-
-    This is useful for batch processing multiple errors from a single
-    Terraform apply or kubectl operation.
-    """
-    errors = detect_and_parse(output)
-
-    if not errors:
-        click.echo("No errors found in input", err=True)
-        return []
-
-    fixes = []
-
-    click.echo(f"\nFound {len(errors)} error(s). Processing each:\n")
-
-    for i, err in enumerate(errors, 1):
-        click.echo("─" * 50)
-        click.echo(f"Error {i}/{len(errors)}:")
-        click.echo(f"  Resource: {err.resource_address or err.resource_name or 'unknown'}")
-        click.echo(f"  Error:    {err.short_error()}")
-        click.echo("─" * 50)
-
-        # Ask if user wants to create a fix for this error
-        create = click.confirm(f"Create fix for this error?", default=True)
-        if not create:
-            continue
-
-        resolution = click.prompt("What fixed this?")
-        issue = err.to_issue_string()
-
-        auto_tags = err.generate_tags()
-        if tags:
-            auto_tags = f"{auto_tags},{tags}"
-
-        final_tags = click.prompt("Tags", default=auto_tags, show_default=True)
-
-        fix = Fix(
-            issue=issue,
-            resolution=resolution,
-            error_excerpt=err.raw_output[:2000],
-            tags=final_tags,
-        )
-        fixes.append(fix)
-
-        click.echo(f"✓ Fix created\n")
-
-    return fixes

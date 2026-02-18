@@ -19,13 +19,12 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+  s3_use_path_style           = true
 
   endpoints {
     ec2            = "http://localhost:4566"
-    elbv2          = "http://localhost:4566"
     iam            = "http://localhost:4566"
     lambda         = "http://localhost:4566"
-    rds            = "http://localhost:4566"
     s3             = "http://localhost:4566"
     sts            = "http://localhost:4566"
     secretsmanager = "http://localhost:4566"
@@ -371,46 +370,17 @@ resource "aws_security_group" "bastion" {
   tags = { Name = "bastion-sg" }
 }
 
-resource "aws_security_group" "alb" {
-  name        = "alb-sg"
-  description = "Public ALB ingress"
-  vpc_id      = aws_vpc.production.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "alb-sg" }
-}
-
 resource "aws_security_group" "app" {
   name        = "app-sg"
-  description = "App tier — accepts from ALB and bastion"
+  description = "App tier — accepts from bastion"
   vpc_id      = aws_vpc.production.id
 
   ingress {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-    description     = "Traffic from ALB"
+    cidr_blocks     = ["0.0.0.0/0"]
+    description     = "HTTP traffic"
   }
 
   ingress {
@@ -429,37 +399,6 @@ resource "aws_security_group" "app" {
   }
 
   tags = { Name = "app-sg" }
-}
-
-resource "aws_security_group" "db" {
-  name        = "db-sg"
-  description = "Database tier — accepts only from app tier"
-  vpc_id      = aws_vpc.production.id
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app.id]
-    description     = "Postgres from app tier"
-  }
-
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
-    description     = "Postgres from bastion (maintenance)"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "db-sg" }
 }
 
 resource "aws_security_group" "cache" {
@@ -686,79 +625,3 @@ resource "aws_s3_bucket" "logs" {
   bucket = "network-mesh-central-logs"
 }
 
-# =========================================================================
-# Database — RDS in private subnets (partial LocalStack support = errors)
-# =========================================================================
-
-resource "aws_db_subnet_group" "prod" {
-  name       = "prod-db-subnet"
-  subnet_ids = [aws_subnet.prod_private_a.id, aws_subnet.prod_private_b.id]
-
-  tags = { Name = "prod-db-subnet" }
-}
-
-resource "aws_db_instance" "prod" {
-  identifier             = "prod-db"
-  engine                 = "postgres"
-  engine_version         = "15.4"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  db_name                = "app"
-  username               = "admin"
-  password               = "changeme123"
-  db_subnet_group_name   = aws_db_subnet_group.prod.name
-  vpc_security_group_ids = [aws_security_group.db.id]
-  skip_final_snapshot    = true
-
-  tags = { Name = "prod-db" }
-}
-
-# =========================================================================
-# Load Balancer — ALB in public subnets (partial support = errors)
-# =========================================================================
-
-resource "aws_lb" "prod" {
-  name               = "prod-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.prod_public_a.id, aws_subnet.prod_public_b.id]
-
-  tags = { Name = "prod-alb" }
-}
-
-resource "aws_lb_target_group" "app" {
-  name     = "prod-app-tg"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.production.id
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-  }
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.prod.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
-  }
-}
-
-resource "aws_lb_target_group_attachment" "app_a" {
-  target_group_arn = aws_lb_target_group.app.arn
-  target_id        = aws_instance.app_a.id
-  port             = 8080
-}
-
-resource "aws_lb_target_group_attachment" "app_b" {
-  target_group_arn = aws_lb_target_group.app.arn
-  target_id        = aws_instance.app_b.id
-  port             = 8080
-}
