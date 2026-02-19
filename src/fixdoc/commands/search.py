@@ -9,23 +9,37 @@ from ..formatter import fix_to_markdown
 @click.command()
 @click.argument("query")
 @click.option("--limit", "-l", type=int, default=None, help="Max results to show")
+@click.option("--tags", "-t", "tag_filter", default=None, help="Comma-separated tags to filter by (AND by default)")
+@click.option("--any-tags", is_flag=True, help="Match ANY tag instead of ALL tags")
+@click.option("--any", "match_any", is_flag=True, help="Match ANY query word instead of ALL (OR mode)")
 @click.pass_context
-def search(ctx, query: str, limit: int):
+def search(ctx, query: str, limit: int, tag_filter: str, any_tags: bool, match_any: bool):
     """
     Search your fixes by keyword.
 
     Searches across issue, resolution, error excerpt, tags, and notes.
+    By default, all query words must match (AND). Use --any for OR matching.
 
     \b
     Examples:
-        fixdoc search "storage account"
-        fixdoc search rbac
+        fixdoc search "security group"
+        fixdoc search "timeout connection" --any
+        fixdoc search "timeout" --tags terraform,aws
+        fixdoc search "rbac" --tags azure --any-tags
     """
     config = ctx.obj["config"]
     limit = limit if limit is not None else config.display.search_result_limit
 
     repo = FixRepository(ctx.obj["base_path"])
-    results = repo.search(query)
+    all_fixes = repo.list_all()
+
+    # Filter by query (multi-word AND or OR)
+    results = [f for f in all_fixes if f.matches(query, match_any=match_any)]
+
+    # Filter by tags if provided
+    if tag_filter:
+        required_tags = [t.strip() for t in tag_filter.split(",") if t.strip()]
+        results = [f for f in results if f.matches_tags(required_tags, match_any=any_tags)]
 
     if not results:
         click.echo(f"No fixes found matching '{query}'")

@@ -58,11 +58,13 @@ class CaptureConfig:
 class SuggestionWeights:
     """Scoring weights for similar-fix matching."""
 
-    tag_weight: int = 10
-    error_code_weight: int = 15
-    issue_keyword_weight: int = 3
-    resolution_keyword_weight: int = 2
+    resource_address_weight: int = 25
+    error_code_weight: int = 20
+    error_similarity_weight: int = 15
     resource_type_weight: int = 8
+    tag_weight: int = 5
+    issue_keyword_weight: int = 2
+    resolution_keyword_weight: int = 1
 
 
 @dataclass
@@ -118,11 +120,13 @@ class FixDocConfig:
                 similar_fix_limit=capture_data.get("similar_fix_limit", 5),
             ),
             suggestion_weights=SuggestionWeights(
-                tag_weight=weights_data.get("tag_weight", 10),
-                error_code_weight=weights_data.get("error_code_weight", 15),
-                issue_keyword_weight=weights_data.get("issue_keyword_weight", 3),
-                resolution_keyword_weight=weights_data.get("resolution_keyword_weight", 2),
+                resource_address_weight=weights_data.get("resource_address_weight", 25),
+                error_code_weight=weights_data.get("error_code_weight", 20),
+                error_similarity_weight=weights_data.get("error_similarity_weight", 15),
                 resource_type_weight=weights_data.get("resource_type_weight", 8),
+                tag_weight=weights_data.get("tag_weight", 5),
+                issue_keyword_weight=weights_data.get("issue_keyword_weight", 2),
+                resolution_keyword_weight=weights_data.get("resolution_keyword_weight", 1),
             ),
             private_fixes=private_fixes,
         )

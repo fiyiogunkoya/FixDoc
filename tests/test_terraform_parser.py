@@ -412,3 +412,125 @@ class TestEdgeCases:
         errors = self.parser.parse(text)
         assert len(errors) == 1
         assert len(errors[0].error_message) <= 500
+
+
+class TestResourceDefPattern:
+    """Tests for 'in resource \"type\" \"name\":' pattern extraction."""
+
+    def setup_method(self):
+        self.parser = TerraformParser()
+
+    def test_parses_nine_validation_errors(self):
+        """Regression: 9 distinct errors should not collapse into 1."""
+        text = """
+Error: Missing required argument
+
+  on main.tf line 10, in resource "aws_vpc" "main":
+  10: resource "aws_vpc" "main" {
+
+The argument "cidr_block" is required, but no definition was found.
+
+Error: Missing required argument
+
+  on main.tf line 20, in resource "aws_subnet" "public":
+  20: resource "aws_subnet" "public" {
+
+The argument "vpc_id" is required, but no definition was found.
+
+Error: Unsupported argument
+
+  on main.tf line 30, in resource "aws_security_group" "web":
+  30: resource "aws_security_group" "web" {
+
+An argument named "invalid_arg" is not expected here.
+
+Error: Missing required argument
+
+  on main.tf line 50, in resource "aws_instance" "app":
+  50: resource "aws_instance" "app" {
+
+The argument "ami" is required, but no definition was found.
+
+Error: Missing required argument
+
+  on main.tf line 80, in resource "aws_iam_role" "lambda_role":
+  80: resource "aws_iam_role" "lambda_role" {
+
+The argument "assume_role_policy" is required, but no definition was found.
+
+Error: Missing required argument
+
+  on main.tf line 100, in resource "aws_lambda_function" "myfunction":
+  100: resource "aws_lambda_function" "myfunction" {
+
+The argument "function_name" is required, but no definition was found.
+
+Error: Missing required argument
+
+  on main.tf line 100, in resource "aws_lambda_function" "myfunction":
+  100: resource "aws_lambda_function" "myfunction" {
+
+The argument "role" is required, but no definition was found.
+
+Error: Missing required argument
+
+  on main.tf line 120, in resource "aws_s3_bucket" "data":
+  120: resource "aws_s3_bucket" "data" {
+
+The argument "bucket" is required, but no definition was found.
+
+Error: Invalid expression
+
+  on main.tf line 168, in resource "aws_rds" "rds":
+  168: resource "aws_rds" "rds" {
+
+Expected the start of an expression, but found an invalid expression token.
+"""
+        errors = self.parser.parse(text)
+        assert len(errors) == 9
+
+        # Verify each error has a proper resource address (not 'unknown')
+        addresses = [e.resource_address for e in errors]
+        assert "unknown" not in addresses
+
+        # Verify specific resource addresses
+        assert "aws_vpc.main" in addresses
+        assert "aws_subnet.public" in addresses
+        assert "aws_security_group.web" in addresses
+        assert "aws_instance.app" in addresses
+        assert "aws_iam_role.lambda_role" in addresses
+        assert "aws_s3_bucket.data" in addresses
+        assert "aws_rds.rds" in addresses
+        # Two errors on lambda
+        assert addresses.count("aws_lambda_function.myfunction") == 2
+
+    def test_resource_def_pattern_extracts_address(self):
+        """The 'in resource \"type\" \"name\":' pattern should extract address."""
+        text = """
+Error: Missing required argument
+
+  on main.tf line 42, in resource "aws_lambda_function" "processor":
+  42: resource "aws_lambda_function" "processor" {
+
+The argument "runtime" is required, but no definition was found.
+"""
+        errors = self.parser.parse(text)
+        assert len(errors) == 1
+        assert errors[0].resource_address == "aws_lambda_function.processor"
+        assert errors[0].resource_type == "aws_lambda_function"
+        assert errors[0].resource_name == "processor"
+
+    def test_error_id_computed_for_terraform_errors(self):
+        """TerraformError.__post_init__ should call super() to compute error_id."""
+        text = """
+Error: Missing required argument
+
+  on main.tf line 10, in resource "aws_vpc" "main":
+  10: resource "aws_vpc" "main" {
+
+The argument "cidr_block" is required.
+"""
+        errors = self.parser.parse(text)
+        assert len(errors) == 1
+        assert errors[0].error_id != ""
+        assert len(errors[0].error_id) == 12

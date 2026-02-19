@@ -1,9 +1,31 @@
 """Base classes and interfaces for error parsers."""
 
+import hashlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+
+def compute_error_id(
+    resource_address: Optional[str] = None,
+    error_code: Optional[str] = None,
+    file: Optional[str] = None,
+    error_message: str = "",
+) -> str:
+    """Compute a stable 12-char hex hash for an error.
+
+    Uses resource_address, error_code, file, and the first 160 chars
+    of the error message (lowered + stripped) as inputs.
+    """
+    parts = [
+        resource_address or "",
+        error_code or "",
+        file or "",
+        error_message[:160].lower().strip(),
+    ]
+    raw = "\n".join(parts)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
 class CloudProvider(Enum):
@@ -55,6 +77,17 @@ class ParsedError:
     suggestions: list[str] = field(default_factory=list)
     related_resources: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+
+    # Stable identifier (computed in __post_init__)
+    error_id: str = field(default="", init=False)
+
+    def __post_init__(self):
+        self.error_id = compute_error_id(
+            resource_address=self.resource_address,
+            error_code=self.error_code,
+            file=self.file,
+            error_message=self.error_message,
+        )
 
     def short_error(self, max_length: int = 100) -> str:
         """Return a shortened error description."""

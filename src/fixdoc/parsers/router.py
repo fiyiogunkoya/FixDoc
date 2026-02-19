@@ -32,13 +32,13 @@ def detect_error_source(text: str) -> ErrorSource:
     Detect the source of an error from the text.
 
     This uses heuristics to determine whether the error comes from
-    Terraform, Kubernetes (kubectl/Helm), or another source.
+    Terraform, Kubernetes (kubectl/Helm), or another source, we may have to change this at some point
 
     Args:
         text: The error output text to analyze
 
     Returns:
-        ErrorSource enum indicating the detected source
+        detected error source
     """
     # Check for Helm first (subset of Kubernetes)
     helm_indicators = [

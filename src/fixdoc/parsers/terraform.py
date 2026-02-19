@@ -54,6 +54,7 @@ class TerraformError(ParsedError):
 
     def __post_init__(self):
         self.error_type = "terraform"
+        super().__post_init__()
 
 
 class TerraformParser(ErrorParser):
@@ -93,11 +94,11 @@ class TerraformParser(ErrorParser):
                 if parsed:
                     errors.append(parsed)
 
-        # Deduplicate by resource address
+        # Deduplicate by resource address + raw error block content
         seen = set()
         unique = []
         for e in errors:
-            key = e.resource_address or e.error_message[:50]
+            key = (e.resource_address, hash(e.raw_output.strip()))
             if key not in seen:
                 seen.add(key)
                 unique.append(e)
@@ -207,6 +208,17 @@ class TerraformParser(ErrorParser):
                 info['name'] = direct_match.group(2)
                 info['address'] = f"{info['type']}.{info['name']}"
             else:
+                # Fallback: "in resource "type" "name":" pattern from validation errors
+                resource_def_match = re.search(
+                    r'in\s+resource\s+"((?:aws|azurerm|google)_[a-z0-9_]+)"\s+"([a-z0-9_-]+)"',
+                    clean_text,
+                    re.IGNORECASE
+                )
+                if resource_def_match:
+                    info['type'] = resource_def_match.group(1)
+                    info['name'] = resource_def_match.group(2)
+                    info['address'] = f"{info['type']}.{info['name']}"
+            if info['address'] == 'unknown':
                 # Fallback: Pattern "creating <ResourceType> (<name>)"
                 alt_match = re.search(
                     r'(?:creating|updating|deleting)\s+([A-Za-z0-9_\s]+)\s*\(([^)]+)\)',

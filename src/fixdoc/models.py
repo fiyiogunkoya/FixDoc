@@ -61,16 +61,40 @@ class Fix:
         issue_preview = self.issue[:40] + "..." if len(self.issue) > 40 else self.issue
         return f"{short_id}{tags_str} - {issue_preview}"
 
-    def matches(self, query: str) -> bool:
-        """Check if this fix matches a search query (case-insensitive)."""
-        query_lower = query.lower()
+    def matches(self, query: str, match_any: bool = False) -> bool:
+        """Check if this fix matches a search query (case-insensitive).
+
+        By default uses AND matching: all words in the query must appear.
+        With match_any=True, uses OR matching: any word suffices.
+        """
         searchable = " ".join(
             filter(
                 None,
                 [self.issue, self.resolution, self.error_excerpt, self.tags, self.notes],
             )
         ).lower()
-        return query_lower in searchable
+        words = query.lower().split()
+        if not words:
+            return False
+        if match_any:
+            return any(w in searchable for w in words)
+        return all(w in searchable for w in words)
+
+    def matches_tags(self, required_tags: list[str], match_any: bool = False) -> bool:
+        """Check if this fix has the required tags.
+
+        By default uses AND: all required_tags must be present.
+        With match_any=True, uses OR: any tag suffices.
+        """
+        if not self.tags:
+            return False
+        fix_tags = {t.strip().lower() for t in self.tags.split(",") if t.strip()}
+        required = {t.strip().lower() for t in required_tags if t.strip()}
+        if not required:
+            return True
+        if match_any:
+            return bool(fix_tags & required)
+        return required.issubset(fix_tags)
 
     def matches_resource_type(self, resource_type: str) -> bool:
         """Check if this fix is tagged with a specific resource type."""

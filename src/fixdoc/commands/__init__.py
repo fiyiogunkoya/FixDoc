@@ -9,6 +9,6 @@ from .edit import edit
 from .sync import sync
 from .demo import demo
 from .watch import watch
-from .blast_radius import blast_radius
+from .pending import pending
 
-__all__ = ["capture", "search", "show", "analyze", "list_fixes", "stats", "delete", "edit", "sync", "demo", "watch", "blast_radius"]
+__all__ = ["capture", "search", "show", "analyze", "list_fixes", "stats", "delete", "edit", "sync", "demo", "watch", "pending"]
