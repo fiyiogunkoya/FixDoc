@@ -252,7 +252,7 @@ def handle_terraform_capture(
     config: Optional[FixDocConfig] = None,
 ) -> Optional[Fix]:
     """Handle Terraform output with multi-cloud support."""
-    errors = detect_and_parse(output)
+    errors = detect_and_parse(output) # this detects all the errors and returns them as a list
 
     if not errors:
         click.echo("No Terraform errors found in input", err=True)
