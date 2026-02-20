@@ -2,7 +2,7 @@
 
 Stop losing infrastructure fixes in Slack threads — capture, search, and share them from your terminal.
 
-FixDoc is a CLI tool for cloud engineers that turns raw Terraform and Kubernetes error output into a searchable, version-controlled knowledge base. Every time you fix a deployment failure, FixDoc stores what broke and how you fixed it, so the next time that error shows up — whether it's you or a teammate — the answer is one command away.
+FixDoc is a CLI tool for cloud engineers that turns raw Terraform and Kubernetes error output into a searchable, version-controlled knowledge base that's risk aware and CI gate friendly. With Fixdoc you are building an intelligent error knowledge platform that guards your deployments and lets you understand wider infrastructure impact through smart analysis.
 
 ## See It In Action
 
@@ -64,9 +64,19 @@ fixdoc demo seed --clean   # remove old demo data before re-seeding
 
 ## Installation
 
+**Recommended — pipx** (installs into an isolated environment and puts `fixdoc` on your PATH automatically):
+
+```bash
+pipx install fixdoc
+```
+
+**pip:**
+
 ```bash
 pip install fixdoc
 ```
+
+> **Note:** After installing with pip, make sure `fixdoc` is on your PATH. If the command isn't found, your Python scripts directory may not be in `PATH`. You can fix this by running `pip show -f fixdoc | grep fixdoc` to find the binary location and adding that directory to your `PATH`, or by using `python3 -m fixdoc` as an alternative.
 
 Requires Python 3.9+. Only runtime dependencies are `click` and `pyyaml`.
 
