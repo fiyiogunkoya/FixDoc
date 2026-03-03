@@ -1476,7 +1476,8 @@ class TestAnalyzeFormatHuman:
         output = _format_human(result, _make_changed())
         assert "Applies to:" in output
 
-    def test_single_resource_applies_to_omitted(self):
+    def test_single_resource_applies_to_shown(self):
+        # "Applies to" is now always shown when matched_resources is non-empty
         from fixdoc.commands.analyze import _format_human
         warnings = [{
             "id": "abcdef1234567890",
@@ -1493,7 +1494,7 @@ class TestAnalyzeFormatHuman:
         }]
         result = _make_result_with_warnings(warnings)
         output = _format_human(result, _make_changed())
-        assert "Applies to:" not in output
+        assert "Applies to:" in output
 
     def test_empty_warnings_section_not_rendered(self):
         from fixdoc.commands.analyze import _format_human
@@ -1537,7 +1538,8 @@ class TestAnalyzeFormatHuman:
         assert "[score:" not in output
         assert "Tags:" not in output
 
-    def test_more_than_10_matched_resources_shows_overflow(self):
+    def test_matched_resources_shows_first_only(self):
+        # Grouped output shows only the first matched_resource in "Applies to"
         from fixdoc.commands.analyze import _format_human
         matched = [{"address": f"aws_s3_bucket.b{i}", "action": "create"} for i in range(12)]
         warnings = [{
@@ -1553,7 +1555,7 @@ class TestAnalyzeFormatHuman:
         }]
         result = _make_result_with_warnings(warnings)
         output = _format_human(result, _make_changed())
-        assert "+2 more" in output
+        assert "Applies to: aws_s3_bucket.b0 (create)" in output
 
 
 # ===================================================================

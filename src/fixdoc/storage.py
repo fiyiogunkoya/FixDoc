@@ -112,19 +112,15 @@ class FixRepository:
         """Return the number of fixes in the database."""
         return len(self._read_db())
 
-    def purge(self) -> bool:
-        """Delete a fix by ID. Returns True if deleted."""
+    def purge(self) -> int:
+        """Delete all fixes. Returns count of deleted fixes."""
         fixes = self._read_db()
-
-        for i, f in enumerate(fixes):
-            deleted_fix = fixes.pop(i)
-            self._write_db(fixes)
-
-            md_path = self.docs_path / f"{deleted_fix['id']}.md"
+        for f in fixes:
+            md_path = self.docs_path / f"{f['id']}.md"
             if md_path.exists():
                 md_path.unlink()
-            return True
-        return False
+        self._write_db([])
+        return len(fixes)
 
     def get_by_full_id(self, fix_id: str) -> Optional[Fix]:
         """Get fix by exact ID match (for sync operations)."""

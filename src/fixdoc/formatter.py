@@ -1,6 +1,21 @@
 """Markdown formatting for fixes."""
 
+from typing import Optional
+
 from .models import Fix
+
+
+def _extract_source_line(fix: Fix) -> Optional[str]:
+    """Return 'system / id' string if a source:system:id tag exists, else None."""
+    if not fix.tags:
+        return None
+    for tag in fix.tags.split(","):
+        tag = tag.strip()
+        if tag.startswith("source:"):
+            parts = tag.split(":", 2)
+            if len(parts) == 3:
+                return f"{parts[1]} / {parts[2]}"
+    return None
 
 
 def fix_to_markdown(fix: Fix) -> str:
@@ -23,6 +38,10 @@ def fix_to_markdown(fix: Fix) -> str:
 
     if fix.tags:
         lines.extend([f"**Tags:** `{fix.tags}`", ""])
+
+    source_line = _extract_source_line(fix)
+    if source_line:
+        lines.extend([f"**Source:** {source_line}", ""])
 
     lines.extend(
         [

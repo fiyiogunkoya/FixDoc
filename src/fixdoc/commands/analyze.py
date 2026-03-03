@@ -281,6 +281,38 @@ class TerraformAnalyzer:
 # Formatting helpers
 # ---------------------------------------------------------------------------
 
+_PROVIDER_PREFIXES = ("aws_", "azurerm_", "google_", "kubernetes_")
+
+
+def _resource_type_from_address(address: str) -> Optional[str]:
+    """Extract resource type by splitting address on '.' and finding provider-prefixed part."""
+    for part in address.split("."):
+        if part.startswith(_PROVIDER_PREFIXES):
+            return part
+    return None
+
+
+def _group_warnings(warnings: list) -> dict:
+    """Group resource warnings by primary resource type, sorted by score desc within each group."""
+    groups = {}
+    for w in warnings:
+        rt = None
+        for r in w.get("matched_resources", []):
+            rt = _resource_type_from_address(r["address"])
+            if rt:
+                break
+        if not rt:
+            for tag in (w.get("tags") or "").split(","):
+                tag = tag.strip()
+                if tag.startswith(_PROVIDER_PREFIXES):
+                    rt = tag
+                    break
+        groups.setdefault(rt or "other", []).append(w)
+
+    for group in groups.values():
+        group.sort(key=lambda w: w.get("score", 0), reverse=True)
+    return groups
+
 
 def _format_human(result: BlastResult, changed: list[PlanResource], verbose: bool = False) -> str:
     """Format unified analysis result for human-readable terminal output."""
@@ -364,42 +396,42 @@ def _format_human(result: BlastResult, changed: list[PlanResource], verbose: boo
 
     # Prior issues for changed resource types (tribal knowledge)
     if result.resource_warnings:
-        lines.append(f"Prior Issues for Changed Resources ({len(result.resource_warnings)}):")
-        for w in result.resource_warnings:
-            short_id = w["short_id"]
-            issue = w["issue"] or ""
-            resolution = w["resolution"] or ""
-            matched = w.get("matched_resources", [])
-            created_at = (w.get("created_at") or "")[:10]
+        groups = _group_warnings(result.resource_warnings)
+        total = len(result.resource_warnings)
+        lines.append(f"Prior Issues for Changed Resources ({total}):")
+        for rt, group_warnings in groups.items():
+            lines.append(f"\n  {rt}:")
+            top = group_warnings[0]
+            short_id = top["short_id"]
+            issue = top["issue"] or ""
+            resolution = top["resolution"] or ""
+            created_at = (top.get("created_at") or "")[:10]
+            matched = top.get("matched_resources", [])
 
             if verbose:
-                score = w.get("score", 0)
-                reason = w.get("match_reason", "")
-                lines.append(f"  [score:{score} | {reason}] FIX-{short_id}: {issue}")
-                lines.append(f"   Resolution: {resolution}")
+                score = top.get("score", 0)
+                reason = top.get("match_reason", "")
+                lines.append(f"    [score:{score} | {reason}] FIX-{short_id}: {issue}")
+                lines.append(f"     Resolution: {resolution}")
             else:
                 issue_disp = issue[:80] + "..." if len(issue) > 80 else issue
                 res_disp = resolution[:80] + "..." if len(resolution) > 80 else resolution
-                lines.append(f"  FIX-{short_id}: {issue_disp}")
-                lines.append(f"   Resolution: {res_disp}")
+                lines.append(f"    FIX-{short_id}: {issue_disp}")
+                lines.append(f"     Resolution: {res_disp}")
 
-            if len(matched) > 1:
-                display = matched[:10]
-                applies = ", ".join(f"{r['address']} ({r['action']})" for r in display)
-                extra = len(matched) - 10
-                if extra > 0:
-                    lines.append(f"   Applies to: {applies}")
-                    lines.append(f"               [+{extra} more]")
-                else:
-                    lines.append(f"   Applies to: {applies}")
+            if matched:
+                addr_str = f"{matched[0]['address']} ({matched[0]['action']})"
+                lines.append(f"     Applies to: {addr_str}")
 
-            lines.append(f"   Captured: {created_at}")
+            lines.append(f"     Captured: {created_at}")
 
-            if verbose and w.get("tags"):
-                lines.append(f"   Tags: {w['tags']}")
+            if verbose and top.get("tags"):
+                lines.append(f"     Tags: {top['tags']}")
 
-            lines.append("")
+            if len(group_warnings) > 1:
+                lines.append(f"     + {len(group_warnings) - 1} more")
 
+        lines.append("")
         lines.append("Run `fixdoc show <short_id>` for full details.")
         lines.append("")
 
