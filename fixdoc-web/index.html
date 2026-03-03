@@ -59,6 +59,7 @@
             <div class="hidden md:flex items-center gap-8">
                 <a href="#features"     class="nav-link">Features</a>
                 <a href="#blast-radius" class="nav-link">Blast Radius</a>
+                <a href="#import"       class="nav-link">Import</a>
                 <a href="#use-cases"    class="nav-link">Use Cases</a>
                 <a href="demo.html"     class="nav-link">Demo</a>
                 <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener noreferrer"
@@ -418,6 +419,40 @@
                     <div class="feature-title">CLI-native</div>
                     <p class="feature-desc">No browser, no GUI, no context switching. Everything happens in your terminal where you already work.</p>
                 </div>
+
+                <!-- Card 7 — Watch -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Watch &amp; auto-capture</div>
+                    <p class="feature-desc">Wrap any command with <code class="mono" style="font-size:0.8em">fixdoc watch</code>. On failure, errors are detected and parsed automatically — no manual piping needed.</p>
+                </div>
+
+                <!-- Card 8 — Import -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Import from Jira &amp; ServiceNow</div>
+                    <p class="feature-desc">Bulk import closed tickets from Jira (CSV/JSON) or ServiceNow (JSON). Review, filter low-signal items, and build your knowledge base from existing runbooks.</p>
+                </div>
+
+                <!-- Card 9 — Pending -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Defer &amp; review</div>
+                    <p class="feature-desc">Not ready to document mid-deploy? Defer any error to <code class="mono" style="font-size:0.8em">fixdoc pending</code> and capture it when the dust settles. Nothing slips through.</p>
+                </div>
             </div>
 
             <div class="text-center mt-10">
@@ -548,6 +583,8 @@
                     <div class="t-prompt">$ fixdoc blast-radius plan.json</div>
                     <div style="margin-top:0.5rem;color:var(--text);">Score: 72.4 / 100 &nbsp;<span style="color:#facc15;font-weight:700;">[HIGH]</span></div>
                     <div class="t-output">2 control points, 7 affected resources</div>
+                    <div style="color:var(--blue-bright);margin-top:0.375rem;">Prior Issues: aws_iam_role (2 fixes), aws_s3_bucket (1)</div>
+                    <div class="t-comment">&nbsp;&nbsp;&rsaquo; Run fixdoc show &lt;id&gt; for full context</div>
                 </div>
             </div>
         </div>
@@ -673,6 +710,88 @@
         </div>
     </section>
 
+    <!-- ===== IMPORT ===== -->
+    <section id="import" class="section-alt py-20 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <span class="section-eyebrow">// KNOWLEDGE IMPORT</span>
+                <h2 class="section-title text-3xl md:text-4xl mb-3">Bring your existing knowledge in</h2>
+                <p style="color:var(--text-muted);font-size:1.0625rem;">Import closed tickets from Jira and ServiceNow — reviewed, tagged, and deduplicated</p>
+            </div>
+
+            <!-- Two-column: Jira + ServiceNow terminals -->
+            <div class="grid md:grid-cols-2 gap-8 mb-12">
+                <div>
+                    <div style="color:var(--text-muted);font-size:0.75rem;font-family:'JetBrains Mono',monospace;margin-bottom:0.625rem;text-transform:uppercase;letter-spacing:0.08em;">Jira &mdash; CSV or JSON</div>
+                    <div class="terminal-window">
+                        <div class="terminal-hdr">
+                            <div class="t-dot red"></div><div class="t-dot yel"></div><div class="t-dot grn"></div>
+                            <span class="terminal-hdr-label">import from Jira</span>
+                        </div>
+                        <div class="terminal-body" style="font-size:0.8125rem;">
+                            <div class="t-comment"># CSV or JSON backup export</div>
+                            <div class="t-prompt" style="margin-top:0.25rem;">$ fixdoc import jira resolved.csv</div>
+                            <div class="t-output" style="margin-top:0.625rem;">Found 142 closed issues</div>
+                            <div class="t-output">High-signal: 38 &nbsp;&middot;&nbsp; Filtered: 104</div>
+                            <div style="margin-top:0.5rem;"><span class="t-info">Review</span> <span style="color:var(--text-dim)">[y/e/s/a/q]:</span></div>
+                            <div class="t-output" style="padding-left:0.75rem;">INFRA-291: S3 bucket policy missing GetObject...</div>
+                            <div class="t-success" style="margin-top:0.5rem;">&#10003; Imported 38 &nbsp;&middot;&nbsp; 12 duplicates skipped</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div style="color:var(--text-muted);font-size:0.75rem;font-family:'JetBrains Mono',monospace;margin-bottom:0.625rem;text-transform:uppercase;letter-spacing:0.08em;">ServiceNow &mdash; JSON</div>
+                    <div class="terminal-window">
+                        <div class="terminal-hdr">
+                            <div class="t-dot red"></div><div class="t-dot yel"></div><div class="t-dot grn"></div>
+                            <span class="terminal-hdr-label">import from ServiceNow</span>
+                        </div>
+                        <div class="terminal-body" style="font-size:0.8125rem;">
+                            <div class="t-comment"># JSON export from ServiceNow</div>
+                            <div class="t-prompt" style="margin-top:0.25rem;">$ fixdoc import servicenow incidents.json</div>
+                            <div class="t-output" style="margin-top:0.625rem;">Found 89 resolved incidents</div>
+                            <div class="t-output">High-signal: 24 &nbsp;&middot;&nbsp; Filtered: 65</div>
+                            <div style="margin-top:0.5rem;"><span class="t-info">Review</span> <span style="color:var(--text-dim)">[y/e/s/a/q]:</span></div>
+                            <div class="t-output" style="padding-left:0.75rem;">INC0041823: Terraform IAM role missing PassRole...</div>
+                            <div class="t-success" style="margin-top:0.5rem;">&#10003; Imported 24 &nbsp;&middot;&nbsp; 6 duplicates skipped</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 callout cards -->
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Review mode</div>
+                    <p class="feature-desc">Step through each fix before saving. Edit issue, resolution, or tags inline. Accept all remaining with one keystroke.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Duplicate guard</div>
+                    <p class="feature-desc">Every imported fix carries a <code class="mono" style="font-size:0.8em">source:jira:ID</code> tag. Re-running the same import is always safe — duplicates are detected and skipped.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                    </div>
+                    <div class="feature-title">Auto-tagging</div>
+                    <p class="feature-desc">Resource types (<code class="mono" style="font-size:0.8em">aws_iam_role</code>), keywords (<code class="mono" style="font-size:0.8em">kw:terraform</code>), and source IDs are extracted automatically from ticket text.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ===== USE CASES ===== -->
     <section id="use-cases" class="section-alt py-20 px-4">
         <div class="max-w-5xl mx-auto">
@@ -766,15 +885,6 @@
                 <div class="roadmap-card">
                     <div class="roadmap-icon">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                        </svg>
-                    </div>
-                    <h3 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.5rem;">Similar-fix suggestions</h3>
-                    <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.6;">Automatically surface related fixes when you capture a new error</p>
-                </div>
-                <div class="roadmap-card">
-                    <div class="roadmap-icon">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
                         </svg>
                     </div>
@@ -789,6 +899,15 @@
                     </div>
                     <h3 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.5rem;">Deeper impact analysis</h3>
                     <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.6;">Cross-stack dependency tracking and historical risk scoring</p>
+                </div>
+                <div class="roadmap-card">
+                    <div class="roadmap-icon">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--blue-bright)">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                    </div>
+                    <h3 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.5rem;">Slack &amp; webhook alerts</h3>
+                    <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.6;">Push high-severity blast-radius warnings to Slack or any webhook channel on plan changes</p>
                 </div>
             </div>
 
