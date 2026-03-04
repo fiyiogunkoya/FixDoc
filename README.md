@@ -239,16 +239,37 @@ Everything persists as structured JSON plus a human-readable markdown file per f
 
 A full GitHub Actions example workflow is at `.github/workflows/terraform-risk-analysis.yml`.
 
+## Local Development & Testing
+
+Prerequisites: Python 3.9+, Docker, Docker Compose, Terraform ≥ 1.5
+
+Quick start:
+
+```bash
+bash scripts/setup-dev.sh   # check deps + install Python packages
+make localstack-up          # start LocalStack mock AWS (port 4566)
+make test                   # run 579 tests
+make scenarios              # run full LocalStack scenario matrix
+```
+
+Or all at once:
+
+```bash
+make dev
+```
+
+Run `make help` to see all available targets (lint, fmt, clean, and more).
+
 ## Contributing
 
 ```bash
 git clone https://github.com/fiyiogunkoya/fixdoc.git
 cd fixdoc
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+bash scripts/setup-dev.sh
+source .venv/bin/activate
 ```
 
-Run `pytest` (372 tests). Format with `black src/ tests/` and lint with `ruff check src/ tests/`.
+Run `make test` (579 tests). Format with `make fmt` and lint with `make lint`.
 
 Good places to start: new error parsers live in `src/fixdoc/parsers/` and share a common interface; new CLI commands are self-contained files in `src/fixdoc/commands/`; the GitHub Actions integration is at `.github/workflows/terraform-risk-analysis.yml`.
 
