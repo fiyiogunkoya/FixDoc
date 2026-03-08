@@ -66,6 +66,7 @@ class PlanResource:
     action: str  # create, update, delete, replace, no-op
     module_path: Optional[str] = None
     values: dict = field(default_factory=dict)
+    before_values: dict = field(default_factory=dict)
 
 
 class TerraformAnalyzer:
@@ -132,6 +133,7 @@ class TerraformAnalyzer:
 
             # Get planned values
             values = change.get("change", {}).get("after", {}) or {}
+            before_values = change.get("change", {}).get("before", {}) or {}
 
             resources.append(PlanResource(
                 address=address,
@@ -141,6 +143,7 @@ class TerraformAnalyzer:
                 action=action,
                 module_path=module_path,
                 values=values,
+                before_values=before_values,
             ))
 
         # Also check planned_values for additional resources
@@ -403,21 +406,12 @@ def _format_human(
             lines.append(f"  ... and {count - display_limit} more")
         lines.append("")
 
-    # History matches
-    if result.history_matches:
-        lines.append(f"Risk Warnings from History ({len(result.history_matches)}):")
-        for hm in result.history_matches:
-            fix_id = hm["id"]
-            issue = hm["issue"]
-            issue_preview = issue[:60] + "..." if len(issue) > 60 else issue
-            lines.append(f"  FIX-{fix_id}: {issue_preview}")
-        lines.append("")
-
-    # Prior issues for changed resource types (tribal knowledge)
-    if result.resource_warnings:
-        groups = _group_warnings(result.resource_warnings)
-        total = len(result.resource_warnings)
-        lines.append(f"Prior Issues for Changed Resources ({total}):")
+    # Relevant Past Fixes (unified section)
+    fixes_to_show = result.relevant_fixes if result.relevant_fixes else result.resource_warnings
+    if fixes_to_show:
+        groups = _group_warnings(fixes_to_show)
+        total = len(fixes_to_show)
+        lines.append(f"Relevant Past Fixes ({total}):")
         for rt, group_warnings in groups.items():
             lines.append(f"\n  {rt}:")
             top = group_warnings[0]
@@ -426,26 +420,48 @@ def _format_human(
             resolution = top["resolution"] or ""
             created_at = (top.get("created_at") or "")[:10]
             matched = top.get("matched_resources", [])
+            confidence = top.get("confidence", "low")
+
+            # Build match reason display string
+            match_reason = top.get("match_reason", "")
+            if isinstance(match_reason, dict):
+                signal = match_reason.get("signal", "")
+                detail = match_reason.get("detail", "")
+                signal_label = {
+                    "error_code": "error code",
+                    "address": "address",
+                    "attribute": "attribute",
+                    "category": "category",
+                    "type_action": "type + action",
+                    "resource_type_tag": "resource type",
+                    "resource_type_text": "resource type",
+                }.get(signal, signal)
+                reason_str = f"{signal_label}: {detail}" if detail else signal_label
+            else:
+                reason_str = str(match_reason)
+
+            issue_disp = issue[:80] + "..." if len(issue) > 80 else issue
+            res_disp = resolution[:80] + "..." if len(resolution) > 80 else resolution
+            lines.append(f"    [{confidence}: {reason_str}] FIX-{short_id}: {issue_disp}")
+            lines.append(f"     Resolution: {res_disp}")
 
             if verbose:
-                score = top.get("score", 0)
-                reason = top.get("match_reason", "")
-                lines.append(f"    [score:{score} | {reason}] FIX-{short_id}: {issue}")
-                lines.append(f"     Resolution: {resolution}")
-            else:
-                issue_disp = issue[:80] + "..." if len(issue) > 80 else issue
-                res_disp = resolution[:80] + "..." if len(resolution) > 80 else resolution
-                lines.append(f"    FIX-{short_id}: {issue_disp}")
-                lines.append(f"     Resolution: {res_disp}")
+                score_val = top.get("score", 0)
+                lines.append(f"     Score: {score_val}")
+                if top.get("tags"):
+                    lines.append(f"     Tags: {top['tags']}")
+                # Show supporting signals in verbose
+                if isinstance(match_reason, dict):
+                    supporting = match_reason.get("supporting_signals", [])
+                    if supporting:
+                        support_strs = [f"{s['signal']}: {s['detail']}" for s in supporting]
+                        lines.append(f"     Supporting: {', '.join(support_strs)}")
 
             if matched:
                 addr_str = f"{matched[0]['address']} ({matched[0]['action']})"
                 lines.append(f"     Applies to: {addr_str}")
 
             lines.append(f"     Captured: {created_at}")
-
-            if verbose and top.get("tags"):
-                lines.append(f"     Tags: {top['tags']}")
 
             if len(group_warnings) > 1:
                 lines.append(f"     + {len(group_warnings) - 1} more")
@@ -454,11 +470,19 @@ def _format_human(
         lines.append("Run `fixdoc show <short_id>` for full details.")
         lines.append("")
 
-    # Recommended checks
-    if result.checks:
-        lines.append("Recommended Checks:")
-        for check in result.checks:
-            lines.append(f"  - {check}")
+    # Contextual Checks
+    ctx_checks = result.contextual_checks if result.contextual_checks else []
+    if not ctx_checks and result.checks:
+        # Fallback to legacy checks
+        ctx_checks = [{"check": c, "source": "category", "resource": ""} for c in result.checks]
+    if ctx_checks:
+        lines.append("Contextual Checks:")
+        for check_item in ctx_checks:
+            source = check_item.get("source", "")
+            resource = check_item.get("resource", "")
+            check_text = check_item.get("check", "")
+            resource_suffix = f" ({resource})" if resource else ""
+            lines.append(f"  - [{source}] {check_text}{resource_suffix}")
         lines.append("")
 
     return "\n".join(lines)
@@ -466,6 +490,21 @@ def _format_human(
 
 def _format_json(result: BlastResult) -> str:
     """Format blast radius result as JSON."""
+    # Serialize relevant_fixes: convert sets to lists for JSON compatibility
+    serializable_fixes = []
+    for rf in result.relevant_fixes:
+        entry = dict(rf)
+        mr = entry.get("match_reason")
+        if isinstance(mr, dict):
+            mr = dict(mr)
+            # attr_categories could be a set
+            entry["match_reason"] = mr
+        serializable_fixes.append(entry)
+
+    serializable_checks = []
+    for cc in result.contextual_checks:
+        serializable_checks.append(dict(cc))
+
     data = {
         "analysis_id": result.analysis_id,
         "timestamp": result.timestamp,
@@ -480,6 +519,8 @@ def _format_json(result: BlastResult) -> str:
         "plan_summary": result.plan_summary,
         "resource_warnings": result.resource_warnings,
         "score_explanation": result.score_explanation,
+        "relevant_fixes": serializable_fixes,
+        "contextual_checks": serializable_checks,
     }
     return json.dumps(data, indent=2)
 
@@ -700,10 +741,19 @@ def analyze(
                 err=True,
             )
 
+    # Build change_blocks from plan for fingerprinting
+    plan_change_blocks = {}
+    for rc in plan.get("resource_changes", []):
+        addr = rc.get("address", "")
+        cb = rc.get("change", {})
+        if addr and cb:
+            plan_change_blocks[addr] = cb
+
     # Run blast radius analysis
     result = analyze_blast_radius(
         plan, repo, dot_text=dot_text, max_depth=max_depth,
         tag_only=tag_only, max_resource_warnings=max_warnings,
+        change_blocks=plan_change_blocks,
     )
 
     # Filter history matches by match mode
