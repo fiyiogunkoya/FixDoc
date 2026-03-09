@@ -201,6 +201,7 @@ class BlastResult:
     score_explanation: list[dict] = field(default_factory=list)
     relevant_fixes: list[dict] = field(default_factory=list)
     contextual_checks: list[dict] = field(default_factory=list)
+    outcome_matches: list[dict] = field(default_factory=list)
 
 
 @dataclass

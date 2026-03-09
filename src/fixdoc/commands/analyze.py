@@ -19,6 +19,7 @@ from ..blast_radius import (
     analyze_blast_radius,
 )
 from ..models import Fix
+from ..outcomes import Outcome, OutcomeStore, compute_plan_fingerprint
 from ..storage import FixRepository
 from ..parsers.base import CloudProvider
 
@@ -485,10 +486,28 @@ def _format_human(
             lines.append(f"  - [{source}] {check_text}{resource_suffix}")
         lines.append("")
 
+    # Historical Apply Outcomes
+    if result.outcome_matches:
+        lines.append("Historical Apply Outcomes")
+        for om in result.outcome_matches:
+            lines.append("  This exact change pattern previously failed after merge.")
+            applied = (om.get("applied_at") or "")[:10]
+            if applied:
+                lines.append(f"  Last failure: {applied}")
+            err_codes = om.get("apply_error_codes", [])
+            if err_codes:
+                lines.append(f"  Error: {', '.join(err_codes)}")
+            lines.append(f"  Outcome ID: {om.get('outcome_id', '?')}")
+        lines.append("")
+
     return "\n".join(lines)
 
 
-def _format_json(result: BlastResult) -> str:
+def _format_json(
+    result: BlastResult,
+    plan_fingerprint: Optional[str] = None,
+    outcome_id: Optional[str] = None,
+) -> str:
     """Format blast radius result as JSON."""
     # Serialize relevant_fixes: convert sets to lists for JSON compatibility
     serializable_fixes = []
@@ -521,7 +540,12 @@ def _format_json(result: BlastResult) -> str:
         "score_explanation": result.score_explanation,
         "relevant_fixes": serializable_fixes,
         "contextual_checks": serializable_checks,
+        "outcome_matches": result.outcome_matches,
     }
+    if plan_fingerprint is not None:
+        data["plan_fingerprint"] = plan_fingerprint
+    if outcome_id is not None:
+        data["outcome_id"] = outcome_id
     return json.dumps(data, indent=2)
 
 
@@ -638,6 +662,21 @@ def _format_markdown(result: BlastResult) -> str:
                 reason_str = str(match_reason)
             lines.append(
                 f"| FIX-{short_id} | {issue} | {confidence} ({reason_str}) |"
+            )
+        lines.append("")
+
+    # Historical Apply Outcomes
+    if result.outcome_matches:
+        lines.append("### Historical Apply Outcomes")
+        lines.append("")
+        for om in result.outcome_matches:
+            applied = (om.get("applied_at") or "")[:10]
+            err_codes = om.get("apply_error_codes", [])
+            err_str = f" Error: {', '.join(err_codes)}" if err_codes else ""
+            oid = om.get("outcome_id", "?")
+            lines.append(
+                f"- :rotating_light: This change pattern previously failed."
+                f" Last failure: {applied}.{err_str} (Outcome: {oid})"
             )
         lines.append("")
 
@@ -775,6 +814,12 @@ def _auto_run_terraform_graph() -> Optional[str]:
               help="Max number of tribal knowledge warnings to surface.")
 @click.option("--ai-explain", "ai_explain", is_flag=True, default=False,
               help="Use Claude API to generate polished score explanation. Requires ANTHROPIC_API_KEY.")
+@click.option("--record", is_flag=True, default=False,
+              help="Save analysis result as an outcome for apply tracking.")
+@click.option("--pr", "pr_number", default=None,
+              help="PR number (for CI linking, requires --record).")
+@click.option("--commit", "commit_sha", default=None,
+              help="Commit SHA (requires --record).")
 @click.pass_context
 def analyze(
     ctx,
@@ -789,6 +834,9 @@ def analyze(
     tag_only: bool,
     max_warnings: int,
     ai_explain: bool,
+    record: bool,
+    pr_number: Optional[str],
+    commit_sha: Optional[str],
 ):
     """
     Analyze a terraform plan for risk and known issues.
@@ -815,6 +863,9 @@ def analyze(
         --tag-only      Only show tribal warnings from tag-matched fixes
         --max-warnings  Max tribal knowledge warnings to surface (default: 10)
         --ai-explain    Use Claude API for polished score explanation (needs ANTHROPIC_API_KEY)
+        --record        Save analysis as an outcome for apply tracking
+        --pr            PR number (for CI linking, requires --record)
+        --commit        Commit SHA (requires --record)
     """
     repo = FixRepository(ctx.obj["base_path"])
     plan_path = Path(plan_file)
@@ -877,6 +928,57 @@ def analyze(
         pass
     # balanced is default — uses the standard history_prior logic
 
+    # Outcome matching: check for prior failure outcomes with same fingerprint
+    plan_fp = compute_plan_fingerprint(plan)
+    try:
+        outcome_store = OutcomeStore()
+        prior_outcomes = outcome_store.find_by_fingerprint(plan_fp)
+        for po in prior_outcomes:
+            if po.apply_result == "failure" and po.status == "applied":
+                result.outcome_matches.append(po.to_dict())
+    except Exception:
+        pass  # Non-critical: don't break analysis if outcome store fails
+
+    # Record outcome if --record flag set
+    recorded_outcome_id = None
+    if record:
+        try:
+            # Build top_checks from contextual_checks (top 3, structured)
+            ctx_checks = result.contextual_checks if result.contextual_checks else []
+            if not ctx_checks and result.checks:
+                ctx_checks = [
+                    {"check": c, "source": "category", "resource": ""}
+                    for c in result.checks
+                ]
+            top_checks = ctx_checks[:3]
+
+            # Collect resource types
+            resource_types = sorted(set(
+                r.resource_type for r in changed
+            ))
+
+            oc = Outcome(
+                plan_fingerprint=plan_fp,
+                score=result.score,
+                severity=result.severity,
+                resource_types=resource_types,
+                resource_count=len(changed),
+                top_checks=top_checks,
+                commit_sha=commit_sha,
+                pr_number=pr_number,
+                link_type="fingerprint",
+            )
+            outcome_store = OutcomeStore()
+            outcome_store.save(oc)
+            recorded_outcome_id = oc.outcome_id
+            click.echo(
+                f"Outcome recorded: {oc.outcome_id} "
+                f"(fingerprint: {plan_fp[:12]}...)",
+                err=True,
+            )
+        except Exception as e:
+            click.echo(f"Warning: Failed to record outcome: {e}", err=True)
+
     # Optional AI explanation
     ai_explanation = None
     if ai_explain:
@@ -892,7 +994,11 @@ def analyze(
     if summary:
         click.echo(_format_summary(result))
     elif output_format == "json":
-        click.echo(_format_json(result))
+        click.echo(_format_json(
+            result,
+            plan_fingerprint=plan_fp,
+            outcome_id=recorded_outcome_id,
+        ))
     elif output_format == "markdown":
         click.echo(_format_markdown(result))
     else:

@@ -1,0 +1,54 @@
+name: Record Apply Outcome
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.tf"
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install fixdoc
+        run: pip install -e .
+
+      - name: Extract latest fingerprint
+        id: fp
+        run: |
+          FP=$(python3 -c "
+          import json
+          try:
+              data = json.load(open('.fixdoc-outcomes'))
+              analyzed = [o for o in data if o.get('status') == 'analyzed']
+              print(analyzed[-1]['plan_fingerprint'] if analyzed else '')
+          except: print('')
+          ")
+          echo "fingerprint=$FP" >> $GITHUB_OUTPUT
+
+      - name: Run apply
+        id: apply
+        run: |
+          terraform apply -auto-approve 2>apply_errors.txt \
+            && echo "result=success" >> $GITHUB_OUTPUT \
+            || echo "result=failure" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Record outcome
+        if: steps.fp.outputs.fingerprint != ''
+        run: |
+          fixdoc outcome record-apply \
+            --fingerprint ${{ steps.fp.outputs.fingerprint }} \
+            --result ${{ steps.apply.outputs.result }} \
+            --error-file apply_errors.txt \
+            --commit ${{ github.sha }}
+          git add .fixdoc-outcomes && git commit -m "fixdoc: record apply outcome" && git push || true

@@ -98,6 +98,26 @@ jobs:
           echo "score=$SCORE" >> "$GITHUB_OUTPUT"
           echo "scenario=${{ matrix.scenario }}" >> "$GITHUB_OUTPUT"
 
+      - name: Record analysis outcome
+        if: github.event_name == 'pull_request'
+        working-directory: scenarios/${{ matrix.scenario }}
+        run: |
+          GRAPH_FLAG=""
+          if [ -f graph.dot ]; then
+            GRAPH_FLAG="--graph graph.dot"
+          fi
+          fixdoc analyze plan.json --record \
+            --pr ${{ github.event.pull_request.number }} \
+            --commit ${{ github.sha }} \
+            --format json $GRAPH_FLAG > /dev/null 2>&1 || true
+
+      - name: Commit outcome record
+        if: github.event_name == 'pull_request'
+        run: |
+          git add .fixdoc-outcomes 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "fixdoc: record analysis outcome"
+          git push || true
+
       - name: Job summary
         working-directory: scenarios/${{ matrix.scenario }}
         run: |
