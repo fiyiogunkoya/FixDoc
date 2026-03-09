@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       # - "**/*.tf"
-      - ".github/workflows/terraform-risk-analysis.yml"
+      - ".github/workflows/terraform-apply-outcome.yml"
 
 jobs:
   record:
