@@ -60,6 +60,12 @@ def outcome():
     default=None,
     help="Commit SHA of the apply.",
 )
+@click.option(
+    "--pr",
+    "pr_number",
+    default=None,
+    help="PR number (stored as metadata).",
+)
 def record_apply(
     fingerprint: Optional[str],
     plan_file: Optional[str],
@@ -67,6 +73,7 @@ def record_apply(
     error_output: Optional[str],
     error_file: Optional[str],
     commit_sha: Optional[str],
+    pr_number: Optional[str],
 ):
     """Record the apply result, linking to a prior analysis.
 
@@ -131,6 +138,7 @@ def record_apply(
         apply_error_output=err_text,
         apply_error_codes=error_codes,
         apply_commit_sha=commit_sha,
+        pr_number=pr_number,
         link_type="none",
         status="applied",
         applied_at=datetime.now(timezone.utc).isoformat(),

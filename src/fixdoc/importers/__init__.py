@@ -1,1 +1,1 @@
-"""Importers package for fixdoc — Jira and ServiceNow file-based import."""
+"""Importers package for fixdoc — Jira, ServiceNow, Notion, and Slack import."""

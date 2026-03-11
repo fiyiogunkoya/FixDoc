@@ -100,23 +100,19 @@ jobs:
 
       - name: Record analysis outcome
         if: github.event_name == 'pull_request'
+        id: record
         working-directory: scenarios/${{ matrix.scenario }}
         run: |
           GRAPH_FLAG=""
-          if [ -f graph.dot ]; then
-            GRAPH_FLAG="--graph graph.dot"
-          fi
-          fixdoc analyze plan.json --record \
+          if [ -f graph.dot ]; then GRAPH_FLAG="--graph graph.dot"; fi
+          RECORD_JSON=$(fixdoc analyze plan.json --record \
             --pr ${{ github.event.pull_request.number }} \
             --commit ${{ github.sha }} \
-            --format json $GRAPH_FLAG > /dev/null 2>&1 || true
-
-      - name: Commit outcome record
-        if: github.event_name == 'pull_request'
-        run: |
-          git add .fixdoc-outcomes 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "fixdoc: record analysis outcome"
-          git push || true
+            --format json $GRAPH_FLAG 2>/dev/null || echo '{}')
+          FP=$(echo "$RECORD_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('plan_fingerprint',''))" 2>/dev/null || echo '')
+          OID=$(echo "$RECORD_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('outcome_id',''))" 2>/dev/null || echo '')
+          echo "fingerprint=$FP" >> "$GITHUB_OUTPUT"
+          echo "outcome_id=$OID" >> "$GITHUB_OUTPUT"
 
       - name: Job summary
         working-directory: scenarios/${{ matrix.scenario }}
@@ -175,6 +171,19 @@ jobs:
           ## FixDoc Risk Analysis Summary
 
           HEADER
+
+          # Embed hidden metadata from analysis outcomes
+          for dir in results/analysis-*/; do
+            JSON_FILE="$dir/analysis.json"
+            if [ -f "$JSON_FILE" ]; then
+              FP=$(python3 -c "import json; print(json.load(open('$JSON_FILE')).get('plan_fingerprint',''))" 2>/dev/null || echo '')
+              OID=$(python3 -c "import json; print(json.load(open('$JSON_FILE')).get('outcome_id',''))" 2>/dev/null || echo '')
+              if [ -n "$FP" ]; then
+                echo "<!-- fixdoc-fingerprint:$FP -->" >> "$COMMENT_FILE"
+                echo "<!-- fixdoc-outcome-id:$OID -->" >> "$COMMENT_FILE"
+              fi
+            fi
+          done
 
           for dir in results/analysis-*/; do
             SCENARIO=$(basename "$dir" | sed 's/^analysis-//')

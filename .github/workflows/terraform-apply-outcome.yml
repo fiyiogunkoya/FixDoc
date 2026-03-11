@@ -4,14 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      # - "**/*.tf"
-      - ".github/workflows/terraform-apply-outcome.yml"
+      - "**/*.tf"
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   record:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -23,20 +24,32 @@ jobs:
       - name: Install fixdoc
         run: pip install -e .
 
-      - name: Extract latest fingerprint
-        id: fp
+      - name: Find merged PR and extract fingerprint
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          FP=$(python3 -c "
-          import json
-          try:
-              data = json.load(open('.fixdoc-outcomes'))
-              analyzed = [o for o in data if o.get('status') == 'analyzed']
-              print(analyzed[-1]['plan_fingerprint'] if analyzed else '')
-          except: print('')
-          ")
-          echo "fingerprint=$FP" >> $GITHUB_OUTPUT
+          # Find the PR that produced this merge commit
+          PR_NUMBER=$(gh pr list --state merged --search "${{ github.sha }}" \
+            --json number --jq '.[0].number' 2>/dev/null || echo '')
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No merged PR found for commit ${{ github.sha }}"
+            echo "fingerprint=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+          # Read FixDoc PR comment and extract fingerprint
+          FP=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("fixdoc-risk-analysis")) | .body' \
+            | grep -oP '(?<=fixdoc-fingerprint:)[a-f0-9]+' | head -1 || echo '')
+
+          echo "fingerprint=$FP" >> "$GITHUB_OUTPUT"
 
       - name: Run apply
+        if: steps.meta.outputs.fingerprint != ''
         id: apply
         run: |
           terraform apply -auto-approve 2>apply_errors.txt \
@@ -45,11 +58,11 @@ jobs:
         continue-on-error: true
 
       - name: Record outcome
-        if: steps.fp.outputs.fingerprint != ''
+        if: steps.meta.outputs.fingerprint != ''
         run: |
           fixdoc outcome record-apply \
-            --fingerprint ${{ steps.fp.outputs.fingerprint }} \
+            --fingerprint ${{ steps.meta.outputs.fingerprint }} \
             --result ${{ steps.apply.outputs.result }} \
             --error-file apply_errors.txt \
-            --commit ${{ github.sha }}
-          git add .fixdoc-outcomes && git commit -m "fixdoc: record apply outcome" && git push || true
+            --commit ${{ github.sha }} \
+            --pr ${{ steps.meta.outputs.pr }}

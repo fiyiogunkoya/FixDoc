@@ -1,4 +1,4 @@
-"""Import command — import closed fixes from Jira or ServiceNow files."""
+"""Import command — import closed fixes from Jira, ServiceNow, Notion, or Slack."""
 
 from pathlib import Path
 from typing import Optional
@@ -6,13 +6,14 @@ from typing import Optional
 import click
 
 from ..importers.base import ImportResult, is_high_signal, parse_csv, parse_json
-from ..importers import jira, servicenow, notion
+from ..importers import jira, servicenow, notion, slack
 from ..storage import FixRepository
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_existing_source_tags(repo: FixRepository) -> set:
     """Load all source:* tags from existing fixes for duplicate detection."""
@@ -35,7 +36,9 @@ def _print_summary(result: ImportResult, system: str) -> None:
     """Print the import summary table."""
     click.echo("")
     click.echo("─" * 50)
-    click.echo(f"  Import summary ({system})" + (" [DRY RUN]" if result.dry_run else ""))
+    click.echo(
+        f"  Import summary ({system})" + (" [DRY RUN]" if result.dry_run else "")
+    )
     click.echo("─" * 50)
     click.echo(f"  imported     : {result.imported}")
     click.echo(f"  skipped      : {result.skipped}")
@@ -64,7 +67,9 @@ def _show_card(index: int, total: int, fix, source_id: str, system: str) -> None
     """Display a review card for a fix candidate."""
     click.echo(f"\n[{index}/{total}] {source_id}")
     click.echo(f"  issue      : {fix.issue[:80]}{'...' if len(fix.issue) > 80 else ''}")
-    click.echo(f"  resolution : {fix.resolution[:80]}{'...' if len(fix.resolution) > 80 else ''}")
+    click.echo(
+        f"  resolution : {fix.resolution[:80]}{'...' if len(fix.resolution) > 80 else ''}"
+    )
     click.echo(f"  tags       : {fix.tags or ''}")
     click.echo(f"  source     : {system} / {source_id}")
 
@@ -107,6 +112,7 @@ def _find_source_tag(fix) -> Optional[str]:
 # Review flow (interactive)
 # ---------------------------------------------------------------------------
 
+
 def _review_flow(
     fixes: list,
     extra_bad_rows: int,
@@ -142,7 +148,7 @@ def _review_flow(
         choice = click.prompt(f"Import? {prompt_choices}", default="y").strip().lower()
 
         if choice == "q":
-            result.skipped += (total - i - 1)
+            result.skipped += total - i - 1
             break
         elif choice == "s":
             result.skipped += 1
@@ -176,7 +182,9 @@ def _review_flow(
             result.imported += 1
         elif choice == "a" and not dry_run:
             # Accept remaining
-            apply_filter = click.confirm("Apply low-signal filter to remaining?", default=True)
+            apply_filter = click.confirm(
+                "Apply low-signal filter to remaining?", default=True
+            )
             # Process remaining (including current)
             for remaining_fix in fixes[i:]:
                 r_source_tag = _find_source_tag(remaining_fix)
@@ -202,6 +210,7 @@ def _review_flow(
 # ---------------------------------------------------------------------------
 # Auto flow
 # ---------------------------------------------------------------------------
+
 
 def _auto_flow(
     fixes: list,
@@ -237,16 +246,40 @@ def _auto_flow(
 # Shared option decorator factory
 # ---------------------------------------------------------------------------
 
+
 def _shared_options(allow_description_option: bool = False):
     """Return a decorator that adds shared import options to a Click command."""
+
     def decorator(f):
         decorators = [
             click.argument("file", type=click.Path(exists=True)),
-            click.option("--closed/--no-closed", default=True, help="Only import closed issues (default: yes)"),
-            click.option("--auto", is_flag=True, default=False, help="Auto mode: skip review, apply low-signal filter"),
-            click.option("--dry-run", is_flag=True, default=False, help="Parse and report without saving"),
-            click.option("--max", "max_rows", type=int, default=None, help="Max rows to process"),
-            click.option("--tags", "extra_tags", type=str, default=None, help="Extra tags to apply to all imports (comma-separated)"),
+            click.option(
+                "--closed/--no-closed",
+                default=True,
+                help="Only import closed issues (default: yes)",
+            ),
+            click.option(
+                "--auto",
+                is_flag=True,
+                default=False,
+                help="Auto mode: skip review, apply low-signal filter",
+            ),
+            click.option(
+                "--dry-run",
+                is_flag=True,
+                default=False,
+                help="Parse and report without saving",
+            ),
+            click.option(
+                "--max", "max_rows", type=int, default=None, help="Max rows to process"
+            ),
+            click.option(
+                "--tags",
+                "extra_tags",
+                type=str,
+                default=None,
+                help="Extra tags to apply to all imports (comma-separated)",
+            ),
         ]
         if allow_description_option:
             decorators.append(
@@ -259,9 +292,11 @@ def _shared_options(allow_description_option: bool = False):
             )
         # Apply decorators in reverse order (Click stacks them)
         import functools
+
         for dec in reversed(decorators):
             f = dec(f)
         return f
+
     return decorator
 
 
@@ -269,9 +304,10 @@ def _shared_options(allow_description_option: bool = False):
 # CLI group and subcommands
 # ---------------------------------------------------------------------------
 
+
 @click.group(name="import")
 def import_group():
-    """Import closed fixes from Jira, ServiceNow, or Notion.
+    """Import closed fixes from Jira, ServiceNow, Notion, or Slack.
 
     \b
     Examples:
@@ -279,16 +315,34 @@ def import_group():
         fixdoc import jira backup.json --closed --dry-run
         fixdoc import servicenow incidents.json --allow-description-as-resolution
         fixdoc import notion --token TOKEN --database DB_ID --auto
+        fixdoc import slack --token $SLACK_TOKEN --channel C0123456
     """
 
 
 @import_group.command("jira")
 @click.argument("file", type=click.Path(exists=True))
-@click.option("--closed/--no-closed", default=True, help="Only import closed issues (default: yes)")
-@click.option("--auto", is_flag=True, default=False, help="Auto mode: skip review, apply low-signal filter")
-@click.option("--dry-run", is_flag=True, default=False, help="Parse and report without saving")
+@click.option(
+    "--closed/--no-closed",
+    default=True,
+    help="Only import closed issues (default: yes)",
+)
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Auto mode: skip review, apply low-signal filter",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Parse and report without saving"
+)
 @click.option("--max", "max_rows", type=int, default=None, help="Max rows to process")
-@click.option("--tags", "extra_tags", type=str, default=None, help="Extra tags for all imports (comma-separated)")
+@click.option(
+    "--tags",
+    "extra_tags",
+    type=str,
+    default=None,
+    help="Extra tags for all imports (comma-separated)",
+)
 @click.pass_context
 def jira_import(ctx, file, closed, auto, dry_run, max_rows, extra_tags):
     """Import fixes from a Jira CSV or JSON export.
@@ -339,11 +393,28 @@ def jira_import(ctx, file, closed, auto, dry_run, max_rows, extra_tags):
 
 @import_group.command("servicenow")
 @click.argument("file", type=click.Path(exists=True))
-@click.option("--closed/--no-closed", default=True, help="Only import closed incidents (default: yes)")
-@click.option("--auto", is_flag=True, default=False, help="Auto mode: skip review, apply low-signal filter")
-@click.option("--dry-run", is_flag=True, default=False, help="Parse and report without saving")
+@click.option(
+    "--closed/--no-closed",
+    default=True,
+    help="Only import closed incidents (default: yes)",
+)
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Auto mode: skip review, apply low-signal filter",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Parse and report without saving"
+)
 @click.option("--max", "max_rows", type=int, default=None, help="Max rows to process")
-@click.option("--tags", "extra_tags", type=str, default=None, help="Extra tags for all imports (comma-separated)")
+@click.option(
+    "--tags",
+    "extra_tags",
+    type=str,
+    default=None,
+    help="Extra tags for all imports (comma-separated)",
+)
 @click.option(
     "--allow-description-as-resolution",
     is_flag=True,
@@ -352,7 +423,13 @@ def jira_import(ctx, file, closed, auto, dry_run, max_rows, extra_tags):
 )
 @click.pass_context
 def snow_import(
-    ctx, file, closed, auto, dry_run, max_rows, extra_tags,
+    ctx,
+    file,
+    closed,
+    auto,
+    dry_run,
+    max_rows,
+    extra_tags,
     allow_description_as_resolution,
 ):
     """Import fixes from a ServiceNow JSON export.
@@ -393,32 +470,71 @@ def snow_import(
 
 
 @import_group.command("notion")
-@click.option("--token", required=True, envvar="NOTION_TOKEN",
-              help="Notion integration token (or set NOTION_TOKEN env var).")
-@click.option("--database", required=True,
-              help="Notion database ID.")
-@click.option("--title-field", default=None,
-              help="Property name for issue title (default: Name/Title/Summary/Incident/Issue).")
-@click.option("--resolution-field", default=None,
-              help="Property name for resolution (default: Resolution/Fix/Notes/Description/Postmortem/…).")
-@click.option("--status-field", default=None,
-              help="Property name for status (default: Status/State/Ticket Status/Progress).")
-@click.option("--done-values", default=None,
-              help="Comma-separated status values treated as closed (default: Done,Closed,Resolved,Fixed,…).")
-@click.option("--closed/--no-closed", default=True,
-              help="Only import closed records (default: yes).")
-@click.option("--auto", is_flag=True, default=False,
-              help="Auto mode: skip review, apply low-signal filter.")
-@click.option("--dry-run", is_flag=True, default=False,
-              help="Parse and report without saving.")
-@click.option("--max", "max_count", type=int, default=None,
-              help="Max pages to process.")
-@click.option("--tags", "extra_tags", type=str, default=None,
-              help="Extra tags for all imports (comma-separated).")
+@click.option(
+    "--token",
+    required=True,
+    envvar="NOTION_TOKEN",
+    help="Notion integration token (or set NOTION_TOKEN env var).",
+)
+@click.option("--database", required=True, help="Notion database ID.")
+@click.option(
+    "--title-field",
+    default=None,
+    help="Property name for issue title (default: Name/Title/Summary/Incident/Issue).",
+)
+@click.option(
+    "--resolution-field",
+    default=None,
+    help="Property name for resolution (default: Resolution/Fix/Notes/Description/Postmortem/…).",
+)
+@click.option(
+    "--status-field",
+    default=None,
+    help="Property name for status (default: Status/State/Ticket Status/Progress).",
+)
+@click.option(
+    "--done-values",
+    default=None,
+    help="Comma-separated status values treated as closed (default: Done,Closed,Resolved,Fixed,…).",
+)
+@click.option(
+    "--closed/--no-closed",
+    default=True,
+    help="Only import closed records (default: yes).",
+)
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Auto mode: skip review, apply low-signal filter.",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Parse and report without saving."
+)
+@click.option(
+    "--max", "max_count", type=int, default=None, help="Max pages to process."
+)
+@click.option(
+    "--tags",
+    "extra_tags",
+    type=str,
+    default=None,
+    help="Extra tags for all imports (comma-separated).",
+)
 @click.pass_context
 def notion_cmd(
-    ctx, token, database, title_field, resolution_field, status_field,
-    done_values, closed, auto, dry_run, max_count, extra_tags,
+    ctx,
+    token,
+    database,
+    title_field,
+    resolution_field,
+    status_field,
+    done_values,
+    closed,
+    auto,
+    dry_run,
+    max_count,
+    extra_tags,
 ):
     """Import fixes from a Notion database via the Notion API."""
     extra = _parse_extra_tags(extra_tags)
@@ -459,3 +575,182 @@ def notion_cmd(
         _review_flow(fixes, 0, repo, result, "notion", dry_run)
 
     _print_summary(result, "notion")
+
+
+@import_group.command("slack")
+@click.option(
+    "--token",
+    required=True,
+    envvar="SLACK_TOKEN",
+    help="Slack bot token (xoxb-...). Also reads SLACK_TOKEN env var.",
+)
+@click.option(
+    "--channel", "channels", multiple=True, help="Channel ID (C0XXXXXXX). Repeatable."
+)
+@click.option(
+    "--channel-name",
+    "channel_names",
+    multiple=True,
+    help="Channel name (resolves to ID). Alternative to --channel.",
+)
+@click.option(
+    "--issue-reaction",
+    default="red_circle",
+    help="Reaction on root message marking it as an issue (default: red_circle).",
+)
+@click.option(
+    "--resolution-reaction",
+    default="white_check_mark",
+    help="Reaction on reply marking it as the resolution (default: white_check_mark).",
+)
+@click.option(
+    "--oldest",
+    default=90,
+    type=int,
+    help="Only scan threads from the last N days (default: 90).",
+)
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Auto mode: skip review, apply low-signal filter.",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Parse and report without saving."
+)
+@click.option(
+    "--max", "max_count", type=int, default=None, help="Max threads to import."
+)
+@click.option(
+    "--tags",
+    "extra_tags",
+    type=str,
+    default=None,
+    help="Extra tags for all imports (comma-separated).",
+)
+@click.pass_context
+def slack_import(
+    ctx,
+    token,
+    channels,
+    channel_names,
+    issue_reaction,
+    resolution_reaction,
+    oldest,
+    auto,
+    dry_run,
+    max_count,
+    extra_tags,
+):
+    """Import fixes from Slack channels using the two-emoji convention.
+
+    Mark the root message with a reaction (default: red_circle) for the issue,
+    and mark a reply with a reaction (default: white_check_mark) for the resolution.
+
+    \b
+    Examples:
+        fixdoc import slack --token $SLACK_TOKEN --channel C0123456 --auto
+        fixdoc import slack --token $SLACK_TOKEN --channel-name terraform-help --dry-run
+        fixdoc import slack --token $SLACK_TOKEN --channel C01 --channel C02
+    """
+    extra = _parse_extra_tags(extra_tags)
+
+    # Resolve channel names to IDs
+    channel_ids = list(channels)
+    for name in channel_names:
+        click.echo(f"[import] Resolving channel name: {name} ...")
+        resolved = slack.resolve_channel_name(token, name)
+        if not resolved:
+            click.echo(f"[import] Error: channel '{name}' not found.", err=True)
+            ctx.exit(1)
+            return
+        channel_ids.append(resolved)
+
+    if not channel_ids:
+        click.echo(
+            "[import] Error: provide at least one --channel or --channel-name.",
+            err=True,
+        )
+        ctx.exit(1)
+        return
+
+    user_cache = {}  # type: dict
+
+    def _fetch_user(uid, cache):
+        return slack.fetch_user_display_name(token, uid, cache)
+
+    # Collect threads across all channels
+    all_threads = []
+    channel_name_map = {}  # type: dict
+
+    for cid in channel_ids:
+        click.echo(f"[import] Scanning channel {cid} (last {oldest} days) ...")
+        messages = slack.fetch_channel_messages(token, cid, oldest_days=oldest)
+
+        # Filter to issue-marked messages with replies
+        issue_msgs = [
+            m
+            for m in messages
+            if slack.has_reaction(m, issue_reaction) and m.get("reply_count", 0) >= 1
+        ]
+
+        if not issue_msgs:
+            click.echo(f"[import] No issue-marked threads found in {cid}.")
+            continue
+
+        click.echo(f"[import] Found {len(issue_msgs)} issue-marked thread(s) in {cid}.")
+
+        # Resolve channel name for notes (best effort)
+        ch_name = cid
+        for cn in channel_names:
+            ch_name = cn.lstrip("#")
+            break
+        channel_name_map[cid] = ch_name
+
+        for msg in issue_msgs:
+            replies = slack.fetch_thread_replies(token, cid, msg["ts"])
+            all_threads.append(
+                {
+                    "root": msg,
+                    "replies": replies,
+                    "channel_id": cid,
+                }
+            )
+
+    if not all_threads:
+        click.echo("[import] No issue-marked threads found.")
+        _print_summary(ImportResult(dry_run=dry_run), "slack")
+        return
+
+    # Determine channel name for notes
+    ch_name = "slack"
+    if channel_names:
+        ch_name = channel_names[0].lstrip("#")
+    elif len(channel_ids) == 1:
+        ch_name = channel_ids[0]
+
+    fixes, skipped_no_res, bad_rows = slack.extract(
+        all_threads,
+        extra_tags=extra,
+        max_count=max_count,
+        channel_name=ch_name,
+        resolution_reaction=resolution_reaction,
+        fetch_user_fn=_fetch_user,
+    )
+
+    if skipped_no_res:
+        click.echo(
+            f"[import] Skipped {skipped_no_res} thread(s) with issue marker but no resolution marker."
+        )
+    click.echo(f"[import] {len(fixes)} candidate fix(es) after filtering.")
+
+    repo = FixRepository(ctx.obj["base_path"])
+    result = ImportResult(dry_run=dry_run)
+    result.bad_rows = bad_rows
+
+    if auto:
+        _auto_flow(fixes, 0, repo, result, dry_run)
+    else:
+        _review_flow(fixes, 0, repo, result, "slack", dry_run)
+
+    _print_summary(result, "slack")
