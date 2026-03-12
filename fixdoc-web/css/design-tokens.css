@@ -1,0 +1,85 @@
+/* FixDoc Design Token System — Terminal Circuit v2 */
+/* Philosophy: Deep matte black + neon green primary, amber for warnings, cyan for info */
+
+:root {
+  /* ── Backgrounds ─────────────────────────────────────────────────────── */
+  --bg-base:       #0a0a0a;   /* deepest background */
+  --bg-surface:    #111111;   /* card / panel surface */
+  --bg-surface-2:  #161616;   /* elevated surface */
+  --bg-surface-3:  #1c1c1c;   /* highest elevation */
+  --bg-overlay:    rgba(10,10,10,0.92);
+
+  /* ── Borders ─────────────────────────────────────────────────────────── */
+  --border-base:   #222222;
+  --border-subtle: #191919;
+  --border-muted:  #2a2a2a;
+  --border-green:  rgba(0, 255, 136, 0.35);
+  --border-cyan:   rgba(0, 212, 255, 0.25);
+  --border-amber:  rgba(245, 158, 11, 0.30);
+
+  /* ── Text ────────────────────────────────────────────────────────────── */
+  --text-primary:  #f0f0f0;
+  --text-secondary:#888888;
+  --text-dim:      #444444;
+  --text-faint:    #2c2c2c;
+
+  /* ── Primary Accent: Neon Green ──────────────────────────────────────── */
+  --green:         #00ff88;
+  --green-bright:  #33ffaa;
+  --green-muted:   #00cc6e;
+  --green-dim:     rgba(0, 255, 136, 0.10);
+  --green-glow:    rgba(0, 255, 136, 0.18);
+  --green-glow-lg: rgba(0, 255, 136, 0.30);
+
+  /* ── Secondary Accent: Cyan ──────────────────────────────────────────── */
+  --cyan:          #00d4ff;
+  --cyan-bright:   #33ddff;
+  --cyan-dim:      rgba(0, 212, 255, 0.10);
+  --cyan-glow:     rgba(0, 212, 255, 0.18);
+
+  /* ── Warning Accent: Amber ───────────────────────────────────────────── */
+  --amber:         #f59e0b;
+  --amber-bright:  #fbbf24;
+  --amber-dim:     rgba(245, 158, 11, 0.08);
+  --amber-glow:    rgba(245, 158, 11, 0.22);
+
+  /* ── Error: Red ──────────────────────────────────────────────────────── */
+  --red:           #ff4d6d;
+  --red-dim:       rgba(255, 77, 109, 0.10);
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --font-display:  'Bricolage Grotesque', sans-serif;
+  --font-body:     'DM Sans', sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
+
+  /* ── Spacing Scale ───────────────────────────────────────────────────── */
+  --space-xs:  0.25rem;
+  --space-sm:  0.5rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 5rem;
+  --space-4xl: 7rem;
+
+  /* ── Border Radius ───────────────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-card:     0 2px 20px rgba(0,0,0,0.5);
+  --shadow-glow-sm:  0 0 16px var(--green-glow);
+  --shadow-glow-md:  0 0 32px var(--green-glow);
+  --shadow-glow-lg:  0 0 60px var(--green-glow-lg);
+  --shadow-terminal: 0 24px 80px rgba(0,0,0,0.6), 0 0 40px var(--green-dim);
+
+  /* ── Transitions ─────────────────────────────────────────────────────── */
+  --ease-default:  cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --duration-slow: 0.4s;
+}
