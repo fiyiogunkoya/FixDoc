@@ -1,6 +1,6 @@
 {
-  "analysis_id": "4f478ff5",
-  "timestamp": "2026-03-07T10:45:12.836047+00:00",
+  "analysis_id": "ac157ef7",
+  "timestamp": "2026-03-13T17:35:31.334331+00:00",
   "score": 10.0,
   "severity": "low",
   "changes": [
@@ -54,7 +54,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "2 days ago"
+            "detail": "8 days ago"
           }
         ],
         "confidence": "high"
@@ -84,7 +84,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -114,7 +114,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -144,7 +144,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -174,7 +174,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "9 days ago"
           }
         ],
         "confidence": "low"
@@ -218,7 +218,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "2 days ago"
+            "detail": "8 days ago"
           }
         ],
         "confidence": "high"
@@ -248,7 +248,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -278,7 +278,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -308,7 +308,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -338,7 +338,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "9 days ago"
           }
         ],
         "confidence": "low"
@@ -357,5 +357,7 @@
       "source": "attribute",
       "resource": "aws_instance.app"
     }
-  ]
+  ],
+  "outcome_matches": [],
+  "plan_fingerprint": "c68170f30a615400"
 }

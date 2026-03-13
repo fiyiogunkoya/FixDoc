@@ -1,6 +1,6 @@
 {
-  "analysis_id": "390102fd",
-  "timestamp": "2026-03-07T10:48:41.282668+00:00",
+  "analysis_id": "aab85dc6",
+  "timestamp": "2026-03-13T17:42:09.661075+00:00",
   "score": 45.0,
   "severity": "medium",
   "changes": [
@@ -25,19 +25,19 @@
   ],
   "affected": [
     {
-      "address": "aws_iam_instance_profile.app",
-      "depth": 1,
-      "path": [
-        "aws_iam_role.app",
-        "aws_iam_instance_profile.app"
-      ]
-    },
-    {
       "address": "aws_iam_role_policy_attachment.app",
       "depth": 1,
       "path": [
         "aws_iam_role.app",
         "aws_iam_role_policy_attachment.app"
+      ]
+    },
+    {
+      "address": "aws_iam_instance_profile.app",
+      "depth": 1,
+      "path": [
+        "aws_iam_role.app",
+        "aws_iam_instance_profile.app"
       ]
     },
     {
@@ -52,19 +52,19 @@
   ],
   "why_paths": [
     {
-      "target": "aws_iam_instance_profile.app",
-      "depth": 1,
-      "path": [
-        "aws_iam_role.app",
-        "aws_iam_instance_profile.app"
-      ]
-    },
-    {
       "target": "aws_iam_role_policy_attachment.app",
       "depth": 1,
       "path": [
         "aws_iam_role.app",
         "aws_iam_role_policy_attachment.app"
+      ]
+    },
+    {
+      "target": "aws_iam_instance_profile.app",
+      "depth": 1,
+      "path": [
+        "aws_iam_role.app",
+        "aws_iam_instance_profile.app"
       ]
     },
     {
@@ -125,7 +125,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -155,7 +155,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -185,7 +185,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -215,7 +215,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -245,7 +245,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -275,7 +275,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -305,7 +305,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -335,7 +335,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -365,7 +365,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -395,7 +395,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -449,7 +449,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -479,7 +479,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -509,7 +509,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -539,7 +539,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -569,7 +569,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -599,7 +599,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -629,7 +629,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -659,7 +659,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -689,7 +689,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -719,7 +719,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -743,5 +743,7 @@
       "source": "history",
       "resource": "aws_iam_role.app"
     }
-  ]
+  ],
+  "outcome_matches": [],
+  "plan_fingerprint": "83ca8a04475840c9"
 }

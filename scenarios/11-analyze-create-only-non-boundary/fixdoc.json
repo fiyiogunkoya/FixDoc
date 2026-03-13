@@ -1,8 +1,8 @@
 {
-  "analysis_id": "0833f0c7",
-  "timestamp": "2026-03-07T10:48:01.251268+00:00",
-  "score": 24.4,
-  "severity": "low",
+  "analysis_id": "8d00455b",
+  "timestamp": "2026-03-13T17:41:13.611712+00:00",
+  "score": 29.4,
+  "severity": "medium",
   "changes": [
     {
       "address": "aws_instance.app",
@@ -66,13 +66,19 @@
     "Confirm AMI exists and is shared to this account",
     "Verify instance type availability in target AZ and region",
     "Subnet CIDR change forces replacement \u2014 check ENI dependencies",
-    "CIDR change forces replacement \u2014 verify peering/route table dependencies"
+    "CIDR change forces replacement \u2014 verify peering/route table dependencies",
+    "Prior fix: enabled colima to make sure docker daemon was running"
   ],
   "history_matches": [
     {
       "id": "9c8242a1",
       "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
       "resource_type": "aws_instance"
+    },
+    {
+      "id": "bd4224b7",
+      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
+      "resource_type": "aws_vpc"
     },
     {
       "id": "8b9275a7",
@@ -107,7 +113,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "2 days ago"
+            "detail": "8 days ago"
           }
         ],
         "confidence": "high"
@@ -115,6 +121,40 @@
       "matched_resources": [
         {
           "address": "aws_instance.app",
+          "action": "create"
+        }
+      ]
+    },
+    {
+      "fix_id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
+      "id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
+      "short_id": "bd4224b7",
+      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
+      "resolution": "enabled colima to make sure docker daemon was running",
+      "tags": "terraform,aws,aws_vpc,0,terraform,aws,aws_vpc,0",
+      "created_at": "2026-03-13T15:18:18.914249+00:00",
+      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts, 9, https response error StatusCode: 0, RequestID: , request send failed, Post \"http://localhost:4566/\": dial tcp [::1]:4566: connect: connection refused\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_vpc.main,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 8, in resource \"aws_vpc\" \"main\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   8: resource \"aws_vpc\" \"main\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31m",
+      "score": 150,
+      "confidence": "high",
+      "match_reason": {
+        "signal": "address",
+        "detail": "aws_vpc.main",
+        "resource_type": "aws_vpc",
+        "supporting_signals": [
+          {
+            "signal": "type_action",
+            "detail": "create"
+          },
+          {
+            "signal": "recency",
+            "detail": "0 days ago"
+          }
+        ],
+        "confidence": "high"
+      },
+      "matched_resources": [
+        {
+          "address": "aws_vpc.main",
           "action": "create"
         }
       ]
@@ -137,7 +177,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "medium"
@@ -171,7 +211,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -201,7 +241,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -231,7 +271,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -261,7 +301,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "9 days ago"
           }
         ],
         "confidence": "low"
@@ -306,8 +346,8 @@
       "kind": "action"
     },
     {
-      "label": "Prior similar incidents detected in fix history (2 matches)",
-      "delta": 10.0,
+      "label": "Prior similar incidents detected in fix history (3 matches)",
+      "delta": 15.0,
       "kind": "history"
     },
     {
@@ -335,7 +375,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "2 days ago"
+            "detail": "8 days ago"
           }
         ],
         "confidence": "high"
@@ -343,6 +383,40 @@
       "matched_resources": [
         {
           "address": "aws_instance.app",
+          "action": "create"
+        }
+      ]
+    },
+    {
+      "fix_id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
+      "id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
+      "short_id": "bd4224b7",
+      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
+      "resolution": "enabled colima to make sure docker daemon was running",
+      "tags": "terraform,aws,aws_vpc,0,terraform,aws,aws_vpc,0",
+      "created_at": "2026-03-13T15:18:18.914249+00:00",
+      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts, 9, https response error StatusCode: 0, RequestID: , request send failed, Post \"http://localhost:4566/\": dial tcp [::1]:4566: connect: connection refused\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_vpc.main,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 8, in resource \"aws_vpc\" \"main\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   8: resource \"aws_vpc\" \"main\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31m",
+      "score": 150,
+      "confidence": "high",
+      "match_reason": {
+        "signal": "address",
+        "detail": "aws_vpc.main",
+        "resource_type": "aws_vpc",
+        "supporting_signals": [
+          {
+            "signal": "type_action",
+            "detail": "create"
+          },
+          {
+            "signal": "recency",
+            "detail": "0 days ago"
+          }
+        ],
+        "confidence": "high"
+      },
+      "matched_resources": [
+        {
+          "address": "aws_vpc.main",
           "action": "create"
         }
       ]
@@ -365,7 +439,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "medium"
@@ -399,7 +473,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -429,7 +503,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -459,7 +533,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "low"
@@ -489,7 +563,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "3 days ago"
+            "detail": "9 days ago"
           }
         ],
         "confidence": "low"
@@ -522,6 +596,13 @@
       "check": "CIDR change forces replacement \u2014 verify peering/route table dependencies",
       "source": "attribute",
       "resource": "aws_vpc.main"
+    },
+    {
+      "check": "Prior fix: enabled colima to make sure docker daemon was running",
+      "source": "history",
+      "resource": "aws_vpc.main"
     }
-  ]
+  ],
+  "outcome_matches": [],
+  "plan_fingerprint": "e24832e85db23993"
 }

@@ -2,16 +2,16 @@
 
 Stop losing infrastructure fixes in Slack threads — capture, search, and share them from your terminal.
 
-FixDoc is a CLI tool for cloud engineers that turns raw Terraform and Kubernetes error output into a searchable, version-controlled knowledge base that's risk aware and CI gate friendly. With Fixdoc you are building an intelligent error knowledge platform that guards your deployments and lets you understand wider infrastructure impact through smart analysis.
+FixDoc is a CLI tool for cloud engineers that turns raw Terraform and Kubernetes error output into a searchable, version-controlled knowledge base that's risk aware and CI gate friendly. With FixDoc you are building an intelligent error knowledge platform that guards your deployments and lets you understand wider infrastructure impact through smart analysis.
 
 ## See It In Action
 
 ```bash
-# Pipe errors directly from any command
-terraform apply 2>&1 | fixdoc capture
-
-# Or wrap the command — auto-captures on failure
+# Wrap any command — errors auto-deferred on failure
 fixdoc watch -- terraform apply
+
+# Capture from piped output
+terraform apply 2>&1 | fixdoc capture
 
 # Search your fix history
 fixdoc search "S3 access denied"
@@ -27,40 +27,61 @@ fixdoc search "S3 access denied"
     Resolution: Switch client to us-east-1; presigned URLs are region-scoped
 ```
 
+## Recommended Workflow
+
+The fastest path to getting value out of FixDoc:
+
+```bash
+# 1. Try the demo — no cloud account needed
+fixdoc demo tour
+
+# 2. Wrap your next deploy
+fixdoc watch -- terraform apply
+
+# 3. On failure: errors are auto-deferred. Come back when ready.
+fixdoc pending          # list deferred errors
+fixdoc pending capture 1  # write up fix #1
+
+# 4. On success: FixDoc prompts you to close out any pending errors
+#    (or run fixdoc resolve if you're coming back later)
+fixdoc resolve
+
+# 5. Before the next apply, analyze the plan
+terraform plan -out=plan.tfplan && terraform show -json plan.tfplan > plan.json
+fixdoc analyze plan.json
+```
+
 ## Try It in 30 Seconds
 
-Not sure what FixDoc does yet? Run the interactive tour:
+Run the interactive tour — no cloud account needed:
 
 ```bash
 fixdoc demo tour
 ```
 
-The tour walks you through five steps — capturing a real Terraform AWS error, capturing a Kubernetes CrashLoopBackOff, searching your database, viewing list and stats, and analyzing a Terraform plan — all without needing an actual cloud account. Every fix captured during the tour is saved to your local database so you can explore it afterwards with `fixdoc list` and `fixdoc show`.
+The tour walks you through capturing a real Terraform AWS error, a Kubernetes CrashLoopBackOff, searching your database, listing stats, and analyzing a Terraform plan. Every fix captured during the tour is saved locally so you can explore it afterwards.
 
-If you just want to pre-populate your database with realistic example fixes to try searching and analysis:
+Pre-populate your database with realistic sample fixes:
 
 ```bash
 fixdoc demo seed
-```
-
-This adds six sample fixes covering common AWS and Kubernetes failures, all tagged `demo` so you can clean them up later:
-
-```bash
 fixdoc demo seed --clean   # remove old demo data before re-seeding
 ```
 
 ## What It Does
 
 **Core workflow:**
-- Pipe or wrap any command — auto-detects Terraform and Kubernetes errors and prompts for your resolution
-- Surfaces similar fixes from your history before creating duplicates, so you find the existing answer instead of writing a redundant entry
-- Stores everything as searchable JSON plus human-readable markdown in `~/.fixdoc/`
+- Pipe or wrap any command — auto-detects Terraform and Kubernetes errors
+- On failure, all errors are immediately deferred to a per-project pending queue (no blocking prompts)
+- Surfaces similar fixes from your history before creating duplicates
+- Stores everything as searchable JSON + human-readable markdown in `~/.fixdoc/`
 
 **Team and CI features:**
 - Sync fixes with your team via a shared Git repo
 - Analyze Terraform plans against your fix history before `apply` to surface known failure patterns
 - Gate CI pipelines on blast radius severity (`--exit-on high`)
-- Defer errors to a pending queue and capture them later when you have time
+- Record apply outcomes and surface historical prediction accuracy in future analyses
+- Bulk import closed tickets from Jira, ServiceNow, Notion, and Slack
 
 ## Installation
 
@@ -76,37 +97,67 @@ pipx install fixdoc
 pip install fixdoc
 ```
 
-> **Note:** After installing with pip, make sure `fixdoc` is on your PATH. If the command isn't found, your Python scripts directory may not be in `PATH`. You can fix this by running `pip show -f fixdoc | grep fixdoc` to find the binary location and adding that directory to your `PATH`, or by using `python3 -m fixdoc` as an alternative.
+> **Note:** After installing with pip, make sure `fixdoc` is on your PATH. If the command isn't found, run `pip show -f fixdoc | grep fixdoc` to find the binary location and add that directory to your `PATH`, or use `python3 -m fixdoc` as an alternative.
 
-Requires Python 3.9+. Only runtime dependencies are `click` and `pyyaml`.
+Requires Python 3.9+. Runtime dependencies: `click` and `pyyaml` only.
+
+**Optional — AI-powered plan explanations:**
+
+```bash
+pip install fixdoc[ai]   # adds anthropic SDK for --ai-explain on fixdoc analyze
+```
 
 ## Command Reference
 
 ### Capturing Fixes
 
-**Pipe mode** — run your command and pipe its output into fixdoc:
-
-```bash
-terraform apply 2>&1 | fixdoc capture
-kubectl apply -f deployment.yaml 2>&1 | fixdoc capture
-```
-
-FixDoc reads from stdin, auto-detects the error source (Terraform, Kubernetes, or generic), extracts structured metadata (provider, resource type, error code), checks your history for similar fixes, and prompts you to write the resolution.
-
-**Watch mode** — wrap your command so FixDoc captures errors automatically on failure:
+**Watch mode** — wrap your command; errors auto-defer on failure, auto-resolve on success:
 
 ```bash
 fixdoc watch -- terraform apply
 fixdoc watch --tags aws,prod -- terraform apply -target=aws_instance.web
 ```
 
-On success, the wrapped command exits normally. On failure, FixDoc parses the output and presents all detected errors. If multiple errors are found, it shows a summary table and lets you handle each one individually — capture a new fix, use an existing match, skip, or defer to the pending queue. The original exit code is always preserved, so this is safe to drop into any CI script.
+On failure, all detected errors are immediately deferred to `.fixdoc-pending` (no blocking prompts). A summary card is shown. Press `[c]` to capture one immediately, or `[s]` to skip. The original exit code is always preserved — safe in any CI script.
 
-**Quick capture** — write a fix directly without piping anything:
+On success, FixDoc checks for pending errors from the same session and prompts you to close them out.
+
+**Pipe mode** — capture from any command's output:
+
+```bash
+terraform apply 2>&1 | fixdoc capture
+kubectl apply -f deployment.yaml 2>&1 | fixdoc capture
+```
+
+FixDoc reads from stdin, auto-detects the error source (Terraform, Kubernetes, or generic), extracts structured metadata, checks for similar existing fixes, and prompts for the resolution.
+
+**Quick capture** — write a fix directly:
 
 ```bash
 fixdoc capture --issue "RDS connection timeout" --resolution "Increase connection pool size in db.py"
 ```
+
+### Pending Queue
+
+Errors deferred during `watch` sessions land here. Project-scoped, stored in `.fixdoc-pending` at your git root.
+
+```bash
+fixdoc pending              # list deferred errors
+fixdoc pending capture 1    # write a fix for error #1
+fixdoc pending capture a3f9 # capture by ID prefix
+fixdoc pending remove 1     # discard without capturing
+fixdoc pending clear        # clear all pending entries
+```
+
+### Resolve
+
+Document fixes for deferred errors in the current directory. Useful when coming back to a failed deploy:
+
+```bash
+fixdoc resolve
+```
+
+This finds all pending entries for the current working directory and walks you through them one by one.
 
 ### Searching and Browsing
 
@@ -119,7 +170,7 @@ fixdoc list --limit 20                # show more
 fixdoc stats                          # tag distribution, totals, coverage
 ```
 
-Search matches against the issue description, resolution text, tags, error excerpt, and resource metadata — so `fixdoc search aws_s3_bucket` finds fixes that mention that resource type even if the search term doesn't appear in the summary.
+Search matches against issue description, resolution text, tags, error excerpt, and resource metadata — so `fixdoc search aws_s3_bucket` finds fixes mentioning that resource type even if the term isn't in the summary.
 
 ### Editing and Deleting
 
@@ -130,7 +181,7 @@ fixdoc delete abc12345  # permanently remove a fix
 
 ### Analyzing Terraform Plans
 
-Before running `terraform apply`, generate a plan JSON and run it through FixDoc to surface any resources that have caused problems in your history:
+Before `terraform apply`, generate a plan JSON and run it through FixDoc to surface blast radius and known failure patterns:
 
 ```bash
 terraform plan -out=plan.tfplan
@@ -138,7 +189,7 @@ terraform show -json plan.tfplan > plan.json
 fixdoc analyze plan.json
 ```
 
-FixDoc reads the plan, identifies which resources are changing, traverses the Terraform dependency graph, and scores the potential blast radius of the change. It also matches changing resources against your fix history and flags any known failure patterns with their stored resolutions.
+FixDoc traverses the Terraform dependency graph, scores blast radius using a sigmoid formula (affected count, IAM/network boundary criticality, action type, fix history), matches changing resources against your fix history, and surfaces historical apply outcomes.
 
 ```
 Terraform Plan Analysis
@@ -146,6 +197,11 @@ Terraform Plan Analysis
 5 resources changing (2 create, 1 update, 2 delete)
 
 Risk Score: 61 / 100  [HIGH]
+
+Why this scored 61:
+  +10  delete action on live resources
+  +8   IAM policy field changed
+  +15  network boundary in blast radius (depth 2)
 
 Changes:
   CREATE    aws_iam_role.deploy_role   [iam boundary]
@@ -157,9 +213,9 @@ Impacted Resources (8):
   aws_rds_cluster.main                 (depth: 2, via: aws_security_group.old_sg)
   ...
 
-Risk Warnings from History (2):
-  FIX-3a8f12c4: IAM role missing lambda:InvokeFunction — lambda failed silently
-  FIX-91b0e5aa: SG deletion broke RDS inbound rule — apply rolled back
+Relevant Past Fixes (2):
+  [high: error code: MissingPolicyStatement] IAM role missing lambda:InvokeFunction
+  [medium: resource type match] SG deletion broke RDS inbound rule — apply rolled back
 ```
 
 Options:
@@ -167,50 +223,88 @@ Options:
 ```bash
 fixdoc analyze plan.json --graph graph.dot       # provide DOT graph explicitly
 fixdoc analyze plan.json --format json           # machine-readable output
+fixdoc analyze plan.json --format markdown       # GitHub-flavored markdown for PR comments
 fixdoc analyze plan.json --summary               # one-line risk summary
 fixdoc analyze plan.json --exit-on high          # exit code 1 if HIGH or CRITICAL
 fixdoc analyze plan.json --match strict          # strict history matching
 fixdoc analyze plan.json --max-depth 3           # limit dependency traversal
+fixdoc analyze plan.json --ai-explain            # AI-generated plain-English explanation (requires fixdoc[ai])
+fixdoc analyze plan.json --record                # save this analysis as an outcome for future reference
+fixdoc analyze plan.json --record --pr 42 --commit abc123  # with CI metadata
 ```
 
-If terraform is on your PATH, FixDoc auto-runs `terraform graph` to build the dependency DAG — no `--graph` flag needed.
+If terraform is on your PATH, FixDoc auto-runs `terraform graph` — no `--graph` flag needed.
+
+### Apply Outcome Learning
+
+Record what actually happened after an apply and surface prediction accuracy in future analyses. Outcomes are stored in `.fixdoc-outcomes` at your git root.
+
+```bash
+# After apply completes, record the result (links to the prior analysis by plan fingerprint)
+fixdoc outcome record-apply --result success
+fixdoc outcome record-apply --result failure --error-output "$(cat apply.log)"
+
+# Browse recorded outcomes
+fixdoc outcome list            # table of all outcomes with link status
+fixdoc outcome show abc12345   # full detail for one outcome
+```
+
+Future `fixdoc analyze` runs surface matching historical outcomes in a "Historical Apply Outcomes" section, showing whether prior predictions were accurate — observational only, does not alter the risk score.
 
 ### Blast Radius (Standalone)
 
-The blast radius engine is also available as a standalone command if you want just the risk score without the history matching:
+Risk score without history matching:
 
 ```bash
 fixdoc blast-radius plan.json
 fixdoc blast-radius plan.json --format json --exit-on critical
 ```
 
-### Pending Queue
+### Importing Fixes from External Systems
 
-When you're in the middle of a deployment and don't have time to write up a fix, defer the error to the pending queue and come back to it later:
+Bulk-import closed tickets from your existing issue trackers to bootstrap your fix database.
+
+**Jira** (CSV or JSON export):
 
 ```bash
-# During a watch session, choose "defer" for any error
-fixdoc watch -- terraform apply
-
-# Later, list what's pending
-fixdoc pending
-
-# Capture a specific pending error by number or ID
-fixdoc pending capture 1
-fixdoc pending capture a3f9
-
-# Remove one without capturing
-fixdoc pending remove 1
-
-# Clear everything
-fixdoc pending clear
+fixdoc import jira issues.csv
+fixdoc import jira backup.json --auto        # skip interactive review
+fixdoc import jira issues.csv --dry-run      # preview without saving
+fixdoc import jira issues.csv --tags team:platform,env:prod
 ```
 
-Pending entries are stored in `.fixdoc-pending` at your git repository root, so they're project-scoped and survive terminal sessions.
+**ServiceNow** (JSON export):
+
+```bash
+fixdoc import servicenow incidents.json
+fixdoc import servicenow incidents.json --auto --max 200
+```
+
+**Notion** (API-based):
+
+```bash
+fixdoc import notion --token secret_xxx --database abc123def456
+fixdoc import notion --token secret_xxx --database abc123def456 --auto
+```
+
+**Slack** (API-based, two-emoji convention):
+
+```bash
+fixdoc import slack --token xoxb-xxx --channel C0ABC1234
+fixdoc import slack --token xoxb-xxx --channel-name infra-incidents
+```
+
+Slack import uses a two-emoji convention: mark an incident message with `:red_circle:` and the resolution reply with `:white_check_mark:`. Required bot scopes: `channels:history`, `channels:read`, `users:read`, `reactions:read`.
+
+All importers:
+- Default to interactive review mode — shows each fix card with `[y]es / [e]dit / [s]kip / [a]ccept remaining / [q]uit`
+- `--auto` skips review, applying a high-signal filter (resource type tags or infra keywords)
+- `--dry-run` previews without saving
+- Tag each imported fix with `source:system:id` for idempotent re-runs
 
 ### Team Sync
 
-Share fixes with your team via a shared Git repo:
+Share fixes via a shared Git repo:
 
 ```bash
 fixdoc sync init git@github.com:your-org/infra-fixes.git
@@ -219,34 +313,36 @@ fixdoc sync pull                # pull and merge fixes from teammates
 fixdoc sync status              # show sync state
 ```
 
-Fixes marked as private (`is_private: true`) are always excluded from sync. On pull, FixDoc rebuilds the JSON database from the markdown files in the shared repo and merges with your local data, handling conflicts for fixes that were modified on both sides.
+Fixes marked `is_private: true` are always excluded from sync.
 
 ## How It Works
 
-Source-specific parsers (Terraform, Kubernetes, and a generic fallback) extract structured metadata from raw error output — provider, resource type, error code, resource address — so fixes are queryable by field, not just full-text searchable. A similarity engine scores your existing fixes before capture so you see potentially matching resolutions before writing a new entry.
+Source-specific parsers (Terraform, Kubernetes, and a generic fallback) extract structured metadata from raw error output — provider, resource type, error code, resource address — so fixes are queryable by field, not just full-text searchable. A similarity engine scores existing fixes before capture so you see matching resolutions before writing a new entry.
 
-Everything persists as structured JSON plus a human-readable markdown file per fix, so your database is both machine-queryable and readable in any editor or GitHub repository. The analysis command traverses your Terraform dependency graph using bounded BFS propagation and scores blast radius with a sigmoid formula that weights affected resource count, control point criticality (IAM, RBAC, network boundaries), action type, and fix history. Sensitive field values are redacted before any output is written.
+Everything persists as structured JSON plus a human-readable markdown file per fix. The analysis engine traverses your Terraform dependency graph using bounded BFS propagation, scores blast radius with a sigmoid formula weighting IAM/network control points, and matches changes against fix history using multi-signal scoring (error code, resource address, changed attributes, recency). Sensitive field values are redacted before any output is written.
 
 ## CI Integration
 
-Quick start — add this to any workflow that generates a Terraform plan:
+Quick start — add to any workflow that generates a Terraform plan:
 
 ```yaml
 - name: Analyze risk
   run: |
     terraform show -json plan.tfplan > plan.json
-    fixdoc analyze plan.json --exit-on high
+    fixdoc analyze plan.json --exit-on high --record --pr ${{ github.event.pull_request.number }}
 ```
 
 ### Review Modes
 
-The included GitHub Actions workflow (`.github/workflows/terraform-risk-analysis.yml`) supports three review modes via the `REVIEW_MODE` env var or `workflow_dispatch` input:
+The included workflow (`.github/workflows/terraform-risk-analysis.yml`) supports three modes via `REVIEW_MODE`:
 
 | Mode | Behavior |
 |------|----------|
 | `advisory` (default) | Posts analysis to job summary + PR comment. Never blocks. |
 | `warn` | Same as advisory + adds GitHub warning annotation if high/critical. |
 | `gate` | Same as warn + fails the workflow if severity >= `GATE_THRESHOLD`. |
+
+A second workflow, `.github/workflows/terraform-apply-outcome.yml`, records apply results post-merge and links them back to the corresponding analysis outcome.
 
 ### `--exit-on` for CI Gating
 
@@ -265,20 +361,14 @@ fixdoc analyze plan.json --exit-on low        # fail on any non-zero score
 | Markdown | `--format markdown` | PR comments and job summaries |
 | Summary | `--summary` | One-line risk summary |
 
-The workflow uses `--format markdown` for PR comments and `--format json` to extract severity for gating decisions.
-
-See `.github/workflows/terraform-risk-analysis.yml` for the full workflow with matrix strategy, PR comments, and review mode support.
-
 ## Local Development & Testing
 
 Prerequisites: Python 3.9+, Docker, Docker Compose, Terraform ≥ 1.5
 
-Quick start:
-
 ```bash
 bash scripts/setup-dev.sh   # check deps + install Python packages
 make localstack-up          # start LocalStack mock AWS (port 4566)
-make test                   # run 579 tests
+make test                   # run 822 tests
 make scenarios              # run full LocalStack scenario matrix
 ```
 
@@ -299,7 +389,7 @@ bash scripts/setup-dev.sh
 source .venv/bin/activate
 ```
 
-Run `make test` (579 tests). Format with `make fmt` and lint with `make lint`.
+Run `make test` (822 tests). Format with `make fmt` and lint with `make lint`.
 
 Good places to start: new error parsers live in `src/fixdoc/parsers/` and share a common interface; new CLI commands are self-contained files in `src/fixdoc/commands/`; the GitHub Actions integration is at `.github/workflows/terraform-risk-analysis.yml`.
 

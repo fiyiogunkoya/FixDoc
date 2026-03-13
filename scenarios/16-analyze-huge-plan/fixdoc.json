@@ -1,6 +1,6 @@
 {
-  "analysis_id": "f00588ca",
-  "timestamp": "2026-03-07T10:50:19.360397+00:00",
+  "analysis_id": "2ecca789",
+  "timestamp": "2026-03-13T17:45:30.911970+00:00",
   "score": 45.0,
   "severity": "medium",
   "changes": [
@@ -3372,7 +3372,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -3598,7 +3598,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -3824,7 +3824,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -4050,7 +4050,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -4276,7 +4276,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -4502,7 +4502,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -4728,7 +4728,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -4954,7 +4954,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -5180,7 +5180,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -5406,7 +5406,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -6901,7 +6901,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -7127,7 +7127,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -7353,7 +7353,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -7579,7 +7579,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -7805,7 +7805,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -8031,7 +8031,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -8257,7 +8257,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -8483,7 +8483,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -8709,7 +8709,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -8935,7 +8935,7 @@
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "4 days ago"
+            "detail": "10 days ago"
           }
         ],
         "confidence": "high"
@@ -9185,5 +9185,7 @@
       "source": "category",
       "resource": "aws_security_group.bulk[0]"
     }
-  ]
+  ],
+  "outcome_matches": [],
+  "plan_fingerprint": "622bd5e650ebc5fa"
 }

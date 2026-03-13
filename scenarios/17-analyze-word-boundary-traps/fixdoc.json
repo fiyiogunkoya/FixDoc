@@ -1,6 +1,6 @@
 {
-  "analysis_id": "54de73fa",
-  "timestamp": "2026-03-07T10:50:26.548949+00:00",
+  "analysis_id": "c88467e2",
+  "timestamp": "2026-03-13T17:46:00.426018+00:00",
   "score": 4.8,
   "severity": "low",
   "changes": [
@@ -55,5 +55,7 @@
     }
   ],
   "relevant_fixes": [],
-  "contextual_checks": []
+  "contextual_checks": [],
+  "outcome_matches": [],
+  "plan_fingerprint": "4e3c82afdb6ecf1d"
 }

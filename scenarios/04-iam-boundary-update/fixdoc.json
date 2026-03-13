@@ -1,6 +1,6 @@
 {
-  "analysis_id": "162e9cfe",
-  "timestamp": "2026-03-07T10:47:04.385003+00:00",
+  "analysis_id": "478d8ca9",
+  "timestamp": "2026-03-13T17:37:59.989505+00:00",
   "score": 18.5,
   "severity": "low",
   "changes": [
@@ -98,5 +98,7 @@
       "source": "attribute",
       "resource": "aws_iam_role_policy.inline"
     }
-  ]
+  ],
+  "outcome_matches": [],
+  "plan_fingerprint": "582cebf0f41f84a9"
 }
