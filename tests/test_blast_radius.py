@@ -2571,3 +2571,153 @@ class TestAnalyzeFormatMarkdown:
         # Should be truncated to 80 chars + "..."
         assert "A" * 80 + "..." in output
         assert "A" * 120 not in output
+
+
+# ===================================================================
+# TestAINarrative
+# ===================================================================
+
+
+class TestAINarrative:
+    """Tests for generate_ai_narrative() and its integration."""
+
+    def test_generate_ai_narrative_builds_prompt(self):
+        """Mock anthropic client and assert prompt contains required content."""
+        from fixdoc.commands.analyze import generate_ai_narrative, PlanResource
+        from fixdoc.parsers.base import CloudProvider
+
+        changed = [
+            PlanResource(
+                address="aws_iam_role.app",
+                resource_type="aws_iam_role",
+                name="app",
+                cloud_provider=CloudProvider.AWS,
+                action="replace",
+            ),
+            PlanResource(
+                address="aws_security_group.web",
+                resource_type="aws_security_group",
+                name="web",
+                cloud_provider=CloudProvider.AWS,
+                action="update",
+            ),
+        ]
+        result = _make_result_with_warnings([])
+        result.control_points = [{"address": "aws_iam_role.app"}]
+        result.affected = [{"address": "aws_instance.app", "depth": 1, "path": []}]
+        result.severity = "high"
+        result.score = 72.0
+        result.contextual_checks = [
+            {"check": "Verify trust policy", "source": "attr", "resource": "aws_iam_role.app"},
+        ]
+        result.relevant_fixes = [
+            {"issue": "IAM role replacement can break instance profiles", "short_id": "abc123"},
+        ]
+
+        captured_prompt = []
+
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text="This change replaces an IAM role.")]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+
+        import sys
+        mock_anthropic = MagicMock()
+        mock_anthropic.Anthropic.return_value = mock_client
+
+        with patch.dict(sys.modules, {"anthropic": mock_anthropic}):
+            # Reload to pick up mock
+            import importlib
+            mod = importlib.import_module("fixdoc.commands.analyze")
+            narrative = mod.generate_ai_narrative(result, changed, "test-key")
+
+        assert narrative == "This change replaces an IAM role."
+        call_args = mock_client.messages.create.call_args
+        prompt_text = call_args[1]["messages"][0]["content"]
+        assert "aws_iam_role" in prompt_text
+        assert "replace" in prompt_text
+        assert "aws_security_group" in prompt_text
+        assert "HIGH" in prompt_text
+        assert "72" in prompt_text
+
+    def test_generate_ai_narrative_returns_none_on_import_error(self):
+        """Returns None when anthropic is not installed."""
+        from fixdoc.commands.analyze import generate_ai_narrative
+
+        import sys
+        with patch.dict(sys.modules, {"anthropic": None}):
+            import importlib
+            mod = importlib.import_module("fixdoc.commands.analyze")
+            result = _make_result_with_warnings([])
+            narrative = mod.generate_ai_narrative(result, _make_changed(), "test-key")
+        # None when import fails
+        assert narrative is None
+
+    def test_generate_ai_narrative_returns_none_on_api_error(self):
+        """Returns None when API call raises an exception."""
+        import sys
+        mock_anthropic = MagicMock()
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("API error")
+        mock_anthropic.Anthropic.return_value = mock_client
+
+        with patch.dict(sys.modules, {"anthropic": mock_anthropic}):
+            import importlib
+            mod = importlib.import_module("fixdoc.commands.analyze")
+            result = _make_result_with_warnings([])
+            narrative = mod.generate_ai_narrative(result, _make_changed(), "test-key")
+
+        assert narrative is None
+
+    def test_format_human_with_ai_narrative(self):
+        """Narrative appears before score explanation in human output."""
+        from fixdoc.commands.analyze import _format_human
+
+        result = _make_result_with_warnings([])
+        result.score_explanation = [{"label": "IAM boundary modified", "delta": 20, "kind": "iam"}]
+        narrative = "This change updates an IAM role and security group. It received a HIGH risk rating due to the IAM boundary modification and downstream impact on EC2 instances."
+
+        output = _format_human(result, _make_changed(), ai_narrative=narrative)
+
+        assert "AI Summary:" in output
+        assert "IAM role" in output
+        # Narrative should appear before the score explanation block
+        assert output.index("AI Summary:") < output.index("Why this scored")
+
+    def test_format_human_no_narrative_without_flag(self):
+        """No AI Summary section when ai_narrative is None."""
+        from fixdoc.commands.analyze import _format_human
+
+        result = _make_result_with_warnings([])
+        output = _format_human(result, _make_changed())
+
+        assert "AI Summary:" not in output
+
+    def test_analyze_command_calls_generate_ai_narrative(self, tmp_path):
+        """CLI with --ai-explain calls both generate_ai_explanation and generate_ai_narrative."""
+        from click.testing import CliRunner
+        from fixdoc.fix import create_cli
+
+        runner = CliRunner(mix_stderr=False)
+        plan_path = tmp_path / "plan.json"
+        plan = make_plan([
+            make_resource_change("aws_iam_role.app", "aws_iam_role", ["update"]),
+        ])
+        plan_path.write_text(json.dumps(plan))
+
+        with patch.object(_analyze_cmd_mod, "_auto_run_terraform_graph", return_value=None), \
+             patch.object(_analyze_cmd_mod, "generate_ai_explanation", return_value="• AI bullet") as mock_explain, \
+             patch.object(_analyze_cmd_mod, "generate_ai_narrative", return_value="AI narrative text.") as mock_narrative:
+
+            result = runner.invoke(
+                create_cli(),
+                ["analyze", str(plan_path), "--ai-explain"],
+                obj=make_obj(tmp_path),
+                env={"ANTHROPIC_API_KEY": "sk-test"},
+            )
+
+        assert result.exit_code == 0
+        mock_explain.assert_called_once()
+        mock_narrative.assert_called_once()
+        assert "AI Summary:" in result.output
+        assert "AI narrative text." in result.output

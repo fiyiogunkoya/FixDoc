@@ -324,6 +324,7 @@ def _format_human(
     changed: list[PlanResource],
     verbose: bool = False,
     ai_explanation: Optional[str] = None,
+    ai_narrative: Optional[str] = None,
 ) -> str:
     """Format unified analysis result for human-readable terminal output."""
     lines = []
@@ -365,6 +366,13 @@ def _format_human(
     score_line = f"Risk Score: {result.score} / 100  [{sev}]"
     lines.append(click.style(score_line, fg=color))
     lines.append("")
+
+    # AI narrative block (plan-level summary, shown at top before score explanation)
+    if ai_narrative:
+        lines.append("AI Summary:")
+        for line in ai_narrative.strip().splitlines():
+            lines.append(f"  {line}")
+        lines.append("")
 
     # Score explanation block
     if ai_explanation:
@@ -695,6 +703,7 @@ def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
     try:
         import anthropic
     except ImportError:
+        print("could not import anthropic")
         return None
 
     bullet_labels = [item["label"] for item in result.score_explanation]
@@ -728,6 +737,84 @@ def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text
+    except Exception:
+        return None
+
+
+def generate_ai_narrative(
+    result: BlastResult,
+    changed: list,
+    api_key: str,
+) -> Optional[str]:
+    """Call the Claude API to generate a plain-English plan-level narrative.
+
+    Returns a 2-3 sentence summary answering "what is this change doing and
+    why is it risky?", or None if anthropic is not installed or the call fails.
+    """
+    try:
+        import anthropic
+    except ImportError:
+        return None
+
+    # Build resource summary string: group by action
+    action_groups: dict = {}
+    for r in changed:
+        action_groups.setdefault(r.action, []).append(r.resource_type)
+
+    resource_parts = []
+    for action, types in action_groups.items():
+        # Count occurrences per type
+        type_counts: dict = {}
+        for t in types:
+            type_counts[t] = type_counts.get(t, 0) + 1
+        for rtype, count in type_counts.items():
+            if count > 1:
+                resource_parts.append(f"{rtype} ({action} ×{count})")
+            else:
+                resource_parts.append(f"{rtype} ({action})")
+    resource_summary = ", ".join(resource_parts) if resource_parts else "no resources"
+
+    # Control points (up to 3)
+    control_point_addrs = [cp["address"] for cp in result.control_points[:3]]
+
+    # Top 2 contextual checks
+    ctx_checks = result.contextual_checks[:2]
+    check_texts = [c.get("check", "") for c in ctx_checks if c.get("check")]
+
+    # Top 1 relevant fix issue
+    known_issue = None
+    if result.relevant_fixes:
+        known_issue = result.relevant_fixes[0].get("issue", "")[:120]
+
+    prompt_parts = [
+        f"A Terraform plan has been analyzed and scored {result.score}/100 ({result.severity.upper()} severity) for blast radius risk.",
+        f"Resources changing: {resource_summary}.",
+    ]
+    if control_point_addrs:
+        prompt_parts.append(f"Control points (IAM/network boundaries): {', '.join(control_point_addrs)}.")
+    if result.affected:
+        prompt_parts.append(f"Downstream impacted resources: {len(result.affected)}.")
+    if check_texts:
+        prompt_parts.append(f"Key checks flagged: {'; '.join(check_texts)}.")
+    if known_issue:
+        prompt_parts.append(f"Known issue pattern from fix history: {known_issue}.")
+    prompt_parts.append(
+        f"\nIn 2-3 sentences, describe what this infrastructure change does and explain "
+        f"why it received a {result.severity.upper()} risk rating. "
+        "Write for a senior cloud engineer reviewing a PR. "
+        "Be specific about the actual resource types. No bullet points, no headers."
+    )
+
+    prompt = "\n".join(prompt_parts)
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
         return message.content[0].text
@@ -979,8 +1066,9 @@ def analyze(
         except Exception as e:
             click.echo(f"Warning: Failed to record outcome: {e}", err=True)
 
-    # Optional AI explanation
+    # Optional AI explanation and narrative
     ai_explanation = None
+    ai_narrative = None
     if ai_explain:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
@@ -989,6 +1077,8 @@ def analyze(
             ai_explanation = generate_ai_explanation(result, api_key)
             if ai_explanation is None:
                 click.echo("Warning: AI explanation failed, falling back to rule-based.", err=True)
+            ai_narrative = generate_ai_narrative(result, changed, api_key)
+            # failure is silent — ai_explanation already warned if key missing
 
     # Output
     if summary:
@@ -1002,7 +1092,7 @@ def analyze(
     elif output_format == "markdown":
         click.echo(_format_markdown(result))
     else:
-        click.echo(_format_human(result, changed, verbose=verbose, ai_explanation=ai_explanation))
+        click.echo(_format_human(result, changed, verbose=verbose, ai_explanation=ai_explanation, ai_narrative=ai_narrative))
 
     # CI gating
     if exit_on is not None:
