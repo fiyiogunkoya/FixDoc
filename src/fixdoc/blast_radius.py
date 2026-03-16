@@ -1039,77 +1039,21 @@ def extract_change_fingerprint(change_block: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Unified smart matching
+# Unified smart matching (delegated to relevance.py)
 # ---------------------------------------------------------------------------
 
-# Error code extraction patterns (reused from suggestions.py logic)
-_ERROR_CODE_RE = re.compile(
-    r'(?:api error |error:\s*|code[:\s]*["\']?)(\w+(?:\.\w+)*)',
-    re.IGNORECASE,
+# Re-export helpers that were moved to relevance.py for backward compat
+from .relevance import (  # noqa: E402, F401
+    _ERROR_CODE_RE,
+    _CAMEL_CASE_RE,
+    _extract_error_codes_from_text,
+    _extract_module_path,
+    _strip_index,
+    _leaf_address,
+    _fix_matches_resource_type,
+    RelevanceMatcher,
+    format_match_narrative,
 )
-_CAMEL_CASE_RE = re.compile(r'\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b')
-
-
-def _extract_error_codes_from_text(text: str) -> set:
-    """Extract error codes from fix text (issue, error_excerpt, tags)."""
-    codes = set()
-    for m in _ERROR_CODE_RE.finditer(text):
-        codes.add(m.group(1).lower())
-    for m in _CAMEL_CASE_RE.finditer(text):
-        codes.add(m.group(1).lower())
-    return codes
-
-
-def _extract_module_path(address: str) -> Optional[str]:
-    """Extract module path prefix from a resource address.
-
-    e.g. 'module.networking.aws_vpc.main' -> 'module.networking'
-    """
-    parts = address.split(".")
-    module_parts = []
-    i = 0
-    while i < len(parts):
-        if parts[i] == "module" and i + 1 < len(parts):
-            module_parts.append(f"module.{parts[i + 1]}")
-            i += 2
-        else:
-            break
-    return ".".join(module_parts) if module_parts else None
-
-
-def _strip_index(address: str) -> str:
-    """Strip indexed suffix from address: aws_sg.bulk[0] -> aws_sg.bulk."""
-    idx = address.find("[")
-    return address[:idx] if idx >= 0 else address
-
-
-def _leaf_address(address: str) -> str:
-    """Strip module prefix to get leaf resource address.
-
-    module.web.aws_instance.app -> aws_instance.app
-    """
-    parts = address.split(".")
-    # Find the last resource_type.name pair
-    i = len(parts) - 1
-    while i >= 1:
-        if not parts[i - 1].startswith("module"):
-            return ".".join(parts[i - 1:])
-        i -= 1
-    return address
-
-
-def _fix_matches_resource_type(fix: "Fix", resource_type: str) -> bool:
-    """Check if a fix is related to a resource type via tags or text."""
-    rt_lower = resource_type.lower()
-    # Tag match
-    if fix.tags:
-        for tag in fix.tags.split(","):
-            if tag.strip().lower() == rt_lower:
-                return True
-    # Text match (word boundary)
-    pattern = re.compile(r'\b' + re.escape(rt_lower) + r'\b', re.IGNORECASE)
-    searchable = " ".join(filter(None, [fix.issue, fix.resolution, fix.error_excerpt]))
-    return bool(pattern.search(searchable))
 
 
 def find_relevant_fixes(
@@ -1117,254 +1061,17 @@ def find_relevant_fixes(
     repo: "FixRepository",
     max_total: int = 10,
 ) -> list:
-    """Find fixes relevant to the changed nodes using multi-signal scoring.
+    """Find fixes relevant to the changed nodes using attribute-first scoring.
 
-    Replaces both find_resource_prior_fixes() and compute_history_prior().
-    Each fix is scored against each changed node. Highest score per fix wins.
+    Thin wrapper around RelevanceMatcher. Replaces both
+    find_resource_prior_fixes() and compute_history_prior().
 
     Returns list[dict] with fix_id, score, confidence, match_reason,
-    matched_resources, plus full fix fields for display.
+    matched_resources, domain, similar_count, narrative.
     """
-    actionable = [n for n in nodes if is_actionable_change(n)]
-    if not actionable:
-        return []
-
-    all_fixes = repo.list_all()
-    if not all_fixes:
-        return []
-
-    # Pre-compute per-node data
-    node_data = []
-    for node in actionable:
-        fp = node.change_fingerprint or {}
-        changed_attrs = set(fp.get("changed_attrs", []))
-        attr_cats = fp.get("attr_categories", set())
-        module_path = _extract_module_path(node.address)
-        leaf_addr = _leaf_address(node.address)
-        stripped_addr = _strip_index(node.address)
-        node_data.append({
-            "node": node,
-            "changed_attrs": changed_attrs,
-            "attr_cats": attr_cats,
-            "module_path": module_path,
-            "leaf_addr": leaf_addr,
-            "stripped_addr": stripped_addr,
-        })
-
-    now = datetime.now(timezone.utc)
-
-    # Score each fix against each node
-    fix_scores: dict = {}  # fix.id -> best result dict
-
-    for fix in all_fixes:
-        fix_text = " ".join(filter(None, [fix.issue, fix.resolution, fix.error_excerpt])).lower()
-        fix_codes = _extract_error_codes_from_text(fix_text)
-        fix_tags = set()
-        if fix.tags:
-            fix_tags = {t.strip().lower() for t in fix.tags.split(",") if t.strip()}
-
-        # Recency bonus
-        recency_bonus = 0
-        age_days = None
-        if fix.created_at:
-            try:
-                ts = fix.created_at.replace("Z", "+00:00")
-                created = datetime.fromisoformat(ts)
-                if created.tzinfo is None:
-                    created = created.replace(tzinfo=timezone.utc)
-                age_days = (now - created).days
-                if age_days < 90:
-                    recency_bonus = 30
-            except (ValueError, TypeError):
-                pass
-
-        best_score = 0
-        best_reason = None
-        all_matched_resources = []
-
-        for nd in node_data:
-            node = nd["node"]
-            rt_lower = (node.resource_type or "").strip().lower()
-            score = 0
-            primary_signal = None
-            primary_detail = ""
-            node_supporting = []
-
-            has_rt_match = _fix_matches_resource_type(fix, rt_lower) if rt_lower else False
-
-            # Error code match (150) — requires resource type context
-            if fix_codes and has_rt_match:
-                for code in fix_codes:
-                    if len(code) > 3 and code not in ("error", "failed", "true", "false"):
-                        if score < 150:
-                            score = 150
-                            primary_signal = "error_code"
-                            primary_detail = code
-
-            # Address match (120)
-            if not primary_signal or score < 120:
-                stripped = nd["stripped_addr"].lower()
-                leaf = nd["leaf_addr"].lower()
-                if stripped in fix_text or leaf in fix_text:
-                    if score < 120:
-                        if primary_signal:
-                            node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                        score = 120
-                        primary_signal = "address"
-                        primary_detail = node.address
-                    else:
-                        node_supporting.append({"signal": "address", "detail": node.address})
-
-            # Attribute match (100) — requires resource type context
-            if has_rt_match and nd["changed_attrs"]:
-                for attr in nd["changed_attrs"]:
-                    attr_pattern = re.compile(r'\b' + re.escape(attr) + r'\b', re.IGNORECASE)
-                    if attr_pattern.search(fix_text):
-                        if score < 100:
-                            if primary_signal:
-                                node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                            score = 100
-                            primary_signal = "attribute"
-                            primary_detail = attr
-                        else:
-                            node_supporting.append({"signal": "attribute", "detail": attr})
-                        break
-
-            # Attr category match (80) — requires resource type context
-            if has_rt_match and nd["attr_cats"]:
-                for cat in nd["attr_cats"]:
-                    if cat in fix_tags:
-                        if score < 80:
-                            if primary_signal:
-                                node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                            score = 80
-                            primary_signal = "category"
-                            primary_detail = cat
-                        else:
-                            node_supporting.append({"signal": "category", "detail": cat})
-                        break
-
-            # Resource type + action (60)
-            if has_rt_match and rt_lower in fix_tags:
-                action_words = {"delete", "replace", "update", "create"}
-                fix_has_action = any(w in fix_text for w in action_words if w == node.action)
-                if fix_has_action:
-                    if score < 60:
-                        if primary_signal:
-                            node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                        score = 60
-                        primary_signal = "type_action"
-                        primary_detail = f"{rt_lower} + {node.action}"
-                    else:
-                        node_supporting.append({"signal": "type_action", "detail": node.action})
-
-            # Resource type tag only (40)
-            if rt_lower and rt_lower in fix_tags and score < 40:
-                if primary_signal:
-                    node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                score = 40
-                primary_signal = "resource_type_tag"
-                primary_detail = rt_lower
-
-            # Resource type text only (20)
-            if rt_lower and score < 20:
-                rt_pattern = re.compile(r'\b' + re.escape(rt_lower) + r'\b', re.IGNORECASE)
-                if rt_pattern.search(fix_text):
-                    if primary_signal:
-                        node_supporting.append({"signal": primary_signal, "detail": primary_detail})
-                    score = 20
-                    primary_signal = "resource_type_text"
-                    primary_detail = rt_lower
-
-            if score == 0:
-                continue
-
-            # Module path bonus
-            module_bonus = 0
-            if nd["module_path"] and nd["module_path"].lower() in fix_text:
-                module_bonus = 20
-                node_supporting.append({"signal": "module_path", "detail": nd["module_path"]})
-
-            # Recency bonus
-            if recency_bonus and age_days is not None:
-                node_supporting.append({"signal": "recency", "detail": f"{age_days} days ago"})
-
-            total = score + module_bonus + recency_bonus
-
-            # Track this node as a matched resource
-            all_matched_resources.append({"address": node.address, "action": node.action})
-
-            if total > best_score:
-                best_score = total
-                best_reason = {
-                    "signal": primary_signal,
-                    "detail": primary_detail,
-                    "resource_type": rt_lower,
-                    "supporting_signals": node_supporting,
-                }
-
-        if best_score == 0:
-            continue
-
-        # Deduplicate matched_resources by address
-        seen_addrs = set()
-        deduped_resources = []
-        for mr in all_matched_resources:
-            if mr["address"] not in seen_addrs:
-                seen_addrs.add(mr["address"])
-                deduped_resources.append(mr)
-
-        # Confidence bands
-        if best_score >= 120:
-            confidence = "high"
-        elif best_score >= 60:
-            confidence = "medium"
-        else:
-            confidence = "low"
-
-        best_reason["confidence"] = confidence
-
-        entry = {
-            "fix_id": fix.id,
-            "id": fix.id,
-            "short_id": fix.id[:8],
-            "issue": fix.issue,
-            "resolution": fix.resolution,
-            "tags": fix.tags or "",
-            "created_at": fix.created_at or "",
-            "error_excerpt": fix.error_excerpt or "",
-            "score": best_score,
-            "confidence": confidence,
-            "match_reason": best_reason,
-            "matched_resources": deduped_resources,
-        }
-
-        if fix.id not in fix_scores or best_score > fix_scores[fix.id]["score"]:
-            fix_scores[fix.id] = entry
-        elif fix.id in fix_scores:
-            # Merge matched_resources
-            existing = fix_scores[fix.id]
-            existing_addrs = {r["address"] for r in existing["matched_resources"]}
-            for mr in deduped_resources:
-                if mr["address"] not in existing_addrs:
-                    existing["matched_resources"].append(mr)
-
-    if not fix_scores:
-        return []
-
-    # Sort by score desc, then created_at desc
-    sorted_fixes = sorted(
-        fix_scores.values(),
-        key=lambda w: (-w["score"], w.get("created_at", "") or ""),
-        reverse=False,
-    )
-    # Re-sort: score desc (already done), then created_at desc for ties
-    sorted_fixes.sort(key=lambda w: (-w["score"], -(len(w.get("created_at", "")))))
-
-    for entry in sorted_fixes:
-        entry["matched_resources"].sort(key=lambda r: r["address"])
-
-    return sorted_fixes[:max_total]
+    fixes = repo.list_all()
+    matcher = RelevanceMatcher(fixes)
+    return matcher.match(nodes, max_total)
 
 
 # ---------------------------------------------------------------------------

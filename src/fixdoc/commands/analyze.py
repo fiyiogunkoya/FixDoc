@@ -18,6 +18,7 @@ from ..blast_radius import (
     BlastNode,
     analyze_blast_radius,
 )
+from ..relevance import format_match_narrative
 from ..models import Fix
 from ..outcomes import Outcome, OutcomeStore, compute_plan_fingerprint
 from ..storage import FixRepository
@@ -418,62 +419,48 @@ def _format_human(
     # Relevant Past Fixes (unified section)
     fixes_to_show = result.relevant_fixes if result.relevant_fixes else result.resource_warnings
     if fixes_to_show:
-        groups = _group_warnings(fixes_to_show)
         total = len(fixes_to_show)
         lines.append(f"Relevant Past Fixes ({total}):")
-        for rt, group_warnings in groups.items():
-            lines.append(f"\n  {rt}:")
-            top = group_warnings[0]
-            short_id = top["short_id"]
-            issue = top["issue"] or ""
-            resolution = top["resolution"] or ""
-            created_at = (top.get("created_at") or "")[:10]
-            matched = top.get("matched_resources", [])
-            confidence = top.get("confidence", "low")
+        for fix_entry in fixes_to_show:
+            short_id = fix_entry["short_id"]
+            resolution = fix_entry.get("resolution") or ""
+            created_at = (fix_entry.get("created_at") or "")[:10]
+            matched = fix_entry.get("matched_resources", [])
+            confidence = fix_entry.get("confidence", "low")
+            similar = fix_entry.get("similar_count", 0)
 
-            # Build match reason display string
-            match_reason = top.get("match_reason", "")
-            if isinstance(match_reason, dict):
-                signal = match_reason.get("signal", "")
-                detail = match_reason.get("detail", "")
-                signal_label = {
-                    "error_code": "error code",
-                    "address": "address",
-                    "attribute": "attribute",
-                    "category": "category",
-                    "type_action": "type + action",
-                    "resource_type_tag": "resource type",
-                    "resource_type_text": "resource type",
-                }.get(signal, signal)
-                reason_str = f"{signal_label}: {detail}" if detail else signal_label
-            else:
-                reason_str = str(match_reason)
+            # Use template-based narrative
+            narrative = fix_entry.get("narrative", "")
+            if not narrative:
+                narrative = format_match_narrative(fix_entry)
 
-            issue_disp = issue[:80] + "..." if len(issue) > 80 else issue
-            res_disp = resolution[:80] + "..." if len(resolution) > 80 else resolution
-            lines.append(f"    [{confidence}: {reason_str}] FIX-{short_id}: {issue_disp}")
-            lines.append(f"     Resolution: {res_disp}")
+            lines.append("")
+            lines.append(f"  FIX-{short_id} [{confidence}]:")
+            lines.append(f"    {narrative}")
+
+            res_disp = resolution[:100] + "..." if len(resolution) > 100 else resolution
+            lines.append(f"    \u2192 {res_disp}")
 
             if verbose:
-                score_val = top.get("score", 0)
-                lines.append(f"     Score: {score_val}")
-                if top.get("tags"):
-                    lines.append(f"     Tags: {top['tags']}")
-                # Show supporting signals in verbose
+                score_val = fix_entry.get("score", 0)
+                lines.append(f"    Score: {score_val}")
+                if fix_entry.get("tags"):
+                    lines.append(f"    Tags: {fix_entry['tags']}")
+                match_reason = fix_entry.get("match_reason", {})
                 if isinstance(match_reason, dict):
                     supporting = match_reason.get("supporting_signals", [])
                     if supporting:
                         support_strs = [f"{s['signal']}: {s['detail']}" for s in supporting]
-                        lines.append(f"     Supporting: {', '.join(support_strs)}")
+                        lines.append(f"    Supporting: {', '.join(support_strs)}")
 
             if matched:
                 addr_str = f"{matched[0]['address']} ({matched[0]['action']})"
-                lines.append(f"     Applies to: {addr_str}")
+                lines.append(f"    Applies to: {addr_str}")
 
-            lines.append(f"     Captured: {created_at}")
+            lines.append(f"    Captured: {created_at}")
 
-            if len(group_warnings) > 1:
-                lines.append(f"     + {len(group_warnings) - 1} more")
+            if similar > 0:
+                lines.append(f"    [+{similar} similar fixes]")
 
         lines.append("")
         lines.append("Run `fixdoc show <short_id>` for full details.")
@@ -524,8 +511,14 @@ def _format_json(
         mr = entry.get("match_reason")
         if isinstance(mr, dict):
             mr = dict(mr)
-            # attr_categories could be a set
             entry["match_reason"] = mr
+        # Ensure domain, similar_count, narrative are present
+        if "domain" not in entry:
+            entry["domain"] = None
+        if "similar_count" not in entry:
+            entry["similar_count"] = 0
+        if "narrative" not in entry:
+            entry["narrative"] = format_match_narrative(entry)
         serializable_fixes.append(entry)
 
     serializable_checks = []
@@ -644,33 +637,21 @@ def _format_markdown(result: BlastResult) -> str:
         top_fixes = fixes[:3]
         lines.append("### Relevant Past Fixes")
         lines.append("")
-        lines.append("| Fix | Issue | Confidence |")
-        lines.append("|-----|-------|------------|")
         for f in top_fixes:
             short_id = f.get("short_id", "?")
-            issue = f.get("issue", "")
-            if len(issue) > 80:
-                issue = issue[:80] + "..."
             confidence = f.get("confidence", "low")
-            match_reason = f.get("match_reason", "")
-            if isinstance(match_reason, dict):
-                signal = match_reason.get("signal", "")
-                detail = match_reason.get("detail", "")
-                signal_label = {
-                    "error_code": "error code",
-                    "address": "address",
-                    "attribute": "attribute",
-                    "category": "category",
-                    "type_action": "type + action",
-                    "resource_type_tag": "resource type",
-                    "resource_type_text": "resource type",
-                }.get(signal, signal)
-                reason_str = f"{signal_label}: {detail}" if detail else signal_label
-            else:
-                reason_str = str(match_reason)
-            lines.append(
-                f"| FIX-{short_id} | {issue} | {confidence} ({reason_str}) |"
-            )
+            similar = f.get("similar_count", 0)
+
+            narrative = f.get("narrative", "")
+            if not narrative:
+                narrative = format_match_narrative(f)
+
+            resolution = f.get("resolution", "")
+            res_disp = resolution[:100] + "..." if len(resolution) > 100 else resolution
+
+            similar_str = f" [+{similar} similar]" if similar > 0 else ""
+            lines.append(f"- **FIX-{short_id}** [{confidence}]{similar_str}: {narrative}")
+            lines.append(f"  - {res_disp}")
         lines.append("")
 
     # Historical Apply Outcomes
@@ -723,10 +704,20 @@ def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
         prompt_parts.append(f"Downstream affected resources: {affected_count}")
     if history_count:
         prompt_parts.append(f"Historical incident matches: {history_count}")
+
+    # Include match narratives for richer AI rewriting
+    if result.relevant_fixes:
+        prompt_parts.append("\nRelevant past fixes:")
+        for rf in result.relevant_fixes[:3]:
+            narrative = rf.get("narrative", "")
+            if narrative:
+                prompt_parts.append(f"- {narrative}")
+
     prompt_parts.append(
         f"\nWrite 2-4 concise bullet points explaining why this scored "
         f"{result.severity.upper()} to an infrastructure engineer. "
         "Focus on the risk implications, not just restating the factors. "
+        "Incorporate relevant past fix context where applicable. "
         "Use plain text with '\u2022' bullets. No header, no intro sentence."
     )
 

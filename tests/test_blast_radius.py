@@ -1076,7 +1076,7 @@ class TestEndToEnd:
         """Full IAM role deletion with graph and history."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
-            issue="IAM role deletion broke Lambda functions",
+            issue="aws_iam_role.app_role deletion broke Lambda functions",
             resolution="Recreated role with matching policy",
             tags="aws_iam_role,aws,iam",
         ))
@@ -1409,7 +1409,7 @@ class TestAnalyzeBlastRadiusResourceWarnings:
     def test_resource_warnings_populated(self, tmp_path):
         repo = FixRepository(tmp_path)
         repo.save(Fix(
-            issue="S3 bucket creation failed",
+            issue="aws_s3_bucket.data creation failed with BucketAlreadyExists",
             resolution="Fixed IAM policy",
             tags="aws_s3_bucket",
         ))
@@ -1420,10 +1420,8 @@ class TestAnalyzeBlastRadiusResourceWarnings:
         assert len(result.resource_warnings) >= 1
         # match_reason is now a dict with signal field
         mr = result.resource_warnings[0]["match_reason"]
-        if isinstance(mr, dict):
-            assert mr["signal"] in ("resource_type_tag", "resource_type_text", "error_code", "address", "attribute", "category", "type_action")
-        else:
-            assert mr in ("tag_match", "text_match")
+        assert isinstance(mr, dict)
+        assert mr["signal"] in ("error_code", "address", "changed_attribute", "change_domain", "attribute_category")
 
     def test_tag_only_passed_through(self, tmp_path):
         """tag_only flag still accepted (backward compat); text matches now surfaced as low confidence."""
@@ -1445,7 +1443,7 @@ class TestAnalyzeBlastRadiusResourceWarnings:
         repo = FixRepository(tmp_path)
         for i in range(5):
             repo.save(Fix(
-                issue=f"S3 error {i}",
+                issue=f"aws_s3_bucket.data error with unique code Error{i}Code for case {i}",
                 resolution=f"Fix {i}",
                 tags="aws_s3_bucket",
             ))
@@ -2006,8 +2004,8 @@ class TestFindRelevantFixes:
         assert len(result) >= 1
         assert result[0]["score"] >= 80
 
-    def test_type_action_match(self, tmp_path):
-        """Fix with resource type + action verb scores 60, confidence medium."""
+    def test_type_action_no_standalone(self, tmp_path):
+        """Standalone type_action no longer surfaces (demoted to booster)."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
             issue="Failed to delete aws_s3_bucket - not empty",
@@ -2016,11 +2014,11 @@ class TestFindRelevantFixes:
         ))
         node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")
         result = find_relevant_fixes([node], repo)
-        assert len(result) >= 1
-        assert result[0]["score"] >= 60
+        # Standalone type_action is suppressed in attribute-first engine
+        assert len(result) == 0
 
-    def test_type_only_tag(self, tmp_path):
-        """Tag-only match scores 40, confidence low."""
+    def test_type_only_tag_no_standalone(self, tmp_path):
+        """Standalone tag-only match no longer surfaces (demoted to booster)."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
             issue="Some random fix",
@@ -2029,11 +2027,11 @@ class TestFindRelevantFixes:
         ))
         node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
-        assert len(result) >= 1
-        assert result[0]["score"] >= 40
+        # Standalone type_tag is suppressed
+        assert len(result) == 0
 
-    def test_type_only_text(self, tmp_path):
-        """Text-only resource type match scores 20, confidence low."""
+    def test_type_only_text_no_standalone(self, tmp_path):
+        """Standalone text-only match no longer surfaces (killed)."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
             issue="aws_s3_bucket versioning broke after update",
@@ -2042,34 +2040,38 @@ class TestFindRelevantFixes:
         ))
         node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
-        assert len(result) >= 1
-        assert result[0]["confidence"] == "low"
-        assert result[0]["score"] >= 20
+        # type_text is fully killed
+        assert len(result) == 0
 
     def test_recency_bonus(self, tmp_path):
-        """Recent fix gets +30 bonus."""
+        """Recent fix gets +30 bonus (added to primary match)."""
         repo = FixRepository(tmp_path)
-        # Fix created now (< 90 days ago)
+        # Fix with address match (primary signal) + recency
         repo.save(Fix(
-            issue="S3 bucket issue",
+            issue="aws_s3_bucket.data had versioning issue",
             resolution="Fixed it",
             tags="aws_s3_bucket",
         ))
         node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
-        # Score should include recency bonus (40 base + 30 recency = 70)
-        assert result[0]["score"] >= 70
+        # Address match (120) + recency (30) = 150+
+        assert result[0]["score"] >= 150
 
     def test_module_bonus(self, tmp_path):
-        """Same module path gets +20 bonus."""
+        """Same module path gets +20 bonus (on top of a primary match)."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
-            issue="module.networking vpc routing issue",
+            issue="module.networking aws_vpc.main had routing issue with route_table_id",
             resolution="Fixed route table in module.networking",
             tags="aws_vpc",
         ))
-        node = BlastNode("module.networking.aws_vpc.main", "aws_vpc", "update")
+        node = BlastNode("module.networking.aws_vpc.main", "aws_vpc", "update",
+                        change_fingerprint={"changed_attrs": ["route_table_id"],
+                                          "changed_attr_count": 1,
+                                          "attr_categories": {"networking"},
+                                          "action": "update",
+                                          "sensitive_changed": False})
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
         # Should include module bonus
@@ -2079,10 +2081,10 @@ class TestFindRelevantFixes:
         assert len(module_signals) >= 1
 
     def test_dedup_same_fix_multiple_nodes(self, tmp_path):
-        """Same fix matching multiple nodes appears once with best score."""
+        """Same fix matching multiple nodes appears once with both resources."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
-            issue="S3 bucket ACL error",
+            issue="S3 bucket ACL error with aws_s3_bucket.a and aws_s3_bucket.b",
             resolution="Set to private",
             tags="aws_s3_bucket",
         ))
@@ -2100,12 +2102,15 @@ class TestFindRelevantFixes:
         repo = FixRepository(tmp_path)
         for i in range(5):
             repo.save(Fix(
-                issue=f"S3 error {i}",
+                issue=f"aws_s3_bucket.data_{i} had error UniqueCode{i}",
                 resolution=f"Fix {i}",
                 tags="aws_s3_bucket",
             ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
-        result = find_relevant_fixes([node], repo, max_total=2)
+        nodes = [
+            BlastNode(f"aws_s3_bucket.data_{i}", "aws_s3_bucket", "create")
+            for i in range(5)
+        ]
+        result = find_relevant_fixes(nodes, repo, max_total=2)
         assert len(result) <= 2
 
     def test_confidence_bands(self, tmp_path):
@@ -2125,7 +2130,7 @@ class TestFindRelevantFixes:
         """match_reason is a structured dict with signal/detail/resource_type/confidence/supporting_signals."""
         repo = FixRepository(tmp_path)
         repo.save(Fix(
-            issue="S3 bucket ACL error",
+            issue="aws_s3_bucket.data had ACL error",
             resolution="Set to private",
             tags="aws_s3_bucket",
         ))
@@ -2439,7 +2444,7 @@ class TestAnalyzeFormatMarkdown:
         assert "Check D" not in output
         assert "Check E" not in output
 
-    def test_markdown_relevant_fixes_table(self):
+    def test_markdown_relevant_fixes_narrative(self):
         from fixdoc.commands.analyze import _format_markdown
         warnings = [{
             "short_id": "3a8f12c4",
@@ -2458,9 +2463,9 @@ class TestAnalyzeFormatMarkdown:
         result.relevant_fixes = warnings
         output = _format_markdown(result)
         assert "### Relevant Past Fixes" in output
-        assert "| Fix | Issue | Confidence |" in output
         assert "FIX-3a8f12c4" in output
-        assert "high (error code: InvalidPermission)" in output
+        assert "[high]" in output
+        assert "Previously encountered" in output
 
     def test_markdown_relevant_fixes_top_3(self):
         from fixdoc.commands.analyze import _format_markdown
