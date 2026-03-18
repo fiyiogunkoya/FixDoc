@@ -217,7 +217,7 @@ class TestWatchCommandFailure:
                 input="s\n",
             )
 
-        assert "Deferred to pending" in result.output
+        assert "deferred to pending" in result.output
         assert "I'll ask what fixed these" in result.output
         store_instance.save.assert_called_once()
 
@@ -358,7 +358,7 @@ class TestWatchCommandFailureGeneric:
         store_instance.save.assert_called_once()
         saved_entry = store_instance.save.call_args[0][0]
         assert saved_entry.error_type == "generic"
-        assert "Deferred to pending" in result.output
+        assert "deferred to pending" in result.output
 
     def test_generic_capture_via_c_choice(self, tmp_path):
         """Choosing [c] on generic error captures via handle_piped_input."""
@@ -687,3 +687,653 @@ class TestCaptureErrorForWatch:
 
         mock_k8s.assert_called_once()
         mock_tf.assert_not_called()
+
+
+# ===================================================================
+# TestWatchFixSurfacing — Feature 1
+# ===================================================================
+
+
+class TestWatchFixSurfacing:
+    """Tests for surfacing known fixes on watch failure."""
+
+    def test_failure_shows_known_fixes(self, tmp_path):
+        """When find_similar_fixes returns matches, 'Known fixes' is shown."""
+        runner = CliRunner()
+        cli = create_cli()
+        mock_fix = _make_fix(resolution="Added role binding for service account")
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[mock_fix]):
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error()]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        assert "Known fixes that may help:" in result.output
+        assert "Added role binding" in result.output
+
+    def test_failure_no_fixes_when_repo_empty(self, tmp_path):
+        """When find_similar_fixes returns [], 'Known fixes' is NOT shown."""
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[]):
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error()]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        assert "Known fixes" not in result.output
+
+    def test_no_prompt_still_shows_fixes(self, tmp_path):
+        """--no-prompt flag still shows fix suggestions."""
+        runner = CliRunner()
+        cli = create_cli()
+        mock_fix = _make_fix(resolution="Add random suffix to bucket name")
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[mock_fix]):
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error()]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--no-prompt", "--", "failing-cmd"],
+                obj=make_obj(tmp_path),
+            )
+
+        assert "Known fixes that may help:" in result.output
+
+    def test_max_two_fixes_per_error(self, tmp_path):
+        """Only up to 2 fixes per error are shown (limit_per_error default)."""
+        fixes = [_make_fix(resolution=f"Fix {i}") for i in range(5)]
+        # find_similar_fixes will be called with limit=2, so it returns at most 2
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=fixes[:2]) as mock_fsf:
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error()]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        # Verify limit=2 was passed
+        assert mock_fsf.call_args[1].get("limit") == 2 or mock_fsf.call_args[0][3] if len(mock_fsf.call_args[0]) > 3 else mock_fsf.call_args[1].get("limit") == 2
+
+    def test_fix_dedup_across_errors(self, tmp_path):
+        """Same fix matching 2 errors is shown only once."""
+        shared_fix = _make_fix(resolution="Shared fix across errors")
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[shared_fix]):
+            mp.return_value = mock_popen_failure()
+            # Two different errors
+            mock_parse.return_value = [
+                _make_parsed_error(resource_address="aws_iam_role.a"),
+                _make_parsed_error(resource_address="aws_iam_role.b"),
+            ]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        # The fix resolution should appear exactly once
+        assert result.output.count("Shared fix across errors") == 1
+
+    def test_correct_args_to_find_similar(self, tmp_path):
+        """Verify entry fields are passed correctly to find_similar_fixes."""
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[]) as mock_fsf:
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error(
+                resource_address="aws_iam_role.app",
+                error_code="AccessDenied",
+            )]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        mock_fsf.assert_called_once()
+        call_kwargs = mock_fsf.call_args
+        # Verify resource_address was passed
+        assert call_kwargs[1].get("resource_address") is not None
+
+    def test_fix_surfacing_passes_error_id(self, tmp_path):
+        """Verify error_id from pending entry is passed to find_similar_fixes."""
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse") as mock_parse, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[]) as mock_fsf:
+            mp.return_value = mock_popen_failure()
+            mock_parse.return_value = [_make_parsed_error()]
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        mock_fsf.assert_called_once()
+        assert mock_fsf.call_args[1].get("error_id") is not None
+
+    def test_source_error_id_fix_ranked_first(self, tmp_path):
+        """A fix with matching source_error_ids scores higher."""
+        from fixdoc.suggestions import find_similar_fixes
+        from fixdoc.storage import FixRepository
+
+        repo = FixRepository(tmp_path)
+        # Create two fixes — one with source_error_ids, one without
+        fix_with_id = Fix(
+            issue="AccessDenied on aws_iam_role.app",
+            resolution="Added role binding",
+            tags="aws_iam_role,terraform",
+            source_error_ids=["target_error_123"],
+        )
+        fix_without = Fix(
+            issue="AccessDenied on aws_iam_role.app",
+            resolution="Different fix",
+            tags="aws_iam_role,terraform",
+        )
+        repo.save(fix_with_id)
+        repo.save(fix_without)
+
+        results = find_similar_fixes(
+            repo,
+            "Error: access denied on aws_iam_role.app",
+            tags="aws_iam_role",
+            error_id="target_error_123",
+        )
+
+        assert len(results) >= 1
+        assert results[0].id == fix_with_id.id
+
+
+# ===================================================================
+# TestWatchEffectivenessTracking — Fix Effectiveness
+# ===================================================================
+
+
+# ===================================================================
+# TestWatchApplyCancelled
+# ===================================================================
+
+
+class TestWatchApplyCancelled:
+    """Tests for 'Apply cancelled' not being treated as an error."""
+
+    def test_apply_cancelled_not_deferred(self, tmp_path):
+        """When terraform apply is cancelled (user says no), nothing is deferred."""
+        runner = CliRunner()
+        cli = create_cli()
+        cancelled_output = (
+            b"Plan: 1 to add, 0 to change, 0 to destroy.\n"
+            b"\n"
+            b"Do you want to perform these actions?\n"
+            b"  Terraform will perform the actions described above.\n"
+            b"  Only 'yes' will be accepted to approve.\n"
+            b"\n"
+            b"  Enter a value: no\n"
+            b"\n"
+            b"Apply cancelled.\n"
+        )
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "PendingStore") as MockStore:
+            mp.return_value = mock_popen_failure(
+                stdout_lines=list(cancelled_output.split(b"\n")[:-1]) + [b""],
+            )
+            # Make each line end with \n for readline simulation
+            lines = [line + b"\n" for line in cancelled_output.split(b"\n") if line] + [b""]
+            mp.return_value.stdout.readline.side_effect = lines
+            store_instance = MockStore.return_value
+
+            result = runner.invoke(
+                cli,
+                ["watch", "--", "terraform", "apply"],
+                obj=make_obj(tmp_path),
+            )
+
+        # Should NOT defer any entries
+        store_instance.save.assert_not_called()
+        assert "Deferred to pending" not in result.output
+
+    def test_apply_cancelled_no_prompt_not_deferred(self, tmp_path):
+        """With --no-prompt, cancelled apply also skips deferral."""
+        runner = CliRunner()
+        cli = create_cli()
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "PendingStore") as MockStore:
+            lines = [
+                b"Plan: 2 to add, 0 to change, 0 to destroy.\n",
+                b"Apply cancelled.\n",
+                b"",
+            ]
+            mp.return_value = mock_popen_failure(stdout_lines=lines)
+            store_instance = MockStore.return_value
+
+            result = runner.invoke(
+                cli,
+                ["watch", "--no-prompt", "--", "terraform", "apply"],
+                obj=make_obj(tmp_path),
+            )
+
+        store_instance.save.assert_not_called()
+        assert "error(s) deferred" not in result.output
+
+
+# ===================================================================
+# TestWatchEffectivenessTracking
+# ===================================================================
+
+
+class TestWatchEffectivenessTracking:
+    """Tests for effectiveness tracking helper functions."""
+
+    def test_success_increments_applied_and_success(self, tmp_path):
+        """_track_effectiveness_success increments both counters for linked fixes."""
+        from fixdoc.pending import PendingEntry
+        from fixdoc.storage import FixRepository
+
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="AccessDenied",
+            resolution="Added binding",
+            source_error_ids=["err_abc"],
+        )
+        repo.save(fix)
+
+        entry = PendingEntry(
+            error_id="err_abc",
+            error_type="terraform",
+            short_message="err",
+            error_excerpt="text",
+            tags="",
+            cwd="/some/dir",
+            command="terraform apply",
+        )
+
+        _watch_mod._track_effectiveness_success([entry], repo)
+
+        updated = repo.get(fix.id)
+        assert updated.applied_count == 1
+        assert updated.success_count == 1
+        assert updated.last_applied_at is not None
+
+    def test_failure_increments_applied_not_success(self, tmp_path):
+        """_track_effectiveness_failure increments only applied_count."""
+        from fixdoc.pending import PendingEntry
+        from fixdoc.storage import FixRepository
+
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="AccessDenied",
+            resolution="Added binding",
+            source_error_ids=["err_recurring"],
+        )
+        repo.save(fix)
+
+        entry = PendingEntry(
+            error_id="err_recurring",
+            error_type="terraform",
+            short_message="access denied",
+            error_excerpt="Error: access denied",
+            tags="",
+            cwd="/some/dir",
+            command="terraform apply",
+        )
+
+        _watch_mod._track_effectiveness_failure([entry], repo)
+
+        updated = repo.get(fix.id)
+        assert updated.applied_count == 1
+        assert updated.success_count == 0
+        assert updated.last_applied_at is not None
+
+    def test_no_linked_fixes_no_tracking(self, tmp_path):
+        """When no fixes have matching source_error_ids, nothing changes."""
+        from fixdoc.pending import PendingEntry
+        from fixdoc.storage import FixRepository
+
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="Unrelated fix",
+            resolution="something else",
+            source_error_ids=["other_error"],
+        )
+        repo.save(fix)
+
+        entry = PendingEntry(
+            error_id="different_error",
+            error_type="terraform",
+            short_message="err",
+            error_excerpt="text",
+            tags="",
+            cwd="/some/dir",
+            command="terraform apply",
+        )
+
+        _watch_mod._track_effectiveness_success([entry], repo)
+
+        updated = repo.get(fix.id)
+        assert updated.applied_count == 0
+        assert updated.success_count == 0
+
+
+# ===================================================================
+# TestWatchClassifierIntegration
+# ===================================================================
+
+
+class TestWatchClassifierIntegration:
+    """Tests for memory-worthiness classifier integration in watch."""
+
+    def test_self_explanatory_hidden_in_interactive_summary(self, tmp_path):
+        """Self-explanatory errors show collapsed count, not individual entries."""
+        runner = CliRunner()
+        cli = create_cli()
+        # MissingRequiredArgument on a terraform_config kind -> self_explanatory
+        errors = [_make_parsed_error(
+            resource_address="variable.foo",
+            error_code="MissingRequiredVariable",
+        )]
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse", return_value=errors), \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "classify_entry", return_value="self_explanatory"):
+            mp.return_value = mock_popen_failure()
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path),
+            )
+
+        assert "self-explanatory" in result.output
+        # No capture prompt since all errors are self-explanatory
+        assert "[c] capture one now" not in result.output
+
+    def test_memory_worthy_shown_in_numbered_list(self, tmp_path):
+        """Memory-worthy errors appear in the numbered list."""
+        runner = CliRunner()
+        cli = create_cli()
+        errors = [_make_parsed_error(
+            resource_address="aws_iam_role.app",
+            error_code="AccessDenied",
+        )]
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse", return_value=errors), \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "classify_entry", return_value="memory_worthy"):
+            mp.return_value = mock_popen_failure()
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        assert "deferred to pending" in result.output
+        assert "aws_iam_role.app" in result.output
+        assert "[c] capture one now" in result.output
+
+    def test_mixed_errors_both_sections(self, tmp_path):
+        """Mixed errors show both numbered list and collapsed count."""
+        runner = CliRunner()
+        cli = create_cli()
+        errors = [
+            _make_parsed_error(resource_address="aws_iam_role.app", error_code="AccessDenied"),
+            _make_parsed_error(resource_address="variable.foo", error_code="MissingRequiredVariable"),
+        ]
+        # Classify first as memory_worthy, second as self_explanatory
+        classify_results = iter(["memory_worthy", "self_explanatory"])
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse", return_value=errors), \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "classify_entry", side_effect=classify_results):
+            mp.return_value = mock_popen_failure()
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--", "failing-cmd"],
+                obj=make_obj(tmp_path), input="s\n",
+            )
+
+        assert "1 deferred to pending" in result.output
+        assert "1 self-explanatory" in result.output
+
+    def test_no_prompt_self_explanatory_count(self, tmp_path):
+        """--no-prompt shows self-explanatory count line."""
+        runner = CliRunner()
+        cli = create_cli()
+        errors = [_make_parsed_error(
+            resource_address="variable.foo",
+            error_code="MissingRequiredVariable",
+        )]
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse", return_value=errors), \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "classify_entry", return_value="self_explanatory"):
+            mp.return_value = mock_popen_failure()
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--no-prompt", "--", "failing-cmd"],
+                obj=make_obj(tmp_path),
+            )
+
+        assert "self-explanatory" in result.output
+
+    def test_fix_suggestions_only_for_memory_worthy(self, tmp_path):
+        """Fix suggestions are only searched for memory-worthy entries."""
+        runner = CliRunner()
+        cli = create_cli()
+        errors = [
+            _make_parsed_error(resource_address="aws_iam_role.app", error_code="AccessDenied"),
+            _make_parsed_error(resource_address="variable.foo", error_code="MissingRequiredVariable"),
+        ]
+        classify_results = iter(["memory_worthy", "self_explanatory"])
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "detect_and_parse", return_value=errors), \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "classify_entry", side_effect=classify_results), \
+             patch.object(_watch_mod, "find_similar_fixes", return_value=[]) as mock_fsf:
+            mp.return_value = mock_popen_failure()
+            MockStore.return_value = MagicMock()
+
+            result = runner.invoke(
+                cli, ["watch", "--no-prompt", "--", "failing-cmd"],
+                obj=make_obj(tmp_path),
+            )
+
+        # find_similar_fixes should only be called for memory_worthy entry
+        assert mock_fsf.call_count == 1
+
+    def test_success_auto_resolves_self_explanatory(self, tmp_path):
+        """Success path auto-resolves self-explanatory entries from same session."""
+        from fixdoc.pending import PendingEntry
+        runner = CliRunner()
+        cli = create_cli()
+
+        mw_entry = PendingEntry(
+            error_id="mw1",
+            error_type="terraform",
+            short_message="access denied",
+            error_excerpt="text",
+            tags="",
+            cwd="/some/dir",
+            command="terraform apply",
+            session_id="abc123",
+            worthiness="memory_worthy",
+        )
+        se_entry = PendingEntry(
+            error_id="se1",
+            error_type="terraform",
+            short_message="missing var",
+            error_excerpt="text",
+            tags="",
+            cwd="/some/dir",
+            command="terraform apply",
+            session_id="abc123",
+            worthiness="self_explanatory",
+        )
+
+        with patch.object(_watch_mod.subprocess, "Popen") as mp, \
+             patch.object(_watch_mod, "PendingStore") as MockStore, \
+             patch.object(_watch_mod, "resolve_pending_entries") as mock_resolve:
+            mp.return_value = mock_popen_success()
+            instance = MockStore.return_value
+            # First call (default): returns memory-worthy only
+            # Second call (include_self_explanatory=True): returns self-explanatory
+            instance.find_latest_session.side_effect = [
+                [mw_entry],       # default call
+                [se_entry],       # include_self_explanatory=True call
+            ]
+            instance.find_by_cwd.return_value = []
+            mock_resolve.return_value = None
+
+            result = runner.invoke(
+                cli, ["watch", "--", "terraform", "apply"],
+                obj=make_obj(tmp_path), input="q\n",
+            )
+
+        # Verify self-explanatory entry was removed
+        instance.remove.assert_called_once_with("se1")
+
+
+# ===================================================================
+# TestWatchFixSuggestionTypes — Memory Types Phase 2
+# ===================================================================
+
+
+class TestWatchFixSuggestionTypes:
+    """Tests for type-aware suggestion rendering in watch."""
+
+    def test_fix_type_renders_plain_preview(self, tmp_path):
+        """Fix type renders plain resolution preview (backward compatible)."""
+        from fixdoc.rendering import format_suggestion_preview
+
+        fix = Fix(issue="test", resolution="Added IAM binding", memory_type="fix")
+        preview = format_suggestion_preview(fix)
+        assert preview == "Added IAM binding"
+        assert not preview.startswith("Verify:")
+        assert not preview.startswith("Context:")
+
+    def test_check_type_renders_verify_prefix(self, tmp_path):
+        """Check type renders 'Verify: ' prefix."""
+        from fixdoc.rendering import format_suggestion_preview
+
+        fix = Fix(issue="test", resolution="Ensure SG rules allow port 443", memory_type="check")
+        preview = format_suggestion_preview(fix)
+        assert preview.startswith("Verify: ")
+        assert "Ensure" not in preview  # Stutter prevention
+
+    def test_playbook_type_renders_step_count(self, tmp_path):
+        """Playbook type renders step count and first step."""
+        from fixdoc.rendering import format_suggestion_preview
+
+        resolution = "1. Stop service\n2. Update config\n3. Restart"
+        fix = Fix(issue="test", resolution=resolution, memory_type="playbook")
+        preview = format_suggestion_preview(fix)
+        assert "Playbook (3 steps):" in preview
+        assert "Stop service" in preview
+
+    def test_insight_type_renders_context_prefix(self, tmp_path):
+        """Insight type renders 'Context: ' prefix."""
+        from fixdoc.rendering import format_suggestion_preview
+
+        fix = Fix(issue="test", resolution="Root cause was drift", memory_type="insight")
+        preview = format_suggestion_preview(fix)
+        assert preview.startswith("Context: ")
+
+    def test_backward_compat_default_memory_type(self, tmp_path):
+        """Fixes with default memory_type='fix' render exactly as before."""
+        from fixdoc.rendering import format_suggestion_preview
+
+        fix = Fix(issue="test", resolution="A" * 100)
+        assert fix.memory_type == "fix"
+        preview = format_suggestion_preview(fix)
+        assert preview == "A" * 60 + "..."
+
+
+# ===================================================================
+# TestClassifyAndConfirm — Capture integration
+# ===================================================================
+
+
+class TestClassifyAndConfirm:
+    """Tests for _classify_and_confirm in capture_handlers."""
+
+    def test_skips_prompt_for_fix_type(self):
+        """Auto-classification as 'fix' skips the override prompt."""
+        import importlib
+        _ch_mod = importlib.import_module("fixdoc.commands.capture_handlers")
+        with patch.object(_ch_mod.click, "prompt") as mock_prompt, \
+             patch.object(_ch_mod.click, "echo"):
+            result = _ch_mod._classify_and_confirm("Added IAM role binding")
+        assert result == "fix"
+        mock_prompt.assert_not_called()
+
+    def test_shows_prompt_for_non_fix_type(self):
+        """Non-fix detected type shows override prompt."""
+        import importlib
+        _ch_mod = importlib.import_module("fixdoc.commands.capture_handlers")
+        with patch.object(_ch_mod.click, "prompt", return_value="check") as mock_prompt, \
+             patch.object(_ch_mod.click, "echo"):
+            result = _ch_mod._classify_and_confirm("Verify the IAM roles are correct")
+        assert result == "check"
+        mock_prompt.assert_called_once()
+
+    def test_shorthand_accepted(self):
+        """Shorthand 'p' is accepted as 'playbook'."""
+        import importlib
+        _ch_mod = importlib.import_module("fixdoc.commands.capture_handlers")
+        with patch.object(_ch_mod.click, "prompt", return_value="p") as mock_prompt, \
+             patch.object(_ch_mod.click, "echo"):
+            result = _ch_mod._classify_and_confirm("Verify the IAM roles")
+        assert result == "playbook"

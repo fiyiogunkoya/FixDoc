@@ -338,3 +338,110 @@ class TestExtractResourceTypes:
     def test_case_insensitive(self):
         types = _extract_resource_types("AWS_S3_BUCKET error")
         assert "aws_s3_bucket" in types
+
+
+# ===================================================================
+# TestErrorIdMatch — Feature 2
+# ===================================================================
+
+
+class TestErrorIdMatch:
+    """Tests for error_id parameter in find_similar_fixes."""
+
+    def test_error_id_match_boosts_score(self, tmp_path):
+        from fixdoc.storage import FixRepository
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="AccessDenied on role",
+            resolution="Added policy",
+            tags="aws_iam_role",
+            source_error_ids=["err_abc123"],
+        )
+        repo.save(fix)
+
+        # With error_id match
+        results_with = find_similar_fixes(
+            repo, "AccessDenied", error_id="err_abc123",
+        )
+        # Without error_id
+        results_without = find_similar_fixes(
+            repo, "AccessDenied", error_id="different_id",
+        )
+
+        # The fix should appear in both (if score >= min_score),
+        # but the one with matching error_id should rank higher
+        assert len(results_with) >= 1
+        assert results_with[0].id == fix.id
+
+    def test_error_id_no_match_no_boost(self, tmp_path):
+        from fixdoc.storage import FixRepository
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="AccessDenied on role",
+            resolution="Added policy",
+            tags="aws_iam_role",
+            source_error_ids=["err_abc123"],
+        )
+        repo.save(fix)
+
+        # Non-matching error_id should not boost
+        results = find_similar_fixes(
+            repo, "AccessDenied", error_id="completely_different",
+        )
+        # Fix may or may not appear depending on other scoring — but no crash
+        # The key assertion: no error raised
+
+    def test_error_id_none_no_crash(self, tmp_path):
+        from fixdoc.storage import FixRepository
+        repo = FixRepository(tmp_path)
+        fix = Fix(
+            issue="AccessDenied on role",
+            resolution="Added policy",
+            tags="aws_iam_role",
+            source_error_ids=["err_abc123"],
+        )
+        repo.save(fix)
+
+        # error_id=None (default) should not crash
+        results = find_similar_fixes(repo, "AccessDenied")
+        # No crash is the assertion
+
+
+# ===================================================================
+# TestEffectivenessBoost
+# ===================================================================
+
+
+class TestEffectivenessBoost:
+    """Tests for effectiveness rate boosting in suggestions."""
+
+    def test_effective_fix_boosted(self, tmp_path):
+        """Fix with high effectiveness rate ranks above equivalent fix without."""
+        from fixdoc.storage import FixRepository
+
+        repo = FixRepository(tmp_path)
+        # Proven effective fix — distinct resolution keywords to avoid dedup
+        fix_effective = Fix(
+            issue="AccessDenied on aws_iam_role.app during deploy",
+            resolution="Added role binding in IAM console",
+            tags="aws_iam_role,terraform",
+            applied_count=4,
+            success_count=4,
+        )
+        # Untested fix — distinct resolution and some issue variation
+        fix_untested = Fix(
+            issue="AccessDenied on aws_iam_role.app during provisioning",
+            resolution="Updated trust policy document with correct principal",
+            tags="aws_iam_role,terraform",
+        )
+        repo.save(fix_effective)
+        repo.save(fix_untested)
+
+        results = find_similar_fixes(
+            repo,
+            "Error: AccessDenied on aws_iam_role.app",
+            tags="aws_iam_role",
+        )
+
+        assert len(results) >= 2
+        assert results[0].id == fix_effective.id

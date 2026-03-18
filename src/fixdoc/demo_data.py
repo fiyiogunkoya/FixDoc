@@ -168,4 +168,92 @@ def get_seed_fixes() -> list[Fix]:
             notes="Use `helm upgrade --install` instead of `helm install` to "
             "avoid this. Check `helm list -a -n production` to see stuck releases.",
         ),
+        # --- Watch-targeted seed fixes (match scenarios 05-09) ---
+        Fix(
+            issue="Terraform AWS: InvalidCIDR - Invalid CIDR block "
+            '"10.0.0.0/32" for ingress rule in aws_security_group.',
+            resolution="The /32 CIDR is technically valid but usually wrong "
+            "for security group rules (it means a single IP). Use /16 or /24 "
+            "for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. "
+            "For a single host, confirm /32 is intentional.",
+            error_excerpt=(
+                "\u2502 Error: creating Security Group Rule: InvalidParameterValue: "
+                "Value (10.0.0.0/32) for parameter cidr is invalid.\n"
+                "\u2502\n"
+                "\u2502   with aws_security_group.bad_cidr,\n"
+                '\u2502   on main.tf line 5, in resource '
+                '"aws_security_group" "bad_cidr":'
+            ),
+            tags=_demo_tags(
+                "terraform", "aws", "aws_security_group", "InvalidCIDR"
+            ),
+            notes="Scenarios 06 & 09. CIDR /32 = single IP; /24 = 256 IPs; "
+            "/16 = 65k IPs. Always double-check the mask for SG rules.",
+        ),
+        Fix(
+            issue="Terraform AWS: Invalid JSON in assume_role_policy - "
+            "aws_iam_role policy document is not valid JSON.",
+            resolution='The assume_role_policy value must be valid JSON. '
+            "Use `jsonencode()` instead of a raw string to avoid quoting "
+            "errors: `assume_role_policy = jsonencode({ Version = \"2012-10-17\""
+            ', Statement = [...] })`. Validate with `echo \'...\' | jq .`',
+            error_excerpt=(
+                "\u2502 Error: creating IAM Role (bad_json_role): MalformedPolicyDocument: "
+                "Syntax errors in policy.\n"
+                "\u2502\n"
+                "\u2502   with aws_iam_role.bad_policy,\n"
+                '\u2502   on main.tf line 18, in resource '
+                '"aws_iam_role" "bad_policy":'
+            ),
+            tags=_demo_tags(
+                "terraform", "aws", "aws_iam_role", "MalformedPolicyDocument"
+            ),
+            notes="Scenario 06. Common cause: heredoc with unescaped quotes or "
+            "trailing commas. Always use jsonencode() for IAM policies.",
+        ),
+        Fix(
+            issue="Terraform: MissingRequiredArgument - Missing required "
+            "argument in module call, no value supplied for required variable.",
+            resolution="Add the missing variable to the module block. Check "
+            "the module's variables.tf for all required inputs (those without "
+            "a `default` value). Example: `module \"app\" { source = \"./mod\" "
+            "instance_type = \"t3.micro\" }`",
+            error_excerpt=(
+                "\u2502 Error: Missing required argument\n"
+                "\u2502\n"
+                "\u2502   on main.tf line 3, in module \"app_a\":\n"
+                "\u2502    3: module \"app_a\" {\n"
+                "\u2502\n"
+                '\u2502 The argument "instance_type" is required, but no '
+                "definition was found."
+            ),
+            tags=_demo_tags(
+                "terraform", "aws", "MissingRequiredArgument", "module"
+            ),
+            notes="Scenario 05. Terraform modules require explicit values for "
+            "all variables without defaults. Run `terraform validate` to catch "
+            "these before apply.",
+        ),
+        Fix(
+            issue="Terraform: InvalidDefaultValue - variable default value "
+            "type mismatch, expected number but got string.",
+            resolution="Ensure the `default` value matches the declared `type`. "
+            "For `type = number`, use an unquoted numeric default: "
+            '`default = 3` (not `default = "three"`). '
+            "Run `terraform validate` to catch type errors early.",
+            error_excerpt=(
+                "\u2502 Error: Invalid default value for variable\n"
+                "\u2502\n"
+                '\u2502   on variables.tf line 2, in variable "instance_count":\n'
+                "\u2502    2:   default = \"three\"\n"
+                "\u2502\n"
+                "\u2502 This default value is not compatible with the variable's "
+                "type constraint: a number is required."
+            ),
+            tags=_demo_tags(
+                "terraform", "InvalidDefaultValue", "variable"
+            ),
+            notes="Scenario 08. Common when copy-pasting between string and "
+            "number variables. The default must satisfy the type constraint.",
+        ),
     ]

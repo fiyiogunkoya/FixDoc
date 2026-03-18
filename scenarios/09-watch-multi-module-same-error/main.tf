@@ -11,7 +11,7 @@ module "app_a" {
   source      = "./modules/app"
   name_prefix = "${var.name_prefix}-a"
   vpc_id      = aws_vpc.main.id
-  cidr_block  = "10.0.0.0/32"  # invalid CIDR
+  cidr_block  = "10.0.0.0/33"  # invalid CIDR — /33 exceeds max /32
 }
 
 module "app_b" {

@@ -988,12 +988,28 @@ def analyze(
         if addr and cb:
             plan_change_blocks[addr] = cb
 
+    # Outcome query — before analysis so failures influence score
+    plan_fp = compute_plan_fingerprint(plan)
+    outcome_failure_count = 0
+    outcome_matches_list = []
+    try:
+        outcome_store = OutcomeStore()
+        prior_outcomes = outcome_store.find_by_fingerprint(plan_fp)
+        for po in prior_outcomes:
+            if po.apply_result == "failure" and po.status == "applied":
+                outcome_failure_count += 1
+                outcome_matches_list.append(po.to_dict())
+    except Exception:
+        pass  # Non-critical: don't break analysis if outcome store fails
+
     # Run blast radius analysis
     result = analyze_blast_radius(
         plan, repo, dot_text=dot_text, max_depth=max_depth,
         tag_only=tag_only, max_resource_warnings=max_warnings,
         change_blocks=plan_change_blocks,
+        outcome_failure_count=outcome_failure_count,
     )
+    result.outcome_matches = outcome_matches_list
 
     # Filter history matches by match mode
     if match_mode == "strict":
@@ -1005,17 +1021,6 @@ def analyze(
         # Include all matches (already included)
         pass
     # balanced is default — uses the standard history_prior logic
-
-    # Outcome matching: check for prior failure outcomes with same fingerprint
-    plan_fp = compute_plan_fingerprint(plan)
-    try:
-        outcome_store = OutcomeStore()
-        prior_outcomes = outcome_store.find_by_fingerprint(plan_fp)
-        for po in prior_outcomes:
-            if po.apply_result == "failure" and po.status == "applied":
-                result.outcome_matches.append(po.to_dict())
-    except Exception:
-        pass  # Non-critical: don't break analysis if outcome store fails
 
     # Record outcome if --record flag set
     recorded_outcome_id = None

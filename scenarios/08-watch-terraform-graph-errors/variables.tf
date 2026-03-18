@@ -14,11 +14,11 @@ variable "name_prefix" {
 # Type mismatch: string default for number type
 variable "instance_count" {
   type    = number
-  default = 3   # invalid — TF expects a number
+  default = 3  # invalid — string where number expected
 }
 
 # Type mismatch: string default for number type
 variable "bucket_count" {
   type    = number
-  default = 2    # invalid — TF expects a number
+  default = 2    # invalid — string where number expected
 }

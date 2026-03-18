@@ -32,6 +32,18 @@ class Fix:
     author: Optional[str] = None
     author_email: Optional[str] = None
     is_private: bool = False
+    source_error_ids: Optional[list] = None
+    applied_count: int = 0
+    success_count: int = 0
+    last_applied_at: Optional[str] = None
+    memory_type: str = "fix"
+
+    @property
+    def effectiveness_rate(self) -> Optional[float]:
+        """Return success_count / applied_count, or None if never applied."""
+        if self.applied_count == 0:
+            return None
+        return self.success_count / self.applied_count
 
     def to_dict(self) -> dict:
         """Convert fix to dictionary for JSON serialization."""
@@ -52,6 +64,11 @@ class Fix:
             author=data.get("author"),
             author_email=data.get("author_email"),
             is_private=data.get("is_private", False),
+            source_error_ids=data.get("source_error_ids"),
+            applied_count=data.get("applied_count", 0),
+            success_count=data.get("success_count", 0),
+            last_applied_at=data.get("last_applied_at"),
+            memory_type=data.get("memory_type", "fix"),
         )
 
     def summary(self) -> str:
