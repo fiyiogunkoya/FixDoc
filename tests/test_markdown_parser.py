@@ -192,3 +192,125 @@ Test resolution
         parsed = markdown_to_fix(markdown, "full-uuid-from-filename")
 
         assert parsed.id == "full-uuid-from-filename"
+
+
+# ===================================================================
+# TestSourceErrorIdsMarkdown — Feature 2
+# ===================================================================
+
+
+class TestSourceErrorIdsMarkdown:
+    """Tests for source_error_ids markdown roundtrip."""
+
+    def test_source_error_ids_markdown_roundtrip(self):
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="AccessDenied",
+            resolution="Added binding",
+            source_error_ids=["abc123def456"],
+        )
+        md = fix_to_markdown(fix)
+        parsed = markdown_to_fix(md, fix.id)
+        assert parsed.source_error_ids == ["abc123def456"]
+
+    def test_markdown_without_source_error_ids_section(self):
+        """Old markdown without Source Error IDs section still works."""
+        markdown = """# Fix: abc12345
+
+**Created:** 2024-01-15T10:30:00+00:00
+**Updated:** 2024-01-15T10:30:00+00:00
+
+## Issue
+
+Test issue
+
+## Resolution
+
+Test resolution
+"""
+        parsed = markdown_to_fix(markdown, "abc12345")
+        assert parsed.source_error_ids is None
+
+    def test_multiple_source_error_ids(self):
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="Multiple errors",
+            resolution="Fixed them all",
+            source_error_ids=["id1", "id2", "id3"],
+        )
+        md = fix_to_markdown(fix)
+        parsed = markdown_to_fix(md, fix.id)
+        assert parsed.source_error_ids == ["id1", "id2", "id3"]
+
+
+# ===================================================================
+# TestMemoryTypeMarkdown — Phase 2
+# ===================================================================
+
+
+class TestMemoryTypeMarkdown:
+    """Tests for memory_type markdown roundtrip."""
+
+    def test_memory_type_roundtrip_non_fix(self):
+        """Non-fix memory_type round-trips through markdown."""
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="Deployment failed",
+            resolution="1. Stop\n2. Update\n3. Restart",
+            memory_type="playbook",
+        )
+        md = fix_to_markdown(fix)
+        assert "**Memory Type:** playbook" in md
+        parsed = markdown_to_fix(md, fix.id)
+        assert parsed.memory_type == "playbook"
+
+    def test_memory_type_missing_defaults_to_fix(self):
+        """Old markdown without Memory Type line defaults to 'fix'."""
+        markdown = """# Fix: abc12345
+
+**Created:** 2024-01-15T10:30:00+00:00
+**Updated:** 2024-01-15T10:30:00+00:00
+
+## Issue
+
+Test issue
+
+## Resolution
+
+Test resolution
+"""
+        parsed = markdown_to_fix(markdown, "abc12345")
+        assert parsed.memory_type == "fix"
+
+    def test_memory_type_fix_not_emitted_in_markdown(self):
+        """Fix type (default) should NOT emit Memory Type line."""
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="Access denied",
+            resolution="Added IAM binding",
+            memory_type="fix",
+        )
+        md = fix_to_markdown(fix)
+        assert "**Memory Type:**" not in md
+
+    def test_memory_type_check_roundtrip(self):
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="SG misconfigured",
+            resolution="Verify the ingress rules",
+            memory_type="check",
+        )
+        md = fix_to_markdown(fix)
+        parsed = markdown_to_fix(md, fix.id)
+        assert parsed.memory_type == "check"
+
+    def test_memory_type_insight_roundtrip(self):
+        from fixdoc.formatter import fix_to_markdown
+        fix = Fix(
+            issue="Provider drift",
+            resolution="Root cause was stale lock file",
+            memory_type="insight",
+        )
+        md = fix_to_markdown(fix)
+        parsed = markdown_to_fix(md, fix.id)
+        assert parsed.memory_type == "insight"

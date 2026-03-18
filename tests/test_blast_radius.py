@@ -2726,3 +2726,102 @@ class TestAINarrative:
         mock_narrative.assert_called_once()
         assert "AI Summary:" in result.output
         assert "AI narrative text." in result.output
+
+
+# ===================================================================
+# TestOutcomeScoring — outcome-driven scoring (v2)
+# ===================================================================
+
+
+class TestOutcomeScoring:
+    """Tests for outcome_failure_count parameter in compute_blast_score."""
+
+    def _make_node(self, action="update", resource_type="aws_s3_bucket"):
+        return BlastNode(
+            address=f"{resource_type}.test",
+            resource_type=resource_type,
+            action=action,
+        )
+
+    def test_outcome_zero_no_change(self):
+        """Default outcome_failure_count=0 gives same score as before."""
+        nodes = [self._make_node()]
+        score_without = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        score_default = compute_blast_score(nodes, 0, 0, 0)
+        assert score_without == score_default
+
+    def test_one_failure_adds_10(self):
+        nodes = [self._make_node()]
+        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_one = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=1)
+        assert with_one == base + 10
+
+    def test_two_failures_adds_20(self):
+        nodes = [self._make_node()]
+        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_two = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=2)
+        assert with_two == base + 20
+
+    def test_three_failures_capped_at_25(self):
+        nodes = [self._make_node()]
+        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_three = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=3)
+        assert with_three == base + 25
+
+    def test_outcome_combined_with_history(self):
+        """History and outcome add independently."""
+        nodes = [self._make_node()]
+        base = compute_blast_score(nodes, 0, 0, 0)
+        with_both = compute_blast_score(nodes, 0, 0, 2, outcome_failure_count=1)
+        # history: min(2*5, 15) = 10, outcome: min(1*10, 25) = 10
+        assert with_both == base + 10 + 10
+
+    def test_greenfield_cap_applies_after_outcome(self):
+        """Greenfield ceiling (45) still applies even with outcome failures."""
+        nodes = [BlastNode(
+            address=f"aws_s3_bucket.b{i}", resource_type="aws_s3_bucket", action="create"
+        ) for i in range(20)]
+        score = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=3)
+        assert score <= 45.0
+
+    def test_wildcard_trust_overrides_outcome(self):
+        """Wildcard trust floor (50) still overrides."""
+        node = BlastNode(
+            address="aws_iam_role.app",
+            resource_type="aws_iam_role",
+            action="update",
+            wildcard_trust=True,
+        )
+        score = compute_blast_score([node], 0, 0, 0, outcome_failure_count=0)
+        assert score >= 50.0
+
+
+class TestOutcomeExplanation:
+    """Tests for outcome bullet in build_score_explanation."""
+
+    def _make_node(self, action="update"):
+        return BlastNode(
+            address="aws_s3_bucket.test",
+            resource_type="aws_s3_bucket",
+            action=action,
+        )
+
+    def test_outcome_bullet_shown(self):
+        nodes = [self._make_node()]
+        explanations = build_score_explanation(nodes, 0, 0, 0, outcome_failure_count=1)
+        outcome_bullets = [e for e in explanations if e.kind == "outcome"]
+        assert len(outcome_bullets) == 1
+        assert outcome_bullets[0].delta == 10.0
+
+    def test_outcome_bullet_capped(self):
+        nodes = [self._make_node()]
+        explanations = build_score_explanation(nodes, 0, 0, 0, outcome_failure_count=3)
+        outcome_bullets = [e for e in explanations if e.kind == "outcome"]
+        assert len(outcome_bullets) == 1
+        assert outcome_bullets[0].delta == 25.0
+
+    def test_no_outcome_bullet_when_zero(self):
+        nodes = [self._make_node()]
+        explanations = build_score_explanation(nodes, 0, 0, 0, outcome_failure_count=0)
+        outcome_bullets = [e for e in explanations if e.kind == "outcome"]
+        assert len(outcome_bullets) == 0

@@ -18,7 +18,7 @@ resource "aws_security_group" "bad_cidr" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/32"]  # /33 is invalid
+    cidr_blocks = ["10.0.0.0/33"]  # /33 is invalid — max is /32
   }
   egress {
     from_port   = 0
@@ -29,21 +29,9 @@ resource "aws_security_group" "bad_cidr" {
   tags = merge(local.tags, { Name = "${var.name_prefix}-bad-cidr" })
 }
 
-# Invalid JSON — AWS provider validates during plan
+# Invalid JSON — raw string, not valid JSON policy document
 resource "aws_iam_role" "bad_policy" {
   name               = "${var.name_prefix}-bad-policy"
-  assume_role_policy = jsonencode({
-  Version = "2012-10-17"
-  Statement = [
-    {
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Sid    = ""
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-    },
-  ]
-})
+  assume_role_policy = "not-valid-json-{{"
   tags               = local.tags
 }

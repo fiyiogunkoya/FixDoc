@@ -10,27 +10,36 @@ from .capture_handlers import handle_piped_input
 
 
 @click.group(invoke_without_command=True)
+@click.option("--all", "show_all", is_flag=True, default=False,
+              help="Include self-explanatory errors.")
 @click.pass_context
-def pending(ctx):
+def pending(ctx, show_all):
     """List and manage deferred (pending) errors.
 
     Shows all pending errors from .fixdoc-pending at the git root.
     """
     if ctx.invoked_subcommand is None:
-        _list_pending()
+        _list_pending(show_all=show_all)
 
 
-def _list_pending() -> None:
+def _list_pending(show_all: bool = False) -> None:
     """List all pending errors."""
     store = PendingStore()
-    entries = store.list_all()
+    entries = store.list_all(include_self_explanatory=show_all)
 
     if not entries:
+        if not show_all:
+            all_entries = store.list_all(include_self_explanatory=True)
+            if all_entries:
+                click.echo(f"No pending errors ({len(all_entries)} self-explanatory hidden. Use --all to show).")
+                return
         click.echo("No pending errors.")
         return
 
     click.echo(f"\n{'#':>3}  {'Error ID':<14}  {'Resource':<30}  {'Code':<20}  {'Deferred At'}")
     click.echo("─" * 95)
+
+    entries.sort(key=lambda e: e.deferred_at or "", reverse=True)
 
     for i, entry in enumerate(entries, 1):
         resource = entry.resource_address or "—"
@@ -43,7 +52,15 @@ def _list_pending() -> None:
         deferred = entry.deferred_at[:19] if entry.deferred_at else "—"
         click.echo(f"{i:>3}  {entry.error_id:<14}  {resource:<30}  {code:<20}  {deferred}")
 
-    click.echo(f"\n{len(entries)} pending error(s).\n")
+    if not show_all:
+        all_count = len(store.list_all(include_self_explanatory=True))
+        hidden = all_count - len(entries)
+        if hidden:
+            click.echo(f"\n{len(entries)} pending error(s) ({hidden} self-explanatory hidden).\n")
+        else:
+            click.echo(f"\n{len(entries)} pending error(s).\n")
+    else:
+        click.echo(f"\n{len(entries)} pending error(s).\n")
 
 
 @pending.command("capture")

@@ -31,6 +31,7 @@ class PendingEntry:
     status: str = "pending"                 # "pending" | "superseded" | "resolved"
     command_family: Optional[str] = None    # pre-computed from command (stored for querying)
     kind: Optional[str] = None             # "resource" | "terraform_config" | "terraform_init"
+    worthiness: str = "memory_worthy"     # "memory_worthy" | "self_explanatory"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -53,6 +54,7 @@ class PendingEntry:
             status=data.get("status", "pending"),
             command_family=data.get("command_family"),
             kind=data.get("kind"),
+            worthiness=data.get("worthiness", "memory_worthy"),
         )
 
 
@@ -160,12 +162,14 @@ class PendingStore:
         entries.append(entry.to_dict())
         self._write(entries)
 
-    def list_all(self, include_superseded: bool = False) -> list[PendingEntry]:
-        """Return pending entries. By default only returns status='pending'."""
+    def list_all(self, include_superseded: bool = False, include_self_explanatory: bool = False) -> list[PendingEntry]:
+        """Return pending entries. By default only returns status='pending' and hides self-explanatory."""
         entries = [PendingEntry.from_dict(e) for e in self._read()]
-        if include_superseded:
-            return entries
-        return [e for e in entries if e.status == "pending"]
+        if not include_superseded:
+            entries = [e for e in entries if e.status == "pending"]
+        if not include_self_explanatory:
+            entries = [e for e in entries if e.worthiness != "self_explanatory"]
+        return entries
 
     def remove(self, error_id: str) -> bool:
         """Remove a pending entry by error_id (or prefix). Returns True if found."""
@@ -248,6 +252,7 @@ class PendingStore:
         cwd: str,
         command_family: str,
         max_age_hours: int = 24,
+        include_self_explanatory: bool = False,
     ) -> "list[PendingEntry]":
         """Return entries from the most recent session matching (cwd, command_family).
 
@@ -256,7 +261,7 @@ class PendingStore:
         """
         cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         candidates = []
-        for entry in self.list_all():
+        for entry in self.list_all(include_self_explanatory=include_self_explanatory):
             if entry.cwd != cwd:
                 continue
             if entry.command_family != command_family:

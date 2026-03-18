@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FixDoc — Capture fixes. Never repeat them.</title>
-<meta name="description" content="Capture, search, and share Terraform & Kubernetes fixes. Never re-solve the same infrastructure error twice.">
+<title>FixDoc — Three intelligence engines for infrastructure fixes</title>
+<meta name="description" content="FixDoc classifies errors, analyzes blast radius, and learns from outcomes. Three intelligence engines that give your infrastructure a memory.">
 
 <!-- Inter for UI · JetBrains Mono for code -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,7 +66,6 @@ body{
   width:calc(100% - 2rem);
   max-width:1100px;
   z-index:200;
-  /* Glassmorphism: blur + thin border creates the "frosted glass" look */
   background:rgba(10,10,10,0.7);
   backdrop-filter:blur(20px) saturate(180%);
   -webkit-backdrop-filter:blur(20px) saturate(180%);
@@ -74,7 +73,6 @@ body{
   border-radius:14px;
   padding:.75rem 1.5rem;
   display:flex;align-items:center;justify-content:space-between;
-  /* Transition padding only (transform used for translate, so separate) */
   transition:padding .3s ease,background .3s ease,box-shadow .3s ease;
 }
 #nav.scrolled{
@@ -90,7 +88,6 @@ body{
   text-decoration:none;position:relative;
   transition:color .2s ease;
 }
-/* Underline slides in from the left on hover — only uses transform (GPU-safe) */
 .nav-link::after{
   content:'';position:absolute;bottom:-2px;left:0;
   width:100%;height:1px;background:var(--green);
@@ -103,7 +100,6 @@ body{
   font-size:.8125rem;font-weight:700;color:var(--bg);
   background:var(--green);border:none;border-radius:8px;
   padding:.5rem 1.125rem;text-decoration:none;
-  /* Shimmer handled by pseudo-element below */
   position:relative;overflow:hidden;
   transition:transform .15s ease,box-shadow .15s ease;
 }
@@ -128,18 +124,15 @@ body{
   padding:8rem 1.5rem 5rem;
   overflow:hidden;
 }
-/* Three.js fills hero background — pointer-events:none lets clicks pass through */
 #hero-canvas{
   position:absolute;inset:0;width:100%;height:100%;
   opacity:.55;pointer-events:none;
 }
-/* Radial vignette fades canvas edges so content reads clearly */
 #hero::before{
   content:'';position:absolute;inset:0;
   background:radial-gradient(ellipse at 50% 40%,transparent 35%,rgba(10,10,10,.85) 100%);
   pointer-events:none;z-index:1;
 }
-/* Bottom blend into next section */
 #hero::after{
   content:'';position:absolute;bottom:0;left:0;right:0;height:220px;
   background:linear-gradient(to bottom,transparent,var(--bg));
@@ -156,8 +149,6 @@ body{
   #hero{padding-top:6rem}
 }
 
-/* Staggered entrance — CSS animations on hero elements */
-/* Using opacity + transform (GPU only — no layout properties) */
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:.5rem;
   font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:500;
@@ -167,7 +158,6 @@ body{
 }
 .eyebrow-dot{
   width:6px;height:6px;border-radius:50%;background:var(--green);
-  /* Pulse uses scale + opacity — both GPU-only */
   animation:pulse 2s ease infinite;
 }
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
@@ -178,7 +168,6 @@ body{
   margin-bottom:1.25rem;
   opacity:0;animation:fadeUp .7s cubic-bezier(0.16,1,.3,1) forwards .4s;
 }
-/* Gradient text — gradient on background, clip to text shape */
 .hero-h1-accent{
   background:linear-gradient(135deg,var(--green) 0%,var(--cyan) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
@@ -223,7 +212,6 @@ body{
   border-radius:14px;overflow:hidden;
   box-shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4),
              0 32px 64px rgba(0,0,0,.3),0 0 0 1px rgba(255,255,255,.03);
-  /* Idle float — only transform is animated (GPU-composited) */
   animation:termFloat 7s ease-in-out infinite;
   will-change:transform;
   opacity:0;animation:fadeUp .8s cubic-bezier(0.16,1,.3,1) forwards .7s,termFloat 7s ease-in-out 2s infinite;
@@ -253,12 +241,10 @@ body{
   padding:1.125rem 1.25rem;font-family:'JetBrains Mono',monospace;
   font-size:.8125rem;line-height:1.85;min-height:160px;
 }
-/* Terminal text colour helpers */
 .tp{color:var(--green)}.tc{color:var(--tx-3)}.to{color:var(--tx-2)}
 .te{color:var(--red)}.ts{color:var(--green)}.ti{color:var(--cyan)}
 .tt{color:var(--amber)}.tw{color:var(--tx-1)}
 
-/* Blinking cursor — only opacity animated (GPU) */
 .cursor{
   display:inline-block;width:7px;height:13px;
   background:var(--green);margin-left:2px;vertical-align:middle;
@@ -267,7 +253,7 @@ body{
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ==========================================================================
-   FADE-UP BASE ANIMATION  (expo-out easing — snappy entrance)
+   FADE-UP BASE ANIMATION
    ========================================================================== */
 @keyframes fadeUp{
   from{opacity:0;transform:translateY(24px);filter:blur(4px)}
@@ -275,8 +261,7 @@ body{
 }
 
 /* ==========================================================================
-   SCROLL-REVEAL  (IntersectionObserver adds .iv class)
-   Only transitions transform + opacity + filter — GPU-only properties
+   SCROLL-REVEAL
    ========================================================================== */
 .reveal{
   opacity:0;transform:translateY(28px);filter:blur(3px);
@@ -285,17 +270,17 @@ body{
              filter .7s cubic-bezier(0.16,1,.3,1);
 }
 .reveal.iv{opacity:1;transform:none;filter:none}
-/* Stagger helpers — transition-delay on siblings creates choreography */
 .d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}
 .d4{transition-delay:.32s}.d5{transition-delay:.40s}.d6{transition-delay:.48s}
 .d7{transition-delay:.56s}.d8{transition-delay:.64s}.d9{transition-delay:.72s}
+.d10{transition-delay:.80s}.d11{transition-delay:.88s}.d12{transition-delay:.96s}
 
 /* ==========================================================================
    SECTION LAYOUT
    ========================================================================== */
 section{padding:5rem 1.5rem;position:relative}
 @media(max-width:768px){section{padding:3.5rem 1rem}}
-.si{max-width:1100px;margin:0 auto}  /* section-inner */
+.si{max-width:1100px;margin:0 auto}
 .section-alt{background:var(--surface)}
 .tc-center{text-align:center}
 
@@ -343,14 +328,13 @@ section{padding:5rem 1.5rem;position:relative}
 .link-g:hover{opacity:.7}
 
 /* ==========================================================================
-   HOW IT WORKS — STEP CARDS  (3D tilt via JS)
+   HOW IT WORKS — STEP CARDS
    ========================================================================== */
 .steps-grid{
   display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
   position:relative;
 }
 @media(max-width:768px){.steps-grid{grid-template-columns:1fr}}
-/* Connector line between steps — decorative */
 .steps-line{
   position:absolute;top:1.75rem;left:calc(16.66%);right:calc(16.66%);
   height:1px;background:linear-gradient(90deg,transparent,var(--border-hi),transparent);
@@ -359,7 +343,6 @@ section{padding:5rem 1.5rem;position:relative}
 .step-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:14px;padding:1.75rem;
-  /* 3D tilt needs will-change:transform so browser creates a compositor layer */
   will-change:transform;transform-style:preserve-3d;
   transition:border-color .25s,box-shadow .25s;
 }
@@ -380,12 +363,13 @@ section{padding:5rem 1.5rem;position:relative}
 }
 
 /* ==========================================================================
-   FEATURE GRID  (3 × 3 glassmorphism cards with 3D tilt)
+   FEATURE GRID  (4 × 3 glassmorphism cards with 3D tilt)
    ========================================================================== */
 .feat-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;
 }
-@media(max-width:900px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1000px){.feat-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
 
 .feat-card{
@@ -394,7 +378,6 @@ section{padding:5rem 1.5rem;position:relative}
   will-change:transform;transform-style:preserve-3d;
   transition:border-color .25s,box-shadow .25s;
 }
-/* Corner bracket accent — drawn in CSS, revealed on hover */
 .feat-card::before{
   content:'';position:absolute;top:0;left:0;width:36px;height:36px;
   background:linear-gradient(to bottom,var(--border-hi) 1px,transparent 1px),
@@ -403,7 +386,6 @@ section{padding:5rem 1.5rem;position:relative}
 }
 .feat-card:hover::before{opacity:1}
 .feat-card:hover{border-color:rgba(0,255,136,.14);box-shadow:0 0 40px rgba(0,255,136,.05),var(--shadow-card)}
-/* translateZ lifts inner content toward viewer when card tilts — creates depth */
 .feat-inner{transform:translateZ(14px)}
 .feat-icon{
   width:36px;height:36px;display:flex;align-items:center;justify-content:center;
@@ -428,6 +410,124 @@ section{padding:5rem 1.5rem;position:relative}
   border:1px solid rgba(245,158,11,.2);border-radius:4px;
   padding:.125rem .5rem;vertical-align:middle;margin-left:.5rem;
 }
+.badge-shipped{
+  font-family:'JetBrains Mono',monospace;font-size:.625rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  color:var(--green);background:rgba(0,255,136,.08);
+  border:1px solid rgba(0,255,136,.2);border-radius:4px;
+  padding:.125rem .5rem;vertical-align:middle;margin-left:.5rem;
+}
+
+/* ==========================================================================
+   THREE ENGINES VISUALIZATION
+   ========================================================================== */
+.engines-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
+  margin-top:3rem;
+}
+@media(max-width:900px){.engines-grid{grid-template-columns:1fr}}
+
+.engine-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1.75rem;position:relative;overflow:hidden;
+  transition:border-color .3s,box-shadow .3s;
+}
+.engine-card:hover{box-shadow:0 0 40px rgba(0,255,136,.05),var(--shadow-card)}
+.engine-card.engine-green{border-color:rgba(0,255,136,.2)}
+.engine-card.engine-green:hover{border-color:rgba(0,255,136,.35)}
+.engine-card.engine-cyan{border-color:rgba(0,212,255,.2)}
+.engine-card.engine-cyan:hover{border-color:rgba(0,212,255,.35)}
+.engine-card.engine-amber{border-color:rgba(245,158,11,.2)}
+.engine-card.engine-amber:hover{border-color:rgba(245,158,11,.35)}
+
+.engine-title{
+  font-size:1.0625rem;font-weight:700;color:var(--tx-1);margin-bottom:.625rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.engine-desc{font-size:.875rem;color:var(--tx-2);line-height:1.65;margin-bottom:1.25rem}
+.engine-features{list-style:none;display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem}
+.engine-features li{
+  font-size:.8125rem;color:var(--tx-2);display:flex;align-items:flex-start;gap:.5rem;line-height:1.5;
+}
+.engine-features li::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.engine-green .engine-features li::before{background:var(--green)}
+.engine-cyan .engine-features li::before{background:var(--cyan)}
+.engine-amber .engine-features li::before{background:var(--amber)}
+
+.engine-progress{
+  height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;
+}
+.engine-progress-bar{
+  height:100%;border-radius:2px;width:0;
+  transition:width 1.2s cubic-bezier(0.16,1,.3,1);
+}
+.engine-green .engine-progress-bar{background:var(--green)}
+.engine-cyan .engine-progress-bar{background:var(--cyan)}
+.engine-amber .engine-progress-bar{background:var(--amber)}
+
+/* Engine SVG nodes */
+.engine-node{opacity:0;transition:opacity .5s ease,transform .5s ease;transform:translateY(8px)}
+.engine-node.ev{opacity:1;transform:translateY(0)}
+.engine-edge{stroke-dasharray:200;stroke-dashoffset:200;transition:stroke-dashoffset .8s ease}
+.engine-edge.ed{stroke-dashoffset:0}
+
+@keyframes engineGlow-green{
+  0%,100%{filter:drop-shadow(0 0 4px rgba(0,255,136,.3))}
+  50%{filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
+}
+@keyframes engineGlow-cyan{
+  0%,100%{filter:drop-shadow(0 0 4px rgba(0,212,255,.3))}
+  50%{filter:drop-shadow(0 0 12px rgba(0,212,255,.6))}
+}
+@keyframes engineGlow-amber{
+  0%,100%{filter:drop-shadow(0 0 4px rgba(245,158,11,.3))}
+  50%{filter:drop-shadow(0 0 12px rgba(245,158,11,.6))}
+}
+
+@keyframes flowDash{
+  to{stroke-dashoffset:-20}
+}
+.engine-flow{
+  stroke-dasharray:8 4;
+  animation:flowDash 1.2s linear infinite;
+}
+
+/* ==========================================================================
+   SCORE EXPLANATION CHIPS
+   ========================================================================== */
+.score-chips{
+  display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;
+  opacity:0;transition:opacity .5s ease;
+}
+.score-chips.visible{opacity:1}
+.score-chip{
+  font-family:'JetBrains Mono',monospace;font-size:.6875rem;font-weight:600;
+  padding:.3rem .75rem;border-radius:6px;display:inline-flex;align-items:center;gap:.375rem;
+}
+.score-chip.chip-action{color:var(--red);background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.2)}
+.score-chip.chip-iam{color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)}
+.score-chip.chip-impact{color:var(--cyan);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2)}
+.score-chip.chip-history{color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)}
+
+/* ==========================================================================
+   CI MODE CARDS
+   ========================================================================== */
+.ci-modes{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
+  margin-top:2rem;
+}
+@media(max-width:768px){.ci-modes{grid-template-columns:1fr}}
+.ci-mode-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:1.25rem;text-align:center;
+  transition:border-color .2s;
+}
+.ci-mode-card:hover{border-color:rgba(255,255,255,.1)}
+.ci-mode-title{
+  font-family:'JetBrains Mono',monospace;font-size:.875rem;font-weight:700;
+  color:var(--tx-1);margin-bottom:.5rem;
+}
+.ci-mode-desc{font-size:.8125rem;color:var(--tx-2);line-height:1.6}
 
 /* ==========================================================================
    BLAST RADIUS SVG
@@ -436,13 +536,10 @@ section{padding:5rem 1.5rem;position:relative}
   background:var(--surface);border:1px solid var(--border);
   border-radius:16px;padding:2rem;overflow:hidden;
 }
-/* Nodes start invisible — JS adds .bv class */
 .bn{opacity:0;transition:opacity .4s ease}
 .bn.bv{opacity:1}
-/* Edges animate via stroke-dashoffset — only SVG paint, no layout */
 .be{stroke-dasharray:500;stroke-dashoffset:500;transition:stroke-dashoffset .6s ease}
 .be.bd{stroke-dashoffset:0}
-/* HIGH badge pulses with a red glow after reveal */
 @keyframes badgePulse{
   0%,100%{box-shadow:0 0 10px rgba(255,77,109,.4)}
   50%{box-shadow:0 0 24px rgba(255,77,109,.9)}
@@ -483,10 +580,11 @@ section{padding:5rem 1.5rem;position:relative}
 }
 
 /* ==========================================================================
-   USE CASE CARDS (3D tilt)
+   USE CASE CARDS
    ========================================================================== */
-.uc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.75rem}
-@media(max-width:768px){.uc-grid{grid-template-columns:1fr}}
+.uc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.75rem}
+@media(max-width:900px){.uc-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.uc-grid{grid-template-columns:1fr}}
 .uc-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:16px;padding:2.5rem 1.75rem;text-align:center;
@@ -540,12 +638,13 @@ section{padding:5rem 1.5rem;position:relative}
 .rm-shipped .rm-icon{background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.12)}
 .rm-title{font-size:.9375rem;font-weight:700;color:var(--tx-1);margin-bottom:.25rem}
 .rm-desc{font-size:.875rem;color:var(--tx-2);line-height:1.6}
+.rm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem}
+@media(max-width:700px){.rm-grid{grid-template-columns:1fr}}
 
 /* ==========================================================================
    GET STARTED SECTION
    ========================================================================== */
 #get-started{position:relative;overflow:hidden}
-/* Radial green glow behind the terminal */
 #get-started::before{
   content:'';position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);
@@ -553,7 +652,6 @@ section{padding:5rem 1.5rem;position:relative}
   background:radial-gradient(ellipse,rgba(0,255,136,.07) 0%,transparent 70%);
   pointer-events:none;
 }
-/* Subtle circuit grid overlay */
 #get-started::after{
   content:'';position:absolute;inset:0;
   background-image:linear-gradient(rgba(0,255,136,.025) 1px,transparent 1px),
@@ -590,7 +688,6 @@ footer{
 .foot-link:hover{color:var(--tx-1)}
 .foot-tag{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3)}
 
-/* Inline code */
 code{
   font-family:'JetBrains Mono',monospace;font-size:.8em;
   color:var(--tx-1);background:rgba(255,255,255,.06);
@@ -621,11 +718,12 @@ code{
   </a>
   <div class="nav-links">
     <a href="#features"     class="nav-link">Features</a>
-    <a href="#blast-radius" class="nav-link">Blast Radius</a>
+    <a href="#engines"      class="nav-link">Architecture</a>
+    <a href="#analyze"      class="nav-link">Analyze</a>
     <a href="#import"       class="nav-link">Import</a>
     <a href="#use-cases"    class="nav-link">Use Cases</a>
     <a href="demo.html"     class="nav-link">Demo</a>
-    <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="nav-link">GitHub ↗</a>
+    <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="nav-link">GitHub &#8599;</a>
   </div>
   <a href="#get-started" class="nav-cta">Get Started</a>
 </nav>
@@ -641,16 +739,16 @@ code{
     <div>
       <div class="hero-eyebrow">
         <span class="eyebrow-dot"></span>
-        Error-Aware Engine&nbsp;&nbsp;//&nbsp;&nbsp;Infrastructure
+        Three Intelligence Engines&nbsp;&nbsp;//&nbsp;&nbsp;Infrastructure
       </div>
       <h1 class="hero-h1">
-        Your team fixes errors every week.<br>
-        <span class="hero-h1-accent">Most of them disappear.</span>
+        Your infrastructure has a memory problem.<br>
+        <span class="hero-h1-accent">FixDoc gives it three brains.</span>
       </h1>
       <p class="hero-sub">
-        FixDoc turns failed deployments into structured, searchable documentation,
-        tagged by resource, error code, and file, so your team builds on past fixes
-        instead of repeating them.
+        FixDoc classifies every error by memory-worthiness, analyzes blast radius with
+        score explanations, and learns from apply outcomes &mdash; so your team builds on
+        past fixes instead of repeating them.
       </p>
       <div class="hero-ctas">
         <a href="demo.html" class="btn-p">Run the Demo</a>
@@ -659,7 +757,7 @@ code{
           <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
         </a>
       </div>
-      <p class="hero-tagline">Capture once. Reuse forever.</p>
+      <p class="hero-tagline">Capture. Classify. Predict.</p>
       <div class="hero-install" onclick="copyHeroInstall(this)">
         <span class="prompt">$</span>
         <span>pipx install fixdoc &amp;&amp; fixdoc demo tour</span>
@@ -675,7 +773,7 @@ code{
       <div class="hero-terminal">
         <div class="term-hdr">
           <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">fixdoc — capturing a fix</span>
+          <span class="t-lbl">fixdoc — defer-first capture</span>
         </div>
         <div class="term-body" id="hero-term-body"></div>
       </div>
@@ -699,7 +797,7 @@ code{
         <div class="step-card tilt reveal d1">
           <div class="step-num">1</div>
           <div class="step-title">Capture</div>
-          <p class="step-desc">Wrap your command. FixDoc captures errors automatically on failure.</p>
+          <p class="step-desc">Wrap your command. FixDoc captures errors on failure, classifies memory-worthiness, and defers to pending.</p>
           <div class="step-code"><span class="tp">$&nbsp;</span><span class="step-code-txt"></span><span class="cursor"></span></div>
         </div>
         <div class="step-card tilt reveal d2">
@@ -711,7 +809,7 @@ code{
         <div class="step-card tilt reveal d3">
           <div class="step-num">3</div>
           <div class="step-title">Analyze</div>
-          <p class="step-desc">See how a change propagates before you apply it.</p>
+          <p class="step-desc">See how a change propagates, with historical fix matching and score explanations.</p>
           <div class="step-code"><span class="tp">$&nbsp;</span><span class="step-code-txt"></span><span class="cursor"></span></div>
         </div>
       </div>
@@ -768,23 +866,22 @@ code{
     <div class="tc-center reveal">
       <span class="s-eyebrow">// IN ACTION</span>
       <h2 class="s-title">Works where you work</h2>
-      <p class="s-sub">Wrap your commands. FixDoc captures errors on failure &mdash; no pipes needed.</p>
+      <p class="s-sub">Wrap your commands. FixDoc captures errors on failure &mdash; classifies and defers automatically.</p>
     </div>
     <div class="grid-2" style="margin-top:3rem">
       <div class="terminal reveal d1">
         <div class="term-hdr">
           <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">Capture a fix</span>
+          <span class="t-lbl">Defer-first capture</span>
         </div>
         <div class="term-body">
-          <div class="tc"># Wrap your command &mdash; FixDoc captures on failure</div>
+          <div class="tc"># Wrap your command &mdash; FixDoc classifies on failure</div>
           <div class="tp" style="margin-top:.25rem">$ fixdoc watch -- terraform apply</div>
-          <div style="margin-top:.75rem"><span class="te">Error:</span><span class="to"> AccessDenied on S3 bucket</span></div>
-          <div><span class="ti">Detected:</span><span class="to"> Terraform AWS error (S3 AccessDenied)</span></div>
-          <div><span class="ti">Suggested tags:</span> <span class="tt">terraform, aws, s3, iam</span></div>
-          <div class="tc" style="margin-top:.5rem"># Enter your resolution...</div>
-          <div class="tw">Added bucket policy with GetObject permission</div>
-          <div class="ts" style="margin-top:.75rem">Fix captured and saved!</div>
+          <div style="margin-top:.75rem"><span class="te">Error:</span><span class="to"> AccessDenied on aws_s3_bucket.data</span></div>
+          <div><span class="ti">Classification:</span><span class="tw"> memory-worthy</span></div>
+          <div><span class="ti">Similar fix found:</span><span class="to"> Added bucket policy with GetObject</span></div>
+          <div class="tt" style="font-size:.6875rem">&nbsp;&nbsp;75% effective &middot; applied 4 times</div>
+          <div class="ts" style="margin-top:.75rem">Deferred to .fixdoc-pending (session a3f8c1b2)</div>
         </div>
       </div>
       <div class="terminal reveal d2">
@@ -793,12 +890,12 @@ code{
           <span class="t-lbl">Search fixes</span>
         </div>
         <div class="term-body">
-          <div class="tc"># Instant search</div>
+          <div class="tc"># Instant search with effectiveness</div>
           <div class="tp" style="margin-top:.25rem">$ fixdoc search "S3 access denied"</div>
           <div class="tw" style="margin-top:.75rem">Found 3 matching fixes:</div>
           <div style="margin-top:.5rem;padding-left:.75rem;border-left:2px solid var(--green)">
             <div class="to">[1] S3 bucket AccessDenied error</div>
-            <div class="tt" style="font-size:.6875rem">aws, s3, iam &nbsp;&middot;&nbsp; 2 weeks ago</div>
+            <div class="tt" style="font-size:.6875rem">aws, s3, iam &nbsp;&middot;&nbsp; 75% effective &nbsp;&middot;&nbsp; 2 weeks ago</div>
           </div>
           <div style="margin-top:.5rem;padding-left:.75rem;border-left:2px solid #222">
             <div class="to">[2] Cross-account S3 access issue</div>
@@ -811,13 +908,18 @@ code{
     <div class="terminal reveal" style="max-width:640px;margin:1.25rem auto 0">
       <div class="term-hdr">
         <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-        <span class="t-lbl">Analyze blast radius</span>
+        <span class="t-lbl">Analyze with score explanations</span>
       </div>
       <div class="term-body">
-        <div class="tp">$ fixdoc blast-radius plan.json</div>
+        <div class="tp">$ fixdoc analyze plan.json</div>
         <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
-        <div class="to">2 control points, 7 affected resources</div>
-        <div style="color:var(--amber);margin-top:.25rem">Warning: Deleting aws_iam_role.app affects 7 downstream resources</div>
+        <div class="to" style="margin-top:.25rem">Why this scored 72:</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--red)">+25</span> delete action on IAM role</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--amber)">+18</span> IAM policy field changed</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--cyan)">+15</span> BFS propagation depth 3</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--green)">+14</span> 2 prior fix matches</div>
+        <div style="color:var(--cyan);margin-top:.375rem">Relevant Past Fixes: aws_iam_role [high: error code: AccessDenied]</div>
+        <div class="to">Contextual Checks: [attr] Verify IAM trust policy principals</div>
       </div>
     </div>
     <div class="tc-center" style="margin-top:2rem">
@@ -827,7 +929,7 @@ code{
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     FEATURES  3×3
+     FEATURES  4×3
 ══════════════════════════════════════════════════════════════════════ -->
 <section id="features" class="section-alt">
   <div class="si">
@@ -864,9 +966,9 @@ code{
       <!-- 4 -->
       <div class="feat-card tilt reveal d4">
         <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-          <div class="feat-title">Markdown export</div>
-          <p class="feat-desc">Every fix is stored as markdown. Version control friendly, human readable, works with your existing docs.</p>
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+          <div class="feat-title">Memory classification <span class="badge-new">New</span></div>
+          <p class="feat-desc">Classifies errors as memory-worthy or self-explanatory. Assigns memory types: fix, check, playbook, or insight.</p>
         </div>
       </div>
       <!-- 5 -->
@@ -880,9 +982,9 @@ code{
       <!-- 6 -->
       <div class="feat-card tilt reveal d6">
         <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
-          <div class="feat-title">CLI-native</div>
-          <p class="feat-desc">No browser, no GUI, no context switching. Everything happens in your terminal where you already work.</p>
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+          <div class="feat-title">AI diagnosis <span class="badge-new">New</span></div>
+          <p class="feat-desc">Optional AI explains WHY an error occurred and suggests fixes. Powered by Claude. Falls back to rule-based if unavailable.</p>
         </div>
       </div>
       <!-- 7 -->
@@ -890,23 +992,47 @@ code{
         <div class="feat-inner">
           <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></div>
           <div class="feat-title">Watch &amp; auto-capture</div>
-          <p class="feat-desc">Wrap any command with <code>fixdoc watch</code>. On failure, errors are detected and parsed automatically &mdash; no manual piping needed.</p>
+          <p class="feat-desc">Wrap any command with <code>fixdoc watch</code>. On failure, errors are classified and deferred. On success, linked fixes get effectiveness tracking.</p>
         </div>
       </div>
       <!-- 8 -->
       <div class="feat-card tilt reveal d8">
         <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
-          <div class="feat-title">Import from Jira, ServiceNow, Notion &amp; Slack <span class="badge-new">New</span></div>
-          <p class="feat-desc">Bulk import closed tickets from Jira (CSV/JSON), ServiceNow (JSON), or Notion (API). Import Slack threads with the two-emoji convention &mdash; 🔴 marks the issue, ✅ marks the fix. Review, filter, and deduplicate automatically.</p>
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
+          <div class="feat-title">Slack notifications <span class="badge-new">New</span></div>
+          <p class="feat-desc">Push failure notifications to Slack with type-aware fix suggestions. Uses Block Kit with <code>--notify</code> flag.</p>
         </div>
       </div>
       <!-- 9 -->
       <div class="feat-card tilt reveal d9">
         <div class="feat-inner">
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
+          <div class="feat-title">Import from Jira, ServiceNow, Notion &amp; Slack</div>
+          <p class="feat-desc">Bulk import closed tickets from Jira (CSV/JSON), ServiceNow (JSON), Notion (API), or Slack threads. Reviewed, filtered, and deduplicated.</p>
+        </div>
+      </div>
+      <!-- 10 -->
+      <div class="feat-card tilt reveal d10">
+        <div class="feat-inner">
           <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
           <div class="feat-title">Defer &amp; review</div>
-          <p class="feat-desc">Not ready to document mid-deploy? Defer any error to <code>fixdoc pending</code> and capture it when the dust settles. Nothing slips through.</p>
+          <p class="feat-desc">Not ready to document mid-deploy? Defer any error to <code>fixdoc pending</code> and capture it when the dust settles.</p>
+        </div>
+      </div>
+      <!-- 11 -->
+      <div class="feat-card tilt reveal d11">
+        <div class="feat-inner">
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+          <div class="feat-title">Effectiveness tracking <span class="badge-new">New</span></div>
+          <p class="feat-desc">Tracks how often fixes are applied and whether they succeed. Surfaces effective fixes first in suggestions.</p>
+        </div>
+      </div>
+      <!-- 12 -->
+      <div class="feat-card tilt reveal d12">
+        <div class="feat-inner">
+          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+          <div class="feat-title">Outcome learning <span class="badge-new">New</span></div>
+          <p class="feat-desc">Record what was predicted at PR time and what actually happened post-apply. Link outcomes via plan fingerprints.</p>
         </div>
       </div>
     </div>
@@ -917,18 +1043,121 @@ code{
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     BLAST RADIUS
+     THREE ENGINES
 ══════════════════════════════════════════════════════════════════════ -->
-<section id="blast-radius">
+<section id="engines">
+  <div class="si">
+    <div class="tc-center reveal">
+      <span class="s-eyebrow">// ARCHITECTURE</span>
+      <h2 class="s-title">Three intelligence engines</h2>
+      <p class="s-sub">Each engine handles a different phase of your infrastructure lifecycle</p>
+    </div>
+
+    <!-- SVG Visualization -->
+    <div class="reveal" style="margin-top:3rem">
+      <svg id="engines-svg" viewBox="0 0 900 200" width="100%" style="max-height:220px;overflow:visible">
+        <!-- Edges (animated flowing dashes) -->
+        <line class="engine-edge" id="eng-e1" x1="285" y1="100" x2="330" y2="100" stroke="#00ff88" stroke-width="2" opacity=".5"/>
+        <line class="engine-edge" id="eng-e2" x1="585" y1="100" x2="630" y2="100" stroke="#00d4ff" stroke-width="2" opacity=".5"/>
+
+        <!-- Node 1: Change Intelligence -->
+        <g class="engine-node" id="eng-n1">
+          <rect x="15" y="40" width="270" height="120" rx="12" fill="#111" stroke="#00ff88" stroke-width="2"/>
+          <text x="150" y="75" text-anchor="middle" fill="#00ff88" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">CHANGE INTELLIGENCE</text>
+          <text x="150" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Blast radius &middot; BFS propagation</text>
+          <text x="150" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">IAM scoring &middot; 8 change domains</text>
+          <text x="150" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Score explanations &middot; Outcomes</text>
+        </g>
+
+        <!-- Node 2: Failure Intelligence -->
+        <g class="engine-node" id="eng-n2">
+          <rect x="315" y="40" width="270" height="120" rx="12" fill="#111" stroke="#00d4ff" stroke-width="2"/>
+          <text x="450" y="75" text-anchor="middle" fill="#00d4ff" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">FAILURE INTELLIGENCE</text>
+          <text x="450" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Memory-worthiness classifier</text>
+          <text x="450" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">AI diagnosis &middot; Fix suggestions</text>
+          <text x="450" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Slack notifications</text>
+        </g>
+
+        <!-- Node 3: Memory Engine -->
+        <g class="engine-node" id="eng-n3">
+          <rect x="615" y="40" width="270" height="120" rx="12" fill="#111" stroke="#f59e0b" stroke-width="2"/>
+          <text x="750" y="75" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">MEMORY ENGINE</text>
+          <text x="750" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">4 types: fix &middot; check &middot; playbook &middot; insight</text>
+          <text x="750" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Effectiveness tracking</text>
+          <text x="750" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Source error ID linking</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Engine Detail Cards -->
+    <div class="engines-grid">
+      <div class="engine-card engine-green reveal d1">
+        <div class="engine-title">
+          <svg width="18" height="18" fill="none" stroke="var(--green)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Change Intelligence
+        </div>
+        <p class="engine-desc">Understands what a Terraform change will do before you apply it.</p>
+        <ul class="engine-features">
+          <li>Blast radius scoring with sigmoid formula (0&ndash;100)</li>
+          <li>BFS propagation through dependency DAG</li>
+          <li>IAM sensitivity scoring with wildcard trust detection</li>
+          <li>Smart fix matching with 8 change domains</li>
+          <li>Contextual checks from attribute + history</li>
+          <li>Score explanation bullets (action, IAM, impact, history)</li>
+          <li>AI-powered natural language explanations</li>
+          <li>Outcome learning with plan fingerprint linking</li>
+        </ul>
+        <div class="engine-progress"><div class="engine-progress-bar" data-width="85"></div></div>
+      </div>
+
+      <div class="engine-card engine-cyan reveal d2">
+        <div class="engine-title">
+          <svg width="18" height="18" fill="none" stroke="var(--cyan)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          Failure Intelligence
+        </div>
+        <p class="engine-desc">Classifies, diagnoses, and routes errors when your commands fail.</p>
+        <ul class="engine-features">
+          <li>Memory-worthiness classifier (memory-worthy vs self-explanatory)</li>
+          <li>AI error diagnosis explaining WHY it happened</li>
+          <li>Fix suggestions with effectiveness scores</li>
+          <li>Slack push notifications with Block Kit</li>
+          <li>Recurrence-based promotion (3+ similar &rarr; memory-worthy)</li>
+        </ul>
+        <div class="engine-progress"><div class="engine-progress-bar" data-width="70"></div></div>
+      </div>
+
+      <div class="engine-card engine-amber reveal d3">
+        <div class="engine-title">
+          <svg width="18" height="18" fill="none" stroke="var(--amber)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Memory Engine
+        </div>
+        <p class="engine-desc">Stores, classifies, and retrieves fixes with type-aware rendering.</p>
+        <ul class="engine-features">
+          <li>4 memory types: fix, check, playbook, insight</li>
+          <li>Type-aware preview rendering in suggestions</li>
+          <li>Effectiveness tracking (applied_count, success_count)</li>
+          <li>Source error ID linking across sessions</li>
+          <li>Bidirectional markdown round-trip for Git sync</li>
+        </ul>
+        <div class="engine-progress"><div class="engine-progress-bar" data-width="75"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     BLAST RADIUS / ANALYZE
+══════════════════════════════════════════════════════════════════════ -->
+<section id="analyze">
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// BLAST RADIUS ANALYZER</span>
-      <h2 class="s-title">See your blast radius</h2>
+      <h2 class="s-title">See your blast radius. Understand why.</h2>
       <p class="s-sub">Understand how one change propagates through your infrastructure</p>
     </div>
 
     <div class="blast-wrap reveal" style="margin-top:3rem" id="blast-section">
-      <!-- Score counter — animates from 0→72 when in view -->
+      <!-- Score counter -->
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;margin-bottom:1.25rem">
         <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3)">Score:</span>
         <span id="blast-score" style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:var(--tx-1);line-height:1">0</span>
@@ -936,13 +1165,13 @@ code{
         <span id="blast-badge" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--red);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:6px;padding:.25rem .625rem;opacity:0;transition:opacity .4s ease">[HIGH]</span>
       </div>
 
-      <!-- SVG dependency graph — nodes + edges animated by JS -->
+      <!-- SVG dependency graph -->
       <svg id="blast-svg" viewBox="0 0 900 400" width="100%" style="max-height:420px;overflow:visible">
         <text x="80"  y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Plan Change</text>
         <text x="320" y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Policy / RBAC</text>
         <text x="560" y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Workloads</text>
         <text x="800" y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Resources</text>
-        <!-- Edges — stroke-dashoffset animation draws them on -->
+        <!-- Edges -->
         <line class="be" id="e1a" x1="155" y1="190" x2="230" y2="140" stroke="#ff4d6d" stroke-width="1.5" stroke-dasharray="5 3" opacity=".6"/>
         <line class="be" id="e1b" x1="155" y1="190" x2="230" y2="240" stroke="#ff4d6d" stroke-width="1.5" stroke-dasharray="5 3" opacity=".6"/>
         <line class="be" id="e2a" x1="410" y1="140" x2="470" y2="100" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5 3" opacity=".6"/>
@@ -1007,6 +1236,15 @@ code{
           <text x="800" y="330" text-anchor="middle" fill="#333" font-size="9" font-family="JetBrains Mono,monospace">depth: 3</text>
         </g>
       </svg>
+
+      <!-- Score explanation chips (appear after counter) -->
+      <div class="score-chips" id="blast-explain">
+        <span class="score-chip chip-action">+25 delete action</span>
+        <span class="score-chip chip-iam">+18 IAM policy changed</span>
+        <span class="score-chip chip-impact">+15 BFS depth 3</span>
+        <span class="score-chip chip-history">+14 2 prior fix matches</span>
+      </div>
+
       <div class="tc-center" style="margin-top:1rem">
         <button id="blast-replay" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3);background:transparent;border:1px solid #222;border-radius:6px;padding:.4rem 1.25rem;cursor:pointer;transition:color .2s,border-color .2s">Replay Animation</button>
       </div>
@@ -1020,11 +1258,15 @@ code{
       <div class="term-body">
         <div class="tc"># Analyze your blast radius before applying</div>
         <div class="tp" style="margin-top:.25rem">$ terraform show -json plan.tfplan &gt; plan.json</div>
-        <div class="tp">$ fixdoc blast-radius plan.json</div>
+        <div class="tp">$ fixdoc analyze plan.json</div>
         <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
-        <div class="to">2 control points, 7 affected resources</div>
-        <div style="color:var(--cyan);margin-top:.375rem">Prior Issues: aws_iam_role (2 fixes), aws_s3_bucket (1)</div>
-        <div class="tc">&nbsp;&nbsp;&rsaquo; Run fixdoc show &lt;id&gt; for full context</div>
+        <div class="to" style="margin-top:.25rem">Why this scored 72:</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--red)">+25</span> delete action on IAM role</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--amber)">+18</span> IAM policy field changed</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--cyan)">+15</span> BFS propagation depth 3</div>
+        <div class="to">&nbsp;&nbsp;<span style="color:var(--green)">+14</span> 2 prior fix matches</div>
+        <div style="color:var(--cyan);margin-top:.375rem">Relevant Past Fixes: aws_iam_role [high: error code: AccessDenied]</div>
+        <div class="to">Contextual Checks: [attr] Verify IAM trust policy principals</div>
       </div>
     </div>
   </div>
@@ -1037,57 +1279,136 @@ code{
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// CI INTEGRATION</span>
-      <h2 class="s-title">Works in CI <span class="badge-soon">Coming Soon</span></h2>
-      <p class="s-sub">Run blast-radius checks on every pull request</p>
+      <h2 class="s-title">Works in CI <span class="badge-shipped">Shipped</span></h2>
+      <p class="s-sub">Run risk analysis on every PR with 3 review modes</p>
     </div>
     <div class="grid-2" style="margin-top:3rem">
       <div class="terminal reveal d1">
         <div class="term-hdr">
           <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">.github/workflows/blast-radius.yml</span>
+          <span class="t-lbl">terraform-risk-analysis.yml</span>
         </div>
-        <div class="term-body">
-          <div class="tc">name: Blast Radius Check</div>
+        <div class="term-body" style="font-size:.75rem">
+          <div class="tc">name: Terraform Risk Analysis</div>
           <div class="tc">on: [pull_request]</div>
+          <div class="tc">env:</div>
+          <div class="to">&nbsp;&nbsp;REVIEW_MODE: advisory <span class="tc"># or: warn, gate</span></div>
           <div class="tc">jobs:</div>
-          <div class="tc">&nbsp;&nbsp;check:</div>
-          <div class="tc">&nbsp;&nbsp;&nbsp;&nbsp;runs-on: ubuntu-latest</div>
+          <div class="tc">&nbsp;&nbsp;risk-analysis:</div>
+          <div class="tc">&nbsp;&nbsp;&nbsp;&nbsp;strategy:</div>
+          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;matrix:</div>
+          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scenario: [11, 12, 13, ...]</div>
           <div class="tc">&nbsp;&nbsp;&nbsp;&nbsp;steps:</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- uses: actions/checkout@v4</div>
           <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: pip install fixdoc</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: terraform init &amp;&amp; terraform plan -out=plan.tfplan</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: terraform show -json plan.tfplan &gt; plan.json</div>
-          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: fixdoc blast-radius plan.json --format json</div>
+          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: fixdoc analyze plan.json \</div>
+          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--format markdown --record \</div>
+          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--exit-on $GATE_THRESHOLD</div>
         </div>
       </div>
       <div class="terminal reveal d2">
         <div class="term-hdr">
           <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">CI Output</span>
+          <span class="t-lbl">PR Comment</span>
         </div>
-        <div class="term-body">
-          <div class="tp">$ fixdoc blast-radius plan.json</div>
-          <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
-          <div class="to">2 control points, 7 affected resources</div>
-          <div style="color:var(--amber);margin-top:.75rem">&#9888; Warning: High blast radius detected</div>
-          <div class="to">&nbsp;&nbsp;Deleting aws_iam_role.app affects:</div>
-          <div class="to">&nbsp;&nbsp;- iam_policy_attachment (depth 1)</div>
-          <div class="to">&nbsp;&nbsp;- lambda_function.api (depth 2)</div>
-          <div class="to">&nbsp;&nbsp;- ecs_task.worker (depth 2)</div>
-          <div class="to">&nbsp;&nbsp;- ... and 4 more</div>
+        <div class="term-body" style="font-size:.75rem">
+          <div class="tw" style="font-weight:700">Terraform Risk Analysis</div>
+          <div style="margin-top:.5rem">
+            <div class="to">&lt;details&gt;</div>
+            <div class="to">&lt;summary&gt;<span class="tt">&#9888;</span> <span class="tw">scenario-12: HIGH (72.4)</span>&lt;/summary&gt;</div>
+            <div class="to" style="margin-top:.25rem">&nbsp;&nbsp;Score: 72.4 / 100 [HIGH]</div>
+            <div class="to">&nbsp;&nbsp;+25 delete action on IAM role</div>
+            <div class="to">&nbsp;&nbsp;+18 IAM policy field changed</div>
+            <div class="to">&nbsp;&nbsp;Past fix: AccessDenied on aws_iam_role</div>
+            <div class="to">&lt;/details&gt;</div>
+          </div>
+          <div style="margin-top:.5rem">
+            <div class="to">&lt;details&gt;</div>
+            <div class="to">&lt;summary&gt;<span class="ts">&#10003;</span> <span class="tw">scenario-11: LOW (12.0)</span>&lt;/summary&gt;</div>
+            <div class="to">&lt;/details&gt;</div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="tc-center" style="margin-top:2rem">
-      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="link-g">Watch the repo for updates &rarr;</a>
+
+    <!-- 3 Review Mode Cards -->
+    <div class="ci-modes reveal">
+      <div class="ci-mode-card">
+        <div class="ci-mode-title" style="color:var(--green)">Advisory</div>
+        <p class="ci-mode-desc">Posts PR comment with analysis. No workflow impact. Default mode.</p>
+      </div>
+      <div class="ci-mode-card">
+        <div class="ci-mode-title" style="color:var(--amber)">Warn</div>
+        <p class="ci-mode-desc">Posts comment + adds GitHub warning annotation on high/critical severity.</p>
+      </div>
+      <div class="ci-mode-card">
+        <div class="ci-mode-title" style="color:var(--red)">Gate</div>
+        <p class="ci-mode-desc">Fails the workflow if severity meets or exceeds the configured threshold.</p>
+      </div>
     </div>
+
+    <div class="tc-center" style="margin-top:2rem">
+      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="link-g">See the workflow on GitHub &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     AI FEATURES
+══════════════════════════════════════════════════════════════════════ -->
+<section id="ai">
+  <div class="si">
+    <div class="tc-center reveal">
+      <span class="s-eyebrow">// AI-POWERED</span>
+      <h2 class="s-title">Optional AI, when you want it</h2>
+      <p class="s-sub">Diagnose errors and explain blast radius with Claude. Works perfectly without it.</p>
+    </div>
+    <div class="grid-2" style="margin-top:3rem">
+      <div class="terminal reveal d1">
+        <div class="term-hdr">
+          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
+          <span class="t-lbl">AI error diagnosis</span>
+        </div>
+        <div class="term-body" id="ai-diagnose-body">
+          <div class="tp">$ fixdoc watch --diagnose -- terraform apply</div>
+          <div style="margin-top:.5rem"><span class="te">Error:</span><span class="to"> AccessDenied on aws_s3_bucket.data</span></div>
+          <div class="ti" style="margin-top:.5rem">AI Diagnosis:</div>
+          <div class="to">The S3 bucket policy does not include the</div>
+          <div class="to">s3:GetObject permission for the IAM role</div>
+          <div class="to">arn:aws:iam::123:role/app-role. The role&rsquo;s</div>
+          <div class="to">trust policy allows EC2 assume, but the</div>
+          <div class="to">bucket policy restricts to a different principal.</div>
+          <div class="ts" style="margin-top:.5rem">Suggested: Add s3:GetObject to bucket policy</div>
+        </div>
+      </div>
+      <div class="terminal reveal d2">
+        <div class="term-hdr">
+          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
+          <span class="t-lbl">AI blast radius explanation</span>
+        </div>
+        <div class="term-body" id="ai-explain-body">
+          <div class="tp">$ fixdoc analyze --ai-explain plan.json</div>
+          <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
+          <div class="ti" style="margin-top:.5rem">AI Explanation:</div>
+          <div class="to">Deleting aws_iam_role.app is high-risk because</div>
+          <div class="to">it is the principal for 2 policy attachments</div>
+          <div class="to">that grant access to Lambda and ECS workloads.</div>
+          <div class="to">Those workloads depend on the role for S3,</div>
+          <div class="to">DynamoDB, and SQS access. Removing the role</div>
+          <div class="to">will immediately break all 7 downstream services.</div>
+        </div>
+      </div>
+    </div>
+    <p class="tc-center reveal" style="margin-top:1.5rem;font-size:.8125rem;color:var(--tx-3)">
+      Powered by Claude. API key stays on your machine. Falls back to rule-based if unavailable.
+      <br><code style="font-size:.75rem">pip install fixdoc[ai]</code>
+    </p>
   </div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
      NOT ANOTHER TOOL
 ══════════════════════════════════════════════════════════════════════ -->
-<section>
+<section class="section-alt">
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// POSITIONING</span>
@@ -1101,6 +1422,7 @@ code{
           <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>An incident management SaaS with dashboards and alerts</li>
           <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>A service catalog portal you have to log into</li>
           <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>A generic documentation tool</li>
+          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>An AI wrapper that requires an API key to function</li>
         </ul>
       </div>
       <div class="cc cc-is reveal d2">
@@ -1108,7 +1430,7 @@ code{
         <ul class="cc-list">
           <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Terminal-first capture that fits your existing workflow</li>
           <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>A searchable fix history that lives on your machine</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Proactive CI warnings when a change matches a known fix</li>
+          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>An intelligent system that classifies errors, explains blast radius, and learns from outcomes</li>
         </ul>
       </div>
     </div>
@@ -1121,7 +1443,7 @@ code{
 <!-- ══════════════════════════════════════════════════════════════════════
      KNOWLEDGE IMPORT
 ══════════════════════════════════════════════════════════════════════ -->
-<section id="import" class="section-alt">
+<section id="import">
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// KNOWLEDGE IMPORT</span>
@@ -1144,7 +1466,7 @@ code{
         </div>
       </div>
       <div class="reveal d3">
-        <div class="import-lbl">Slack &mdash; API <span class="badge-new">New</span></div>
+        <div class="import-lbl">Slack &mdash; API</div>
         <div class="terminal" id="imp-slack" style="border-color:rgba(0,212,255,.15)">
           <div class="term-hdr"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div><span class="t-lbl">import from Slack</span></div>
           <div class="term-body" style="font-size:.75rem;min-height:195px"></div>
@@ -1154,11 +1476,11 @@ code{
 
     <div class="slack-banner reveal">
       <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-2)">How Slack import works:</span>
-      <span>🔴</span>
-      <span style="font-size:.8125rem;color:var(--tx-2)">React to a root message → marks the <strong style="color:var(--tx-1);font-weight:500">issue</strong></span>
+      <span>&#128308;</span>
+      <span style="font-size:.8125rem;color:var(--tx-2)">React to a root message &rarr; marks the <strong style="color:var(--tx-1);font-weight:500">issue</strong></span>
       <span style="color:var(--tx-3)">+</span>
-      <span>✅</span>
-      <span style="font-size:.8125rem;color:var(--tx-2)">React to a reply → marks the <strong style="color:var(--tx-1);font-weight:500">resolution</strong></span>
+      <span>&#9989;</span>
+      <span style="font-size:.8125rem;color:var(--tx-2)">React to a reply &rarr; marks the <strong style="color:var(--tx-1);font-weight:500">resolution</strong></span>
       <span style="color:var(--tx-3)">=</span>
       <span style="font-family:'JetBrains Mono',monospace;font-size:.8125rem;color:var(--green)">Fix captured. No bot needed.</span>
     </div>
@@ -1192,7 +1514,7 @@ code{
 <!-- ══════════════════════════════════════════════════════════════════════
      USE CASES
 ══════════════════════════════════════════════════════════════════════ -->
-<section id="use-cases">
+<section id="use-cases" class="section-alt">
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// USE CASES</span>
@@ -1214,6 +1536,11 @@ code{
         <div class="uc-title">Onboarding</div>
         <p class="uc-desc">New engineers inherit your team&rsquo;s fix history on day one. Reduce ramp-up time, accelerate productivity.</p>
       </div>
+      <div class="uc-card tilt reveal d4">
+        <div class="uc-icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
+        <div class="uc-title">CI/CD Pipelines</div>
+        <p class="uc-desc">Run blast radius analysis on every PR. Gate merges by severity. Track outcomes post-apply.</p>
+      </div>
     </div>
     <div class="tc-center" style="margin-top:3rem">
       <a href="#get-started" class="btn-p">Start building your fix library</a>
@@ -1224,7 +1551,7 @@ code{
 <!-- ══════════════════════════════════════════════════════════════════════
      PRIVACY FAQ
 ══════════════════════════════════════════════════════════════════════ -->
-<section class="section-alt">
+<section>
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// PRIVACY &amp; STORAGE</span>
@@ -1242,7 +1569,7 @@ code{
       </div>
       <div class="faq-item reveal d3">
         <div class="faq-q">Does it phone home?</div>
-        <p class="faq-a">No. FixDoc makes zero network requests. It&rsquo;s a pure CLI tool with no telemetry or analytics.</p>
+        <p class="faq-a">No. FixDoc makes zero network requests by default. It&rsquo;s a pure CLI tool with no telemetry or analytics.</p>
       </div>
       <div class="faq-item reveal d4">
         <div class="faq-q">What about team sync?</div>
@@ -1252,6 +1579,10 @@ code{
         <div class="faq-q">Can I keep some fixes private?</div>
         <p class="faq-a">Yes. Mark any fix as private and it stays local &mdash; it&rsquo;s never included in sync, even if sync is enabled.</p>
       </div>
+      <div class="faq-item reveal d6">
+        <div class="faq-q">What about the AI features?</div>
+        <p class="faq-a">AI diagnosis and AI explain are fully optional. Your API key stays on your machine. No data is sent to any service unless you explicitly use <code>--diagnose</code> or <code>--ai-explain</code>. FixDoc works perfectly without them.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -1259,7 +1590,7 @@ code{
 <!-- ══════════════════════════════════════════════════════════════════════
      ROADMAP
 ══════════════════════════════════════════════════════════════════════ -->
-<section>
+<section class="section-alt">
   <div class="si">
     <div class="tc-center reveal">
       <span class="s-eyebrow">// ROADMAP</span>
@@ -1271,27 +1602,79 @@ code{
         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         Shipped
       </div>
-      <div class="rm-card rm-shipped reveal" style="margin-bottom:2rem">
-        <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
-        <div>
-          <div class="rm-title">Slack import — two-emoji batch capture</div>
-          <p class="rm-desc">Import fixes directly from Slack threads. React 🔴 on the issue message, ✅ on the fix reply. <code>fixdoc import slack --channel #terraform-help</code></p>
-        </div>
-      </div>
-      <div class="rm-lbl reveal" style="color:var(--tx-3)">Coming up</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
-        <div class="rm-card reveal d1">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--cyan)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
+      <div class="rm-grid" style="margin-bottom:2rem">
+        <div class="rm-card rm-shipped reveal d1">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
           <div>
             <div class="rm-title">CI + PR comments</div>
-            <p class="rm-desc">Post blast-radius results as PR comments with actionable warnings</p>
+            <p class="rm-desc">3 review modes (advisory, warn, gate), matrix strategy, collapsible PR comments</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d2">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+          <div>
+            <div class="rm-title">Memory classification</div>
+            <p class="rm-desc">Memory-worthy vs self-explanatory + 4 memory types (fix, check, playbook, insight)</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d3">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+          <div>
+            <div class="rm-title">AI diagnosis &amp; AI explain</div>
+            <p class="rm-desc">Claude-powered error diagnosis and blast radius explanations, optional install</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d4">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+          <div>
+            <div class="rm-title">Outcome learning</div>
+            <p class="rm-desc">Record-apply, plan fingerprint linking, prior failure scoring</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d5">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
+          <div>
+            <div class="rm-title">Slack push notifications</div>
+            <p class="rm-desc">Block Kit messages with type-aware fix suggestions on failure</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d6">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+          <div>
+            <div class="rm-title">Effectiveness tracking</div>
+            <p class="rm-desc">Applied/success counts, effectiveness rate, surface high-performing fixes first</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d7">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+          <div>
+            <div class="rm-title">Smart fix matching v3</div>
+            <p class="rm-desc">8 change domains, contextual checks, attribute-first scoring, template narratives</p>
+          </div>
+        </div>
+        <div class="rm-card rm-shipped reveal d8">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
+          <div>
+            <div class="rm-title">IAM sensitivity scoring</div>
+            <p class="rm-desc">Trust policy analysis, wildcard trust detection, cross-account ARN tracking</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rm-lbl reveal" style="color:var(--tx-3)">Coming up</div>
+      <div class="rm-grid">
+        <div class="rm-card reveal d1">
+          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--cyan)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg></div>
+          <div>
+            <div class="rm-title">Kubernetes blast radius</div>
+            <p class="rm-desc">Dependency graph analysis for Kubernetes manifests and Helm charts</p>
           </div>
         </div>
         <div class="rm-card reveal d2">
           <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--cyan)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
           <div>
-            <div class="rm-title">Deeper impact analysis</div>
-            <p class="rm-desc">Cross-stack dependency tracking and historical risk scoring</p>
+            <div class="rm-title">Team analytics dashboard</div>
+            <p class="rm-desc">Fix frequency trends, most common errors, team contribution metrics</p>
           </div>
         </div>
       </div>
@@ -1370,22 +1753,19 @@ code{
 })();
 </script>
 
-<!-- 3D CARD TILT: mouse-tracking perspective rotateX/Y — only transform animated (GPU) -->
+<!-- 3D CARD TILT -->
 <script>
 (function(){
-  var S=12; // max tilt degrees
+  var S=12;
   document.querySelectorAll('.tilt').forEach(function(card){
     card.addEventListener('mousemove',function(e){
       var r=card.getBoundingClientRect();
-      // Normalize position to -0.5…+0.5 relative to card center
       var nx=(e.clientX-r.left)/r.width-.5;
       var ny=(e.clientY-r.top)/r.height-.5;
-      // perspective() on the element itself (not parent) — simpler, works in all browsers
       card.style.transform='perspective(800px) rotateX('+(ny*-S)+'deg) rotateY('+(nx*S)+'deg) scale3d(1.025,1.025,1.025)';
       card.style.transition='transform 0.08s ease-out';
     });
     card.addEventListener('mouseleave',function(){
-      // Spring back — the CSS transition handles the ease-out
       card.style.transform='perspective(800px) rotateX(0) rotateY(0) scale3d(1,1,1)';
       card.style.transition='transform 0.4s cubic-bezier(0.16,1,0.3,1)';
     });
@@ -1401,17 +1781,15 @@ code{
   if(!canvas||!window.THREE)return;
 
   var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,alpha:true});
-  // Cap pixel ratio at 2 — above that is invisible and wastes GPU
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 
   var scene=new THREE.Scene();
   var camera=new THREE.PerspectiveCamera(60,1,0.1,100);
   camera.position.z=5;
 
-  // Build a uniform grid of particles
   var COLS=80,ROWS=44,COUNT=COLS*ROWS;
   var pos=new Float32Array(COUNT*3);
-  var base=new Float32Array(COUNT*3); // original positions for lerp target
+  var base=new Float32Array(COUNT*3);
 
   for(var r=0;r<ROWS;r++){
     for(var c=0;c<COLS;c++){
@@ -1429,7 +1807,6 @@ code{
   var mat=new THREE.PointsMaterial({color:0x00ff88,size:0.045,sizeAttenuation:true,transparent:true,opacity:0.45});
   scene.add(new THREE.Points(geo,mat));
 
-  // Track mouse in NDC coords
   var mx=0,my=0;
   window.addEventListener('mousemove',function(e){
     mx=(e.clientX/innerWidth)*2-1;
@@ -1445,8 +1822,6 @@ code{
   resize();
   window.addEventListener('resize',resize,{passive:true});
 
-  // Convert NDC mouse to world coords at z=0 plane
-  // halfH = tan(fov/2) * cameraZ — the world-space half-height at z=0
   function animate(){
     requestAnimationFrame(animate);
     var halfH=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.position.z;
@@ -1458,13 +1833,11 @@ code{
       var idx=i*3;
       var dx=base[idx]-wx,dy=base[idx+1]-wy;
       var dist=Math.sqrt(dx*dx+dy*dy);
-      // Quadratic falloff — strongest at cursor, zero at RADIUS
       var tz=dist<RADIUS?Math.pow(1-dist/RADIUS,2)*STRENGTH:0;
-      // Lerp toward target — creates spring-lag feel without spring physics library
       var cz=posAttr.getZ(i);
       posAttr.setZ(i,cz+(tz-cz)*LERP);
     }
-    posAttr.needsUpdate=true; // upload changed positions to GPU each frame
+    posAttr.needsUpdate=true;
     renderer.render(scene,camera);
   }
   animate();
@@ -1482,20 +1855,20 @@ function typeText(el,text,speed,cb){
 }
 </script>
 
-<!-- HERO TERMINAL: multi-line sequence with pauses between lines -->
+<!-- HERO TERMINAL: defer-first flow with memory classification -->
 <script>
 (function(){
   var steps=[
     {cls:'tp',text:'$ fixdoc watch -- terraform apply',spd:55},
     {gap:350},
-    {cls:'te',text:'Error: AccessDenied on S3 bucket',spd:22},
-    {cls:'ti',text:'→ Detected: Terraform AWS error (S3 AccessDenied)',spd:16},
-    {cls:'tt',text:'  Suggested tags: terraform, aws, s3, iam',spd:16},
+    {cls:'te',text:'Error: AccessDenied on aws_s3_bucket.data',spd:22},
+    {cls:'ti',text:'  Classification: memory-worthy',spd:16},
+    {cls:'ti',text:'  Similar fix: Added GetObject to bucket policy',spd:16},
+    {cls:'tt',text:'    75% effective · applied 4 times',spd:16},
     {gap:300},
-    {cls:'tc',text:'  # Enter your resolution...',spd:22},
-    {cls:'to',text:'  Added GetObject permission to bucket policy',spd:18},
+    {cls:'ts',text:'Deferred to .fixdoc-pending (session a3f8c1b2)',spd:18},
     {gap:280},
-    {cls:'ts',text:'✓ Fix captured and saved!',spd:28},
+    {cls:'tc',text:'  1 memory-worthy · 2 self-explanatory',spd:16},
   ];
   var COLS={'tp':'#00ff88','te':'#ff4d6d','ti':'#00d4ff','tt':'#f59e0b','tc':'#444','to':'#888','ts':'#00ff88','tw':'#f0f0f0'};
 
@@ -1517,7 +1890,6 @@ function typeText(el,text,speed,cb){
     }
     next();
   }
-  // Start after hero entrance animations settle
   window.addEventListener('load',function(){setTimeout(play,1100)});
 })();
 </script>
@@ -1525,7 +1897,7 @@ function typeText(el,text,speed,cb){
 <!-- STEP CARDS: code snippets type in when card enters view -->
 <script>
 (function(){
-  var cmds=['fixdoc watch -- terraform apply','fixdoc search "access denied"','fixdoc blast-radius plan.json'];
+  var cmds=['fixdoc watch -- terraform apply','fixdoc search "access denied"','fixdoc analyze plan.json'];
   document.querySelectorAll('.step-card').forEach(function(card,i){
     var span=card.querySelector('.step-code-txt');
     var cur=card.querySelector('.cursor');
@@ -1535,7 +1907,6 @@ function typeText(el,text,speed,cb){
       entries.forEach(function(e){
         if(e.isIntersecting&&!done){
           done=true;obs.unobserve(card);
-          // Stagger start time by card index — gives choreography effect
           setTimeout(function(){
             typeText(span,cmds[i],42,function(){if(cur)cur.style.display='none'});
           },i*160);
@@ -1546,13 +1917,12 @@ function typeText(el,text,speed,cb){
 })();
 </script>
 
-<!-- BLAST RADIUS: BFS-order reveal with score counter -->
+<!-- BLAST RADIUS: BFS-order reveal with score counter + score chips -->
 <script>
 (function(){
   var section=document.getElementById('blast-section');
   if(!section)return;
 
-  // BFS wave sequence: each wave reveals edges first, then nodes
   var waves=[
     {nodes:['bn-root'],                        edges:[]},
     {nodes:['bn-2a','bn-2b'],                  edges:['e1a','e1b']},
@@ -1561,15 +1931,16 @@ function typeText(el,text,speed,cb){
   ];
   var badge=document.getElementById('blast-badge');
   var scoreEl=document.getElementById('blast-score');
+  var chips=document.getElementById('blast-explain');
 
   function reset(){
     document.querySelectorAll('.bn').forEach(function(n){n.classList.remove('bv')});
     document.querySelectorAll('.be').forEach(function(e){e.classList.remove('bd')});
     if(badge){badge.style.opacity='0';badge.classList.remove('active')}
     if(scoreEl)scoreEl.textContent='0';
+    if(chips)chips.classList.remove('visible');
   }
 
-  // Eased count-up using cubic ease-out — only requestAnimationFrame (GPU timing)
   function countUp(el,end,dur){
     var start=performance.now();
     (function tick(now){
@@ -1586,11 +1957,14 @@ function typeText(el,text,speed,cb){
       setTimeout(function(){
         wave.edges.forEach(function(id){var el=document.getElementById(id);if(el)el.classList.add('bd')});
         wave.nodes.forEach(function(id){var el=document.getElementById(id);if(el)el.classList.add('bv')});
-        // After final wave, animate score and badge
         if(wi===waves.length-1){
           setTimeout(function(){
             if(badge){badge.style.opacity='1';setTimeout(function(){badge.classList.add('active')},200)}
             if(scoreEl)countUp(scoreEl,72,900);
+            // Reveal score chips after counter finishes
+            setTimeout(function(){
+              if(chips)chips.classList.add('visible');
+            },950);
           },350);
         }
       },delay);
@@ -1612,6 +1986,60 @@ function typeText(el,text,speed,cb){
 })();
 </script>
 
+<!-- ENGINE SVG ANIMATION: reveal nodes/edges in sequence + animate progress bars -->
+<script>
+(function(){
+  var svg=document.getElementById('engines-svg');
+  if(!svg)return;
+
+  var played=false;
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting&&!played){
+        played=true;
+        // Wave 1: first node
+        setTimeout(function(){
+          var n1=document.getElementById('eng-n1');
+          if(n1)n1.classList.add('ev');
+        },200);
+        // Wave 2: first edge + second node
+        setTimeout(function(){
+          var e1=document.getElementById('eng-e1');
+          if(e1)e1.classList.add('ed');
+          setTimeout(function(){
+            var n2=document.getElementById('eng-n2');
+            if(n2)n2.classList.add('ev');
+          },300);
+        },700);
+        // Wave 3: second edge + third node
+        setTimeout(function(){
+          var e2=document.getElementById('eng-e2');
+          if(e2)e2.classList.add('ed');
+          setTimeout(function(){
+            var n3=document.getElementById('eng-n3');
+            if(n3)n3.classList.add('ev');
+          },300);
+        },1200);
+        // Add flowing animation after reveal completes
+        setTimeout(function(){
+          var e1=document.getElementById('eng-e1');
+          var e2=document.getElementById('eng-e2');
+          if(e1)e1.classList.add('engine-flow');
+          if(e2)e2.classList.add('engine-flow');
+        },2000);
+        // Animate progress bars
+        setTimeout(function(){
+          document.querySelectorAll('.engine-progress-bar').forEach(function(bar){
+            var w=bar.getAttribute('data-width');
+            if(w)bar.style.width=w+'%';
+          });
+        },1800);
+      }
+    });
+  },{threshold:0.2}).observe(svg);
+})();
+</script>
+
 <!-- IMPORT TERMINALS: sequential typing triggered on scroll enter -->
 <script>
 (function(){
@@ -1625,7 +2053,7 @@ function typeText(el,text,speed,cb){
       {cls:'ti',text:'Review [y/e/s/a/q]:'},
       {cls:'to',text:'  INFRA-291: S3 bucket policy missing GetObject...'},
       {gap:200},
-      {cls:'ts',text:'✓ Imported 38 · 12 duplicates skipped'},
+      {cls:'ts',text:'Imported 38 · 12 duplicates skipped'},
     ],
     'imp-snow':[
       {cls:'tc',text:'# JSON export from ServiceNow'},
@@ -1636,10 +2064,10 @@ function typeText(el,text,speed,cb){
       {cls:'ti',text:'Review [y/e/s/a/q]:'},
       {cls:'to',text:'  INC0041823: Terraform IAM role missing PassRole...'},
       {gap:200},
-      {cls:'ts',text:'✓ Imported 24 · 6 duplicates skipped'},
+      {cls:'ts',text:'Imported 24 · 6 duplicates skipped'},
     ],
     'imp-slack':[
-      {cls:'tc',text:'# Two-emoji convention: 🔴 issue · ✅ fix'},
+      {cls:'tc',text:'# Two-emoji convention'},
       {cls:'tp',text:'$ fixdoc import slack \\'},
       {cls:'to',text:'    --channel C0123456 --auto'},
       {gap:200},
@@ -1647,7 +2075,7 @@ function typeText(el,text,speed,cb){
       {cls:'to',text:'Skipped 3 (no resolution marker)'},
       {cls:'ti',text:'Auto-import: high-signal filter'},
       {gap:200},
-      {cls:'ts',text:'✓ Imported 11 · 3 duplicates skipped'},
+      {cls:'ts',text:'Imported 11 · 3 duplicates skipped'},
     ],
   };
   var COLS={'tc':'#444','tp':'#00ff88','to':'#888','ti':'#00d4ff','ts':'#00ff88'};
@@ -1677,7 +2105,6 @@ function typeText(el,text,speed,cb){
     entries.forEach(function(e){
       if(e.isIntersecting&&!played){
         played=true;
-        // Stagger the three terminals by 700ms each
         playTerm('imp-jira',100);
         playTerm('imp-snow',700);
         playTerm('imp-slack',1300);
@@ -1694,6 +2121,9 @@ function typeText(el,text,speed,cb){
     {cls:'tc',text:'# Install FixDoc'},
     {cls:'tp',text:'$ pipx install fixdoc'},
     {cls:'tc',text:'  # or: pip install fixdoc'},
+    {gap:180},
+    {cls:'tc',text:'# Optional: AI features'},
+    {cls:'tp',text:'$ pip install fixdoc[ai]'},
     {gap:180},
     {cls:'tc',text:'# Try the interactive demo'},
     {cls:'tp',text:'$ fixdoc demo tour'},
@@ -1737,7 +2167,7 @@ function copyHeroInstall(el){
   });
 }
 function copyFull(btn){
-  navigator.clipboard.writeText('pipx install fixdoc\nfixdoc demo tour\nfixdoc watch -- terraform apply').then(function(){
+  navigator.clipboard.writeText('pipx install fixdoc\npip install fixdoc[ai]\nfixdoc demo tour\nfixdoc watch -- terraform apply').then(function(){
     btn.textContent='Copied!';btn.style.color='var(--green)';
     setTimeout(function(){btn.textContent='Copy';btn.style.color=''},2000);
   });

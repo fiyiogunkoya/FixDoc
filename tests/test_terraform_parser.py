@@ -615,6 +615,46 @@ The argument "runtime" is required, but no definition was found.
         assert errors[0].resource_type == "aws_lambda_function"
         assert errors[0].resource_name == "processor"
 
+    def test_provider_address_extracted(self):
+        """Provider errors like 'with provider[\"registry...\"]' should get a provider address."""
+        text = (
+            '│ Error: error configuring Terraform AWS Provider: failed to get shared config profile\n'
+            '│\n'
+            '│   with provider["registry.terraform.io/hashicorp/aws"],\n'
+            '│   on main.tf line 1, in provider "aws":\n'
+            '│    1: provider "aws" {\n'
+        )
+        errors = self.parser.parse(text)
+        assert len(errors) == 1
+        assert errors[0].resource_address == 'provider.aws'
+        assert errors[0].resource_type == 'provider'
+        assert errors[0].resource_name == 'aws'
+
+    def test_provider_address_with_alias(self):
+        """Provider with alias like provider[\"registry.../hashicorp/aws\"].west extracts correctly."""
+        text = (
+            '│ Error: error configuring Terraform AWS Provider\n'
+            '│\n'
+            '│   with provider["registry.terraform.io/hashicorp/aws"].west,\n'
+            '│   on main.tf line 5, in provider "aws":\n'
+        )
+        errors = self.parser.parse(text)
+        assert len(errors) == 1
+        assert errors[0].resource_address == 'provider.aws.west'
+
+    def test_provider_address_non_hashicorp(self):
+        """Third-party provider like provider[\"registry.../datadog/datadog\"]."""
+        text = (
+            '│ Error: error configuring Datadog Provider\n'
+            '│\n'
+            '│   with provider["registry.terraform.io/datadog/datadog"],\n'
+            '│   on main.tf line 10:\n'
+        )
+        errors = self.parser.parse(text)
+        assert len(errors) == 1
+        assert errors[0].resource_address == 'provider.datadog'
+        assert errors[0].resource_name == 'datadog'
+
     def test_error_id_computed_for_terraform_errors(self):
         """TerraformError.__post_init__ should call super() to compute error_id."""
         text = """

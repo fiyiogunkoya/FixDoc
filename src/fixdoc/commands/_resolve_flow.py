@@ -83,6 +83,7 @@ def resolve_pending_entries(
             config=config,
         )
         if fix:
+            fix.source_error_ids = [e.error_id for e in group]
             repo.save(fix)
             for e in group:
                 store.remove(e.error_id)

@@ -515,6 +515,7 @@ def compute_blast_score(
     l1_count: int,
     l2_count: int,
     history_match_count: int,
+    outcome_failure_count: int = 0,
 ) -> float:
     """Compute blast score 0-100 using linear formula.
 
@@ -573,6 +574,9 @@ def compute_blast_score(
     # 3. History overlay
     score += min(history_match_count * 5, 15)
 
+    # 4. Outcome overlay — prior apply failures with same fingerprint
+    score += min(outcome_failure_count * 10, 25)
+
     # Greenfield ceiling: all-creates with no cross-boundary existing-infra impact
     # cannot exceed MEDIUM. Volume of new resources ≠ blast radius on live infra.
     if is_greenfield and l1_count == 0 and l2_count == 0:
@@ -603,6 +607,7 @@ def build_score_explanation(
     l1_count: int,
     l2_count: int,
     history_count: int,
+    outcome_failure_count: int = 0,
 ) -> list[ScoreExplanation]:
     """Build rule-based score explanation bullets mirroring compute_blast_score().
 
@@ -687,6 +692,15 @@ def build_score_explanation(
         )
         explanations.append(
             ScoreExplanation(label=label, delta=delta, kind="history")
+        )
+
+    # Outcome bullet
+    if outcome_failure_count > 0:
+        delta = float(min(outcome_failure_count * 10, 25))
+        plural = "s" if outcome_failure_count > 1 else ""
+        label = f"Prior apply failure{plural} with this change pattern ({outcome_failure_count})"
+        explanations.append(
+            ScoreExplanation(label=label, delta=delta, kind="outcome")
         )
 
     # Greenfield cap modifier
@@ -1192,6 +1206,7 @@ def analyze_blast_radius(
     tag_only: bool = False,
     max_resource_warnings: int = 10,
     change_blocks: Optional[dict] = None,
+    outcome_failure_count: int = 0,
 ) -> BlastResult:
     """Run a full blast radius analysis on a Terraform plan.
 
@@ -1345,12 +1360,16 @@ def analyze_blast_radius(
     l2_score_count = sum(1 for ar in l2_affected if not _addr_in_plan(ar.address, changed_addresses))
 
     score = compute_blast_score(
-        nodes, l1_score_count, l2_score_count, history_count
+        nodes, l1_score_count, l2_score_count, history_count,
+        outcome_failure_count=outcome_failure_count,
     )
     sev = severity_label(score)
 
     # Score explanation bullets
-    explanation = build_score_explanation(nodes, l1_score_count, l2_score_count, history_count)
+    explanation = build_score_explanation(
+        nodes, l1_score_count, l2_score_count, history_count,
+        outcome_failure_count=outcome_failure_count,
+    )
     score_explanation = [
         {"label": e.label, "delta": e.delta, "kind": e.kind} for e in explanation
     ]

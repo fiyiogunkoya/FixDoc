@@ -68,6 +68,25 @@ class SuggestionWeights:
 
 
 @dataclass
+class DiagnosisConfig:
+    """Configuration for AI-powered error diagnosis."""
+
+    enabled: bool = False
+    max_errors: int = 3
+    model: str = "claude-haiku-4-5-20251001"
+
+
+@dataclass
+class NotificationConfig:
+    """Configuration for Slack notifications on error match."""
+
+    slack_enabled: bool = False
+    slack_token: Optional[str] = None
+    slack_channel: Optional[str] = None
+    slack_min_matches: int = 1
+
+
+@dataclass
 class FixDocConfig:
     """Root configuration object."""
 
@@ -77,6 +96,8 @@ class FixDocConfig:
     capture: CaptureConfig = field(default_factory=CaptureConfig)
     suggestion_weights: SuggestionWeights = field(default_factory=SuggestionWeights)
     private_fixes: list[str] = field(default_factory=list)
+    diagnosis: DiagnosisConfig = field(default_factory=DiagnosisConfig)
+    notification: NotificationConfig = field(default_factory=NotificationConfig)
 
     def to_dict(self) -> dict:
         """Convert config to dictionary for YAML serialization."""
@@ -87,6 +108,8 @@ class FixDocConfig:
             "capture": asdict(self.capture),
             "suggestion_weights": asdict(self.suggestion_weights),
             "private_fixes": self.private_fixes,
+            "diagnosis": asdict(self.diagnosis),
+            "notification": asdict(self.notification),
         }
 
     @classmethod
@@ -98,6 +121,9 @@ class FixDocConfig:
         capture_data = data.get("capture", {})
         weights_data = data.get("suggestion_weights", {})
         private_fixes = data.get("private_fixes", [])
+
+        diagnosis_data = data.get("diagnosis", {})
+        notification_data = data.get("notification", {})
 
         return cls(
             sync=SyncConfig(
@@ -129,6 +155,17 @@ class FixDocConfig:
                 resolution_keyword_weight=weights_data.get("resolution_keyword_weight", 1),
             ),
             private_fixes=private_fixes,
+            diagnosis=DiagnosisConfig(
+                enabled=diagnosis_data.get("enabled", False),
+                max_errors=diagnosis_data.get("max_errors", 3),
+                model=diagnosis_data.get("model", "claude-haiku-4-5-20251001"),
+            ),
+            notification=NotificationConfig(
+                slack_enabled=notification_data.get("slack_enabled", False),
+                slack_token=notification_data.get("slack_token"),
+                slack_channel=notification_data.get("slack_channel"),
+                slack_min_matches=notification_data.get("slack_min_matches", 1),
+            ),
         )
 
 

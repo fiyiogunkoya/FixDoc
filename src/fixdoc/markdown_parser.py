@@ -32,6 +32,13 @@ def markdown_to_fix(content: str, fix_id: str) -> Fix:
     error_excerpt = _extract_code_block(content, "Error Excerpt")
     notes = _extract_section(content, "Notes")
 
+    source_ids_text = _extract_section(content, "Source Error IDs")
+    source_error_ids = None
+    if source_ids_text:
+        source_error_ids = [s.strip() for s in source_ids_text.split(",") if s.strip()]
+
+    memory_type = _extract_metadata(content, "Memory Type") or "fix"
+
     if not issue:
         raise MarkdownParseError("Missing required 'Issue' section")
     if not resolution:
@@ -48,6 +55,8 @@ def markdown_to_fix(content: str, fix_id: str) -> Fix:
         updated_at=updated_at or "",
         author=author,
         author_email=author_email,
+        source_error_ids=source_error_ids,
+        memory_type=memory_type,
     )
 
 

@@ -4,6 +4,7 @@ from typing import Optional
 
 import click
 
+from ..classifier import classify_memory_type, MEMORY_TYPES
 from ..config import FixDocConfig
 from ..models import Fix
 from ..parsers import (
@@ -15,6 +16,37 @@ from ..parsers import (
 from ..parsers.base import ParsedError
 from ..storage import FixRepository
 from ..suggestions import find_similar_fixes, prompt_similar_fixes
+
+
+_MEMORY_TYPE_LABELS = {
+    "fix": "Fix (specific error -> specific resolution)",
+    "check": "Check (verification step)",
+    "playbook": "Playbook (step-by-step procedure)",
+    "insight": "Insight (root cause / lesson learned)",
+}
+
+_TYPE_SHORTHAND = {"f": "fix", "c": "check", "p": "playbook", "i": "insight"}
+
+
+def _classify_and_confirm(resolution: str) -> str:
+    """Auto-classify memory type. Only prompt override for non-fix types."""
+    detected = classify_memory_type(resolution)
+    if detected == "fix":
+        return "fix"
+
+    label = _MEMORY_TYPE_LABELS.get(detected, detected)
+    click.echo(f"  Detected type: {label}")
+    override = click.prompt(
+        "  Type [f]ix / [c]heck / [p]laybook / [i]nsight",
+        default=detected,
+        show_default=True,
+    ).strip().lower()
+
+    # Accept shorthand or full name
+    resolved = _TYPE_SHORTHAND.get(override, override)
+    if resolved in MEMORY_TYPES:
+        return resolved
+    return detected
 
 
 def _excerpt_limit(config: Optional[FixDocConfig] = None) -> int:
@@ -121,12 +153,15 @@ def capture_single_error(
 
     notes = click.prompt("Notes (optional)", default=notes_default, show_default=False)
 
+    memory_type = _classify_and_confirm(resolution)
+
     return Fix(
         issue=issue,
         resolution=resolution,
         error_excerpt=output[:_excerpt_limit(config)],
         tags=final_tags,
         notes=notes or None,
+        memory_type=memory_type,
     )
 
 
@@ -218,12 +253,15 @@ def capture_single_k8s_error(
     notes_default = "\n".join(notes_parts)
     notes = click.prompt("Notes (optional)", default=notes_default, show_default=False)
 
+    memory_type = _classify_and_confirm(resolution)
+
     return Fix(
         issue=issue,
         resolution=resolution,
         error_excerpt=output[:_excerpt_limit(config)],
         tags=final_tags,
         notes=notes or None,
+        memory_type=memory_type,
     )
 
 
@@ -318,12 +356,15 @@ def handle_generic_piped_capture(
 
     notes = click.prompt("Notes (optional)", default="", show_default=False)
 
+    memory_type = _classify_and_confirm(resolution)
+
     return Fix(
         issue=issue,
         resolution=resolution,
         error_excerpt=piped_input[:_excerpt_limit(config)],
         tags=tags or None,
         notes=notes or None,
+        memory_type=memory_type,
     )
 
 
@@ -347,7 +388,9 @@ def handle_quick_capture(
         issue = quick.strip()
         resolution = click.prompt("Resolution")
 
-    return Fix(issue=issue, resolution=resolution, tags=tags)
+    memory_type = _classify_and_confirm(resolution)
+
+    return Fix(issue=issue, resolution=resolution, tags=tags, memory_type=memory_type)
 
 
 def handle_interactive_capture(
@@ -380,10 +423,13 @@ def handle_interactive_capture(
 
     notes = click.prompt("Notes (optional)", default="", show_default=False)
 
+    memory_type = _classify_and_confirm(resolution)
+
     return Fix(
         issue=issue,
         resolution=resolution,
         error_excerpt=error_excerpt or None,
         tags=tags or None,
         notes=notes or None,
+        memory_type=memory_type,
     )

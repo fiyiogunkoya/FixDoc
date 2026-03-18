@@ -32,9 +32,9 @@ def runner():
 
 
 class TestSeedFixes:
-    def test_get_seed_fixes_returns_six(self):
+    def test_get_seed_fixes_returns_ten(self):
         fixes = get_seed_fixes()
-        assert len(fixes) == 6
+        assert len(fixes) == 10
 
     def test_all_seed_fixes_have_demo_tag(self):
         for fix in get_seed_fixes():
@@ -52,7 +52,7 @@ class TestSeedFixes:
         fixes = get_seed_fixes()
         for fix in fixes:
             temp_repo.save(fix)
-        assert temp_repo.count() == 6
+        assert temp_repo.count() == 10
 
     def test_seed_fixes_are_searchable(self, temp_repo):
         for fix in get_seed_fixes():
@@ -78,7 +78,7 @@ class TestCleanDemoFixes:
         non_demo = Fix(issue="Real issue", resolution="Real fix", tags="production")
         temp_repo.save(non_demo)
 
-        assert temp_repo.count() == 7
+        assert temp_repo.count() == 11
 
         # Remove demo fixes
         all_fixes = temp_repo.list_all()
@@ -119,9 +119,9 @@ class TestDemoSeedCommand:
         obj = {"base_path": base_path, "config": FixDocConfig()}
         result = runner.invoke(demo, ["seed"], obj=obj)
         assert result.exit_code == 0
-        assert "Seeded 6 demo fixes" in result.output
+        assert "Seeded 10 demo fixes" in result.output
         repo = FixRepository(base_path=base_path)
-        assert repo.count() == 6
+        assert repo.count() == 10
 
     def test_seed_clean_flag(self, runner, tmp_path):
         base_path = tmp_path / ".fixdoc"
@@ -132,10 +132,10 @@ class TestDemoSeedCommand:
         # Seed once
         runner.invoke(demo, ["seed"], obj=obj)
         repo = FixRepository(base_path=base_path)
-        assert repo.count() == 6
+        assert repo.count() == 10
 
         # Seed again with --clean
         result = runner.invoke(demo, ["seed", "--clean"], obj=obj)
         assert result.exit_code == 0
         assert "Removed" in result.output
-        assert repo.count() == 6  # old removed, new added
+        assert repo.count() == 10  # old removed, new added

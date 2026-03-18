@@ -33,3 +33,11 @@ def resolve(ctx):
         return
 
     resolve_pending_entries(matches, repo, config, store)
+
+    # Auto-resolve self-explanatory entries in this directory
+    all_cwd = store.list_all(include_self_explanatory=True)
+    self_exp = [e for e in all_cwd if e.cwd == cwd and e.worthiness == "self_explanatory"]
+    for e in self_exp:
+        store.remove(e.error_id)
+    if self_exp:
+        click.echo(f"Auto-resolved {len(self_exp)} self-explanatory error(s).")

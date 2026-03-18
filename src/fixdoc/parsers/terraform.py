@@ -246,7 +246,26 @@ class TerraformParser(ErrorParser):
                     info['address'] = f"{info['type']}.{info['name']}"
 
         if info['address'] == 'unknown':
-            # Pattern 5: TF config-scope blocks (variable, local, output, module call)
+            # Pattern 5: Provider address — with provider["registry.../namespace/name"].alias
+            provider_match = re.search(
+                r'with\s+provider\["[^"]*?/([a-z0-9_-]+)"\](?:\.([a-z0-9_-]+))?',
+                clean_text,
+                re.IGNORECASE,
+            )
+            if provider_match:
+                provider_name = provider_match.group(1)
+                alias = provider_match.group(2)
+                info['type'] = 'provider'
+                info['name'] = provider_name
+                if alias:
+                    info['address'] = f'provider.{provider_name}.{alias}'
+                else:
+                    info['address'] = f'provider.{provider_name}'
+                return info
+
+        if info['address'] == 'unknown':
+            # Pattern 6: TF config-scope blocks (variable, local, output, module call)
+            # (was Pattern 5 before provider pattern was added)
             for scope_type in ("variable", "local", "output", "module"):
                 m = re.search(rf'in {scope_type} "([a-zA-Z0-9_-]+)"', clean_text)
                 if m:
@@ -257,7 +276,7 @@ class TerraformParser(ErrorParser):
                     return info
 
         if info['address'] == 'unknown':
-            # Pattern 6: Terraform workflow errors (init/lock/provider)
+            # Pattern 7: Terraform workflow errors (init/lock/provider)
             # Extract error title from the Error: line
             title_match = re.search(r'Error:\s*(.+?)(?:\n|$)', clean_text)
             error_title = title_match.group(1).lower() if title_match else ""

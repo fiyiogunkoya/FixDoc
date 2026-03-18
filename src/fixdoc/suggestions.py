@@ -33,6 +33,7 @@ def find_similar_fixes(
     weights: Optional[SuggestionWeights] = None,
     min_score: int = 15,
     resource_address: Optional[str] = None,
+    error_id: Optional[str] = None,
 ) -> list[Fix]:
     """
     Find fixes similar to the given error text and tags.
@@ -45,6 +46,7 @@ def find_similar_fixes(
         weights: Custom scoring weights.
         min_score: Minimum score threshold for results.
         resource_address: Parsed resource address (e.g. aws_instance.web).
+        error_id: Error ID to boost fixes captured for this exact error.
     """
     all_fixes = repo.list_all()
     if not all_fixes:
@@ -137,6 +139,18 @@ def find_similar_fixes(
         resolution_keywords = _extract_keywords(fix.resolution)
         resolution_overlap = error_keywords & resolution_keywords
         score += len(resolution_overlap) * weights.resolution_keyword_weight
+
+        # 8. Source error ID match — this fix was captured for this exact error
+        if error_id and fix.source_error_ids and error_id in fix.source_error_ids:
+            score += 30
+
+        # 9. Effectiveness boost — proven fixes rank higher
+        if fix.applied_count >= 2:
+            rate = fix.effectiveness_rate
+            if rate is not None and rate >= 0.75:
+                score += 10
+            elif rate is not None and rate < 0.25 and fix.applied_count >= 3:
+                score -= 5
 
         if score >= min_score:
             scored_fixes.append((fix, score))
