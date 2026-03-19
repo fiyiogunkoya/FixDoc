@@ -1,9 +1,9 @@
-"""Blast radius analysis engine for fixdoc.
+"""Change impact analysis engine for fixdoc.
 
 Estimates which identities, workloads, and resources are most likely
 affected by infrastructure changes before they're applied. Combines
 Terraform plan JSON, the terraform graph dependency DAG, and FixDoc's
-fix history into a weighted BlastScore (0-100) with explainable
+fix history into a weighted ImpactScore (0-100) with explainable
 propagation paths.
 """
 
@@ -154,8 +154,8 @@ ATTR_CHECKS = {
 
 
 @dataclass
-class BlastNode:
-    """A resource node in the blast radius graph."""
+class ImpactNode:
+    """A resource node in the change impact graph."""
 
     address: str
     resource_type: str
@@ -181,8 +181,8 @@ class AffectedResource:
 
 
 @dataclass
-class BlastResult:
-    """Complete result of a blast radius analysis."""
+class ImpactResult:
+    """Complete result of a change impact analysis."""
 
     analysis_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     timestamp: str = field(
@@ -206,14 +206,14 @@ class BlastResult:
 
 @dataclass
 class ScoreExplanation:
-    """A single bullet-point explanation of a blast score contribution."""
+    """A single bullet-point explanation of an impact score contribution."""
 
     label: str    # Human-readable description
     delta: float  # Score contribution (positive = adds to score)
     kind: str     # "action", "iam", "impact", "history", "modifier"
 
 
-def is_actionable_change(node: BlastNode) -> bool:
+def is_actionable_change(node: ImpactNode) -> bool:
     """Return True if this node represents a real infrastructure change."""
     return node.action in _ACTIONABLE_ACTIONS
 
@@ -367,7 +367,7 @@ def compute_affected_set(
 
 
 def compute_tiered_affected(
-    changed_nodes: list[BlastNode],
+    changed_nodes: list[ImpactNode],
     adjacency: dict[str, set[str]],
     max_depth: int = 5,
 ) -> tuple[list[AffectedResource], list[AffectedResource]]:
@@ -489,7 +489,7 @@ def _compute_iam_sensitivity(change_block: dict) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Blast score formula — linear
+# Impact score formula — linear
 # ---------------------------------------------------------------------------
 
 
@@ -510,14 +510,14 @@ def _normalize_action(actions: list[str]) -> str:
     return "no-op"
 
 
-def compute_blast_score(
-    changed_nodes: list[BlastNode],
+def compute_impact_score(
+    changed_nodes: list[ImpactNode],
     l1_count: int,
     l2_count: int,
     history_match_count: int,
     outcome_failure_count: int = 0,
 ) -> float:
-    """Compute blast score 0-100 using linear formula.
+    """Compute impact score 0-100 using linear formula.
 
     Score components:
     1. Action points for each changed (L0) resource
@@ -532,7 +532,7 @@ def compute_blast_score(
     """
     score = 0.0
 
-    # No-ops/reads are already excluded by analyze_blast_radius() before this call.
+    # No-ops/reads are already excluded by analyze_change_impact() before this call.
     # Greenfield: all active changes are creates.
     is_greenfield = bool(changed_nodes) and all(
         node.action == "create" for node in changed_nodes
@@ -559,7 +559,7 @@ def compute_blast_score(
     score += action_points
 
     # 2. Impact points from dependents
-    # For greenfield: l1_count/l2_count are pre-filtered by analyze_blast_radius()
+    # For greenfield: l1_count/l2_count are pre-filtered by analyze_change_impact()
     # to only count resources NOT in the plan (cross-boundary existing-infra edges).
     impacted_count = min(l1_count + l2_count, 25)
     if is_greenfield:
@@ -578,7 +578,7 @@ def compute_blast_score(
     score += min(outcome_failure_count * 10, 25)
 
     # Greenfield ceiling: all-creates with no cross-boundary existing-infra impact
-    # cannot exceed MEDIUM. Volume of new resources ≠ blast radius on live infra.
+    # cannot exceed MEDIUM. Volume of new resources ≠ change impact on live infra.
     if is_greenfield and l1_count == 0 and l2_count == 0:
         score = min(score, 45.0)
 
@@ -592,7 +592,7 @@ def compute_blast_score(
 
 
 def severity_label(score: float) -> str:
-    """Map blast score to severity label."""
+    """Map impact score to severity label."""
     if score >= 75:
         return "critical"
     if score >= 50:
@@ -603,13 +603,13 @@ def severity_label(score: float) -> str:
 
 
 def build_score_explanation(
-    nodes: list[BlastNode],
+    nodes: list[ImpactNode],
     l1_count: int,
     l2_count: int,
     history_count: int,
     outcome_failure_count: int = 0,
 ) -> list[ScoreExplanation]:
-    """Build rule-based score explanation bullets mirroring compute_blast_score().
+    """Build rule-based score explanation bullets mirroring compute_impact_score().
 
     Returns a list of ScoreExplanation objects describing each score contribution.
     """
@@ -751,7 +751,7 @@ def _dedup_history_candidates(
 
 def compute_history_prior(
     changed_resource_types: list[str],
-    changed_nodes: list[BlastNode],
+    changed_nodes: list[ImpactNode],
     repo: FixRepository,
 ) -> tuple[int, list[dict]]:
     """Compute history match count from fix database.
@@ -810,7 +810,7 @@ def compute_history_prior(
 
 
 def find_resource_prior_fixes(
-    nodes: list[BlastNode],
+    nodes: list[ImpactNode],
     repo: FixRepository,
     max_total: int = 10,
     tag_only: bool = False,
@@ -988,7 +988,7 @@ def _redact_dict(
 
 
 def generate_checks(
-    control_points: list[BlastNode],
+    control_points: list[ImpactNode],
     has_deletes: bool,
 ) -> list[str]:
     """Generate recommended checks based on control point categories."""
@@ -1198,7 +1198,7 @@ def generate_contextual_checks(
 # ---------------------------------------------------------------------------
 
 
-def analyze_blast_radius(
+def analyze_change_impact(
     plan: dict,
     repo: FixRepository,
     dot_text: Optional[str] = None,
@@ -1207,8 +1207,8 @@ def analyze_blast_radius(
     max_resource_warnings: int = 10,
     change_blocks: Optional[dict] = None,
     outcome_failure_count: int = 0,
-) -> BlastResult:
-    """Run a full blast radius analysis on a Terraform plan.
+) -> ImpactResult:
+    """Run a full change impact analysis on a Terraform plan.
 
     Args:
         plan: Parsed Terraform plan JSON.
@@ -1220,7 +1220,7 @@ def analyze_blast_radius(
         change_blocks: Optional mapping of address -> raw change block for fingerprinting.
 
     Returns:
-        BlastResult with score, severity, affected resources, etc.
+        ImpactResult with score, severity, affected resources, etc.
     """
     from .commands.analyze import TerraformAnalyzer
 
@@ -1237,8 +1237,8 @@ def analyze_blast_radius(
                 change_blocks[addr] = cb
 
     # Build nodes and identify control points — changed only
-    nodes: list[BlastNode] = []
-    control_points: list[BlastNode] = []
+    nodes: list[ImpactNode] = []
+    control_points: list[ImpactNode] = []
     changes: list[dict] = []
 
     for res in resources:
@@ -1266,7 +1266,7 @@ def analyze_blast_radius(
         if cb:
             fingerprint = extract_change_fingerprint(cb)
 
-        node = BlastNode(
+        node = ImpactNode(
             address=res.address,
             resource_type=res.resource_type,
             action=action,
@@ -1334,7 +1334,7 @@ def analyze_blast_radius(
     # Unified smart matching — replaces both history_prior and resource_warnings
     relevant_fixes = find_relevant_fixes(nodes, repo, max_total=max_resource_warnings)
 
-    # Compute history count for blast score — only qualifying matches
+    # Compute history count for impact score — only qualifying matches
     qualifying_fixes = []
     for rf in relevant_fixes:
         conf = rf.get("confidence", "low")
@@ -1354,12 +1354,12 @@ def analyze_blast_radius(
         for rf in qualifying_fixes[:3]
     ]
 
-    # Blast score
+    # Impact score
     changed_addresses = {n.address for n in nodes}
     l1_score_count = sum(1 for ar in l1_affected if not _addr_in_plan(ar.address, changed_addresses))
     l2_score_count = sum(1 for ar in l2_affected if not _addr_in_plan(ar.address, changed_addresses))
 
-    score = compute_blast_score(
+    score = compute_impact_score(
         nodes, l1_score_count, l2_score_count, history_count,
         outcome_failure_count=outcome_failure_count,
     )
@@ -1402,7 +1402,7 @@ def analyze_blast_radius(
             plan_summary["by_action"].get(n.action, 0) + 1
         )
 
-    return BlastResult(
+    return ImpactResult(
         score=score,
         severity=sev,
         changes=changes,

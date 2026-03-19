@@ -1,6 +1,6 @@
 """Integration tests for the full Terraform pipeline.
 
-Exercises: error parsing → fix capture → suggestions → blast radius analysis,
+Exercises: error parsing → fix capture → suggestions → change impact analysis,
 all wired through realistic fixture data matching test_terraform/main.tf.
 """
 
@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from fixdoc.blast_radius import (
-    analyze_blast_radius,
+from fixdoc.change_impact import (
+    analyze_change_impact,
     parse_dot_graph,
     severity_label,
 )
@@ -81,13 +81,13 @@ def seed_fix(repo, issue, resolution, tags, error_excerpt=""):
 
 @pytest.mark.skipif(not PLANS_DIR.exists(), reason="plan fixtures missing")
 class TestBlastRadiusIntegration:
-    """Load fixture plans → analyze_blast_radius() + CLI → verify results."""
+    """Load fixture plans → analyze_change_impact() + CLI → verify results."""
 
     def test_create_all_score_range(self, tmp_path):
         """All-create plan: medium score after greenfield discount."""
         plan = _load_json_fixture(PLANS_DIR / "plan_create_all.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         # 13 resources created, 4 are boundary (IAM + SG).
         # Greenfield discount: boundary 8*1.5*0.5=6.0, non-boundary 8*0.3=2.4.
@@ -100,7 +100,7 @@ class TestBlastRadiusIntegration:
         """All-create plan identifies IAM role, policy attachment, and SGs."""
         plan = _load_json_fixture(PLANS_DIR / "plan_create_all.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         cp_addresses = {cp["address"] for cp in result.control_points}
         assert "aws_iam_role.lambda_exec" in cp_addresses
@@ -112,7 +112,7 @@ class TestBlastRadiusIntegration:
         """All-create plan has 13 changes."""
         plan = _load_json_fixture(PLANS_DIR / "plan_create_all.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         assert result.plan_summary["total_changes"] == 13
         assert result.plan_summary["by_action"].get("create") == 13
@@ -121,7 +121,7 @@ class TestBlastRadiusIntegration:
         """IAM delete plan: high/critical score (delete weight + IAM criticality)."""
         plan = _load_json_fixture(PLANS_DIR / "plan_iam_delete.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         # IAM role (criticality 0.9) + delete (weight 1.0) → high score
         assert result.score >= 50
@@ -131,7 +131,7 @@ class TestBlastRadiusIntegration:
         """IAM delete plan generates delete-specific checks."""
         plan = _load_json_fixture(PLANS_DIR / "plan_iam_delete.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         assert any("not referenced" in c.lower() for c in result.checks)
         assert any("iam" in c.lower() for c in result.checks)
@@ -140,7 +140,7 @@ class TestBlastRadiusIntegration:
         """SG update plan: low score without graph (new linear formula)."""
         plan = _load_json_fixture(PLANS_DIR / "plan_sg_update.json")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         # SG update: 7.5 + 2 plain updates (5 each) = 17.5, no graph → LOW.
         # Per plan design: 3 SG updates without dependents → LOW.
@@ -152,7 +152,7 @@ class TestBlastRadiusIntegration:
         plan = _load_json_fixture(PLANS_DIR / "plan_sg_update.json")
         dot_text = _load_fixture(PLANS_DIR / "dependency_graph.dot")
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo, dot_text=dot_text)
+        result = analyze_change_impact(plan, repo, dot_text=dot_text)
 
         # SG.web is a control point. Via graph, it connects to:
         # instance.web, lb.main, sg.db, lb_target_group.web, etc.
@@ -174,11 +174,11 @@ class TestBlastRadiusIntegration:
                 tags="terraform,aws,aws_security_group,networking",
             )
 
-        result_with_history = analyze_blast_radius(plan, repo)
+        result_with_history = analyze_change_impact(plan, repo)
 
         # Compare against empty repo
         empty_repo = FixRepository(tmp_path / "empty")
-        result_no_history = analyze_blast_radius(plan, empty_repo)
+        result_no_history = analyze_change_impact(plan, empty_repo)
 
         assert result_with_history.score >= result_no_history.score
         assert len(result_with_history.history_matches) >= 1

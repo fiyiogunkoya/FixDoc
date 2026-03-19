@@ -1,7 +1,7 @@
 # Scenario 11: Create-Only Non-Boundary Plan
 #
 # All resources are creates with no IAM or network control points (no
-# aws_security_group, aws_iam_*). This exercises the blast radius
+# aws_security_group, aws_iam_*). This exercises the change impact
 # GREENFIELD_MULTIPLIER path (0.3x score discount) and verifies that
 # find_resource_prior_fixes() surfaces tribal warnings even without the
 # Phase 2 BFS (L2 gate does not fire — no boundary resources, no deletes).

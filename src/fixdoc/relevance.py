@@ -142,7 +142,7 @@ CHANGE_DOMAINS = {
 
 
 # ---------------------------------------------------------------------------
-# Helpers (moved from blast_radius.py)
+# Helpers (moved from change_impact.py)
 # ---------------------------------------------------------------------------
 
 _ERROR_CODE_RE = re.compile(
@@ -261,7 +261,7 @@ class RelevanceMatcher:
         Returns list[dict] with fix fields, score, confidence, match_reason,
         matched_resources, domain, similar_count, narrative.
         """
-        from .blast_radius import is_actionable_change
+        from .change_impact import is_actionable_change
 
         actionable = [n for n in nodes if is_actionable_change(n)]
         if not actionable or not self.fixes:

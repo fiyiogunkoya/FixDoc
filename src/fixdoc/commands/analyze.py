@@ -1,6 +1,6 @@
 """Analyze command for fixdoc CLI.
 
-Merges plan analysis + blast radius into a single command.
+Merges plan analysis + change impact into a single command.
 """
 
 import json
@@ -13,10 +13,10 @@ from typing import Optional
 
 import click
 
-from ..blast_radius import (
-    BlastResult,
-    BlastNode,
-    analyze_blast_radius,
+from ..change_impact import (
+    ImpactResult,
+    ImpactNode,
+    analyze_change_impact,
 )
 from ..relevance import format_match_narrative
 from ..models import Fix
@@ -321,7 +321,7 @@ def _group_warnings(warnings: list) -> dict:
 
 
 def _format_human(
-    result: BlastResult,
+    result: ImpactResult,
     changed: list[PlanResource],
     verbose: bool = False,
     ai_explanation: Optional[str] = None,
@@ -395,7 +395,7 @@ def _format_human(
             action_str = res.action.upper()
             addr = res.address
             cp_info = ""
-            from ..blast_radius import classify_control_point
+            from ..change_impact import classify_control_point
             cp = classify_control_point(res.resource_type)
             if cp:
                 cp_info = f"  [{cp[0]} boundary]"
@@ -499,11 +499,11 @@ def _format_human(
 
 
 def _format_json(
-    result: BlastResult,
+    result: ImpactResult,
     plan_fingerprint: Optional[str] = None,
     outcome_id: Optional[str] = None,
 ) -> str:
-    """Format blast radius result as JSON."""
+    """Format change impact result as JSON."""
     # Serialize relevant_fixes: convert sets to lists for JSON compatibility
     serializable_fixes = []
     for rf in result.relevant_fixes:
@@ -550,7 +550,7 @@ def _format_json(
     return json.dumps(data, indent=2)
 
 
-def _format_summary(result: BlastResult) -> str:
+def _format_summary(result: ImpactResult) -> str:
     """Format a quick summary of the analysis."""
     ps = result.plan_summary
     sev = result.severity.upper()
@@ -570,8 +570,8 @@ _SEVERITY_EMOJI = {
 }
 
 
-def _format_markdown(result: BlastResult) -> str:
-    """Format blast radius result as GitHub-flavored markdown.
+def _format_markdown(result: ImpactResult) -> str:
+    """Format change impact result as GitHub-flavored markdown.
 
     Designed for PR comments and job summaries — no ANSI codes, scannable
     in under 20 seconds.
@@ -675,7 +675,7 @@ def _format_markdown(result: BlastResult) -> str:
     return "\n".join(lines)
 
 
-def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
+def generate_ai_explanation(result: ImpactResult, api_key: str) -> Optional[str]:
     """Call the Claude API to generate polished score explanation prose.
 
     Returns the response text, or None if anthropic is not installed or the
@@ -693,7 +693,7 @@ def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
     history_count = len(result.history_matches)
 
     prompt_parts = [
-        f"A Terraform plan scored {result.score}/100 ({result.severity.upper()} severity) for blast radius risk.",
+        f"A Terraform plan scored {result.score}/100 ({result.severity.upper()} severity) for change impact risk.",
         "Score factors:",
     ]
     for label in bullet_labels:
@@ -736,7 +736,7 @@ def generate_ai_explanation(result: BlastResult, api_key: str) -> Optional[str]:
 
 
 def generate_ai_narrative(
-    result: BlastResult,
+    result: ImpactResult,
     changed: list,
     api_key: str,
 ) -> Optional[str]:
@@ -781,7 +781,7 @@ def generate_ai_narrative(
         known_issue = result.relevant_fixes[0].get("issue", "")[:120]
 
     prompt_parts = [
-        f"A Terraform plan has been analyzed and scored {result.score}/100 ({result.severity.upper()} severity) for blast radius risk.",
+        f"A Terraform plan has been analyzed and scored {result.score}/100 ({result.severity.upper()} severity) for change impact risk.",
         f"Resources changing: {resource_summary}.",
     ]
     if control_point_addrs:
@@ -1002,8 +1002,8 @@ def analyze(
     except Exception:
         pass  # Non-critical: don't break analysis if outcome store fails
 
-    # Run blast radius analysis
-    result = analyze_blast_radius(
+    # Run change impact analysis
+    result = analyze_change_impact(
         plan, repo, dot_text=dot_text, max_depth=max_depth,
         tag_only=tag_only, max_resource_warnings=max_warnings,
         change_blocks=plan_change_blocks,

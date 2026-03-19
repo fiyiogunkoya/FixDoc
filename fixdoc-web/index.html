@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FixDoc — Three intelligence engines for infrastructure fixes</title>
-<meta name="description" content="FixDoc classifies errors, analyzes blast radius, and learns from outcomes. Three intelligence engines that give your infrastructure a memory.">
+<meta name="description" content="FixDoc classifies errors, analyzes change impact, and learns from outcomes. Three intelligence engines that give your infrastructure a memory.">
 
 <!-- Inter for UI · JetBrains Mono for code -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,7 @@
   --tx-1:        #f0f0f0;
   --tx-2:        #888888;
   --tx-3:        #444444;
-  /* Four-layer shadow — more realistic than a single box-shadow */
+  /* Four-layer shadow */
   --shadow-card: 0 1px 2px rgba(0,0,0,0.15),
                  0 4px 8px rgba(0,0,0,0.12),
                  0 16px 32px rgba(0,0,0,0.1),
@@ -272,8 +272,6 @@ body{
 .reveal.iv{opacity:1;transform:none;filter:none}
 .d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}
 .d4{transition-delay:.32s}.d5{transition-delay:.40s}.d6{transition-delay:.48s}
-.d7{transition-delay:.56s}.d8{transition-delay:.64s}.d9{transition-delay:.72s}
-.d10{transition-delay:.80s}.d11{transition-delay:.88s}.d12{transition-delay:.96s}
 
 /* ==========================================================================
    SECTION LAYOUT
@@ -328,98 +326,7 @@ section{padding:5rem 1.5rem;position:relative}
 .link-g:hover{opacity:.7}
 
 /* ==========================================================================
-   HOW IT WORKS — STEP CARDS
-   ========================================================================== */
-.steps-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
-  position:relative;
-}
-@media(max-width:768px){.steps-grid{grid-template-columns:1fr}}
-.steps-line{
-  position:absolute;top:1.75rem;left:calc(16.66%);right:calc(16.66%);
-  height:1px;background:linear-gradient(90deg,transparent,var(--border-hi),transparent);
-  pointer-events:none;
-}
-.step-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:1.75rem;
-  will-change:transform;transform-style:preserve-3d;
-  transition:border-color .25s,box-shadow .25s;
-}
-.step-card:hover{border-color:var(--border-hi);box-shadow:0 0 30px rgba(0,255,136,.07),var(--shadow-card)}
-.step-num{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:34px;height:34px;border-radius:8px;
-  background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.18);
-  font-family:'JetBrains Mono',monospace;font-size:.8125rem;font-weight:700;
-  color:var(--green);margin-bottom:1.25rem;
-}
-.step-title{font-size:1rem;font-weight:700;color:var(--tx-1);margin-bottom:.5rem}
-.step-desc{font-size:.875rem;color:var(--tx-2);line-height:1.65;margin-bottom:1rem}
-.step-code{
-  background:var(--bg);border:1px solid var(--border);border-radius:6px;
-  padding:.625rem .875rem;font-family:'JetBrains Mono',monospace;
-  font-size:.75rem;color:var(--tx-2);min-height:2.5rem;
-}
-
-/* ==========================================================================
-   FEATURE GRID  (4 × 3 glassmorphism cards with 3D tilt)
-   ========================================================================== */
-.feat-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;
-}
-@media(max-width:1000px){.feat-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:768px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
-
-.feat-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:1.5rem;position:relative;overflow:hidden;
-  will-change:transform;transform-style:preserve-3d;
-  transition:border-color .25s,box-shadow .25s;
-}
-.feat-card::before{
-  content:'';position:absolute;top:0;left:0;width:36px;height:36px;
-  background:linear-gradient(to bottom,var(--border-hi) 1px,transparent 1px),
-             linear-gradient(to right,var(--border-hi) 1px,transparent 1px);
-  border-radius:14px 0 0 0;opacity:0;transition:opacity .3s;
-}
-.feat-card:hover::before{opacity:1}
-.feat-card:hover{border-color:rgba(0,255,136,.14);box-shadow:0 0 40px rgba(0,255,136,.05),var(--shadow-card)}
-.feat-inner{transform:translateZ(14px)}
-.feat-icon{
-  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
-  background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);
-  border-radius:8px;margin-bottom:1rem;color:var(--green);
-}
-.feat-title{
-  font-size:.9375rem;font-weight:700;color:var(--tx-1);
-  margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;
-}
-.feat-desc{font-size:.875rem;color:var(--tx-2);line-height:1.65}
-.badge-new{
-  font-family:'JetBrains Mono',monospace;font-size:.5625rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--cyan);background:rgba(0,212,255,.08);
-  border:1px solid rgba(0,212,255,.2);border-radius:4px;padding:.1rem .375rem;
-}
-.badge-soon{
-  font-family:'JetBrains Mono',monospace;font-size:.625rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--amber);background:rgba(245,158,11,.1);
-  border:1px solid rgba(245,158,11,.2);border-radius:4px;
-  padding:.125rem .5rem;vertical-align:middle;margin-left:.5rem;
-}
-.badge-shipped{
-  font-family:'JetBrains Mono',monospace;font-size:.625rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--green);background:rgba(0,255,136,.08);
-  border:1px solid rgba(0,255,136,.2);border-radius:4px;
-  padding:.125rem .5rem;vertical-align:middle;margin-left:.5rem;
-}
-
-/* ==========================================================================
-   THREE ENGINES VISUALIZATION
+   THREE ENGINES CARDS
    ========================================================================== */
 .engines-grid{
   display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;
@@ -465,33 +372,6 @@ section{padding:5rem 1.5rem;position:relative}
 .engine-cyan .engine-progress-bar{background:var(--cyan)}
 .engine-amber .engine-progress-bar{background:var(--amber)}
 
-/* Engine SVG nodes */
-.engine-node{opacity:0;transition:opacity .5s ease,transform .5s ease;transform:translateY(8px)}
-.engine-node.ev{opacity:1;transform:translateY(0)}
-.engine-edge{stroke-dasharray:200;stroke-dashoffset:200;transition:stroke-dashoffset .8s ease}
-.engine-edge.ed{stroke-dashoffset:0}
-
-@keyframes engineGlow-green{
-  0%,100%{filter:drop-shadow(0 0 4px rgba(0,255,136,.3))}
-  50%{filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
-}
-@keyframes engineGlow-cyan{
-  0%,100%{filter:drop-shadow(0 0 4px rgba(0,212,255,.3))}
-  50%{filter:drop-shadow(0 0 12px rgba(0,212,255,.6))}
-}
-@keyframes engineGlow-amber{
-  0%,100%{filter:drop-shadow(0 0 4px rgba(245,158,11,.3))}
-  50%{filter:drop-shadow(0 0 12px rgba(245,158,11,.6))}
-}
-
-@keyframes flowDash{
-  to{stroke-dashoffset:-20}
-}
-.engine-flow{
-  stroke-dasharray:8 4;
-  animation:flowDash 1.2s linear infinite;
-}
-
 /* ==========================================================================
    SCORE EXPLANATION CHIPS
    ========================================================================== */
@@ -510,29 +390,9 @@ section{padding:5rem 1.5rem;position:relative}
 .score-chip.chip-history{color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)}
 
 /* ==========================================================================
-   CI MODE CARDS
+   CHANGE IMPACT SVG
    ========================================================================== */
-.ci-modes{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
-  margin-top:2rem;
-}
-@media(max-width:768px){.ci-modes{grid-template-columns:1fr}}
-.ci-mode-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:1.25rem;text-align:center;
-  transition:border-color .2s;
-}
-.ci-mode-card:hover{border-color:rgba(255,255,255,.1)}
-.ci-mode-title{
-  font-family:'JetBrains Mono',monospace;font-size:.875rem;font-weight:700;
-  color:var(--tx-1);margin-bottom:.5rem;
-}
-.ci-mode-desc{font-size:.8125rem;color:var(--tx-2);line-height:1.6}
-
-/* ==========================================================================
-   BLAST RADIUS SVG
-   ========================================================================== */
-.blast-wrap{
+.impact-wrap{
   background:var(--surface);border:1px solid var(--border);
   border-radius:16px;padding:2rem;overflow:hidden;
 }
@@ -544,45 +404,13 @@ section{padding:5rem 1.5rem;position:relative}
   0%,100%{box-shadow:0 0 10px rgba(255,77,109,.4)}
   50%{box-shadow:0 0 24px rgba(255,77,109,.9)}
 }
-#blast-badge{animation:none}
-#blast-badge.active{animation:badgePulse 1.5s ease infinite}
-
-/* ==========================================================================
-   CONTRAST CARDS (Not another tool)
-   ========================================================================== */
-.contrast-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
-@media(max-width:700px){.contrast-grid{grid-template-columns:1fr}}
-.cc{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:14px;padding:1.75rem;
-}
-.cc-not{border-color:rgba(255,77,109,.15)}
-.cc-is{border-color:rgba(0,255,136,.15)}
-.cc-title{font-size:.9375rem;font-weight:700;margin-bottom:1.25rem}
-.cc-list{list-style:none;display:flex;flex-direction:column;gap:.875rem}
-.cc-list li{display:flex;align-items:flex-start;gap:.625rem;font-size:.9375rem;color:var(--tx-2);line-height:1.5}
-
-/* ==========================================================================
-   IMPORT SECTION
-   ========================================================================== */
-.import-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
-@media(max-width:900px){.import-grid{grid-template-columns:1fr}}
-.import-lbl{
-  font-family:'JetBrains Mono',monospace;font-size:.6875rem;color:var(--tx-3);
-  text-transform:uppercase;letter-spacing:.08em;margin-bottom:.625rem;
-  display:flex;align-items:center;gap:.5rem;
-}
-.slack-banner{
-  background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.1);
-  border-radius:10px;padding:1rem 1.25rem;
-  display:flex;align-items:center;flex-wrap:wrap;gap:1rem;
-  font-size:.8125rem;margin:1.5rem 0;
-}
+#impact-badge{animation:none}
+#impact-badge.active{animation:badgePulse 1.5s ease infinite}
 
 /* ==========================================================================
    USE CASE CARDS
    ========================================================================== */
-.uc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.75rem}
+.uc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.75rem}
 @media(max-width:900px){.uc-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.uc-grid{grid-template-columns:1fr}}
 .uc-card{
@@ -613,33 +441,6 @@ section{padding:5rem 1.5rem;position:relative}
 .faq-item:hover{border-color:rgba(255,255,255,.1)}
 .faq-q{font-size:.9375rem;font-weight:600;color:var(--tx-1);margin-bottom:.375rem}
 .faq-a{font-size:.9375rem;color:var(--tx-2);line-height:1.65}
-
-/* ==========================================================================
-   ROADMAP
-   ========================================================================== */
-.rm-lbl{
-  font-family:'JetBrains Mono',monospace;font-size:.6875rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem;
-  display:flex;align-items:center;gap:.5rem;
-}
-.rm-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:1.375rem 1.5rem;
-  display:flex;gap:1rem;align-items:flex-start;
-  transition:border-color .2s;
-}
-.rm-card:hover{border-color:rgba(255,255,255,.1)}
-.rm-shipped{border-color:rgba(0,255,136,.15);background:rgba(0,255,136,.02)}
-.rm-icon{
-  width:36px;height:36px;border-radius:8px;
-  background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.12);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.rm-shipped .rm-icon{background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.12)}
-.rm-title{font-size:.9375rem;font-weight:700;color:var(--tx-1);margin-bottom:.25rem}
-.rm-desc{font-size:.875rem;color:var(--tx-2);line-height:1.6}
-.rm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem}
-@media(max-width:700px){.rm-grid{grid-template-columns:1fr}}
 
 /* ==========================================================================
    GET STARTED SECTION
@@ -717,10 +518,8 @@ code{
     <span class="nav-logo-text">FixDoc</span>
   </a>
   <div class="nav-links">
-    <a href="#features"     class="nav-link">Features</a>
-    <a href="#engines"      class="nav-link">Architecture</a>
+    <a href="#engines"      class="nav-link">Engines</a>
     <a href="#analyze"      class="nav-link">Analyze</a>
-    <a href="#import"       class="nav-link">Import</a>
     <a href="#use-cases"    class="nav-link">Use Cases</a>
     <a href="demo.html"     class="nav-link">Demo</a>
     <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="nav-link">GitHub &#8599;</a>
@@ -746,7 +545,7 @@ code{
         <span class="hero-h1-accent">FixDoc gives it three brains.</span>
       </h1>
       <p class="hero-sub">
-        FixDoc classifies every error by memory-worthiness, analyzes blast radius with
+        FixDoc classifies every error by memory-worthiness, analyzes change impact with
         score explanations, and learns from apply outcomes &mdash; so your team builds on
         past fixes instead of repeating them.
       </p>
@@ -782,311 +581,40 @@ code{
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     HOW IT WORKS
+     TRY IT NOW — compact install right after hero
 ══════════════════════════════════════════════════════════════════════ -->
-<section>
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// HOW IT WORKS</span>
-      <h2 class="s-title">Three commands. That&rsquo;s it.</h2>
-      <p class="s-sub">No dashboards, no portals, no context switching.</p>
-    </div>
-    <div style="margin-top:3.5rem;position:relative">
-      <div class="steps-line" style="display:none" id="steps-line"></div>
-      <div class="steps-grid">
-        <div class="step-card tilt reveal d1">
-          <div class="step-num">1</div>
-          <div class="step-title">Capture</div>
-          <p class="step-desc">Wrap your command. FixDoc captures errors on failure, classifies memory-worthiness, and defers to pending.</p>
-          <div class="step-code"><span class="tp">$&nbsp;</span><span class="step-code-txt"></span><span class="cursor"></span></div>
-        </div>
-        <div class="step-card tilt reveal d2">
-          <div class="step-num">2</div>
-          <div class="step-title">Search</div>
-          <p class="step-desc">Find past fixes instantly by error message, tags, or keywords.</p>
-          <div class="step-code"><span class="tp">$&nbsp;</span><span class="step-code-txt"></span><span class="cursor"></span></div>
-        </div>
-        <div class="step-card tilt reveal d3">
-          <div class="step-num">3</div>
-          <div class="step-title">Analyze</div>
-          <p class="step-desc">See how a change propagates, with historical fix matching and score explanations.</p>
-          <div class="step-code"><span class="tp">$&nbsp;</span><span class="step-code-txt"></span><span class="cursor"></span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     THE PROBLEM
-══════════════════════════════════════════════════════════════════════ -->
-<section class="section-alt">
-  <div class="si">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center">
-      <div class="reveal">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:.6875rem;font-weight:700;color:var(--tx-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem">// THE PROBLEM</div>
-        <h2 class="s-title">&ldquo;Didn&rsquo;t we fix this before?&rdquo;</h2>
-        <p style="color:var(--tx-2);margin:1rem 0;line-height:1.7">
-          Every infrastructure team has this conversation. Someone hits a Terraform error,
-          asks in Slack, and discovers a teammate solved it months ago. But finding that
-          solution? It&rsquo;s buried in thread replies, lost in chat history.
-        </p>
-        <p style="color:var(--tx-1);font-weight:500;margin-bottom:1rem;line-height:1.7">
-          FixDoc captures solutions where they happen &mdash; in your terminal &mdash; and makes them instantly searchable.
-        </p>
-        <a href="#code-demo" class="link-g" style="font-size:.875rem">See how FixDoc solves this &darr;</a>
-      </div>
-      <div class="reveal d2">
-        <div class="terminal">
-          <div class="term-hdr">
-            <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-            <span class="t-lbl">the old way</span>
-          </div>
-          <div class="term-body">
-            <div class="tc"># The old way</div>
-            <div style="margin-top:.5rem"><span class="te">Error:</span> <span class="to">AccessDenied: S3 bucket policy...</span></div>
-            <div class="to" style="margin-top:.75rem">You: <span class="tw">&ldquo;Anyone seen this before?&rdquo;</span></div>
-            <div class="to">Slack: <span style="color:var(--tx-3)">*searches for 20 minutes*</span></div>
-            <div class="to">Teammate: <span class="tw">&ldquo;Yeah I fixed that!&rdquo;</span></div>
-            <div class="to">You: <span class="tw">&ldquo;What was the fix?&rdquo;</span></div>
-            <div class="to">Teammate: <span class="tw">&ldquo;Let me find it...&rdquo;</span></div>
-            <div class="tc" style="margin-top:.75rem">*30 minutes later*</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     IN ACTION / CODE DEMO
-══════════════════════════════════════════════════════════════════════ -->
-<section id="code-demo">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// IN ACTION</span>
-      <h2 class="s-title">Works where you work</h2>
-      <p class="s-sub">Wrap your commands. FixDoc captures errors on failure &mdash; classifies and defers automatically.</p>
-    </div>
-    <div class="grid-2" style="margin-top:3rem">
-      <div class="terminal reveal d1">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">Defer-first capture</span>
-        </div>
-        <div class="term-body">
-          <div class="tc"># Wrap your command &mdash; FixDoc classifies on failure</div>
-          <div class="tp" style="margin-top:.25rem">$ fixdoc watch -- terraform apply</div>
-          <div style="margin-top:.75rem"><span class="te">Error:</span><span class="to"> AccessDenied on aws_s3_bucket.data</span></div>
-          <div><span class="ti">Classification:</span><span class="tw"> memory-worthy</span></div>
-          <div><span class="ti">Similar fix found:</span><span class="to"> Added bucket policy with GetObject</span></div>
-          <div class="tt" style="font-size:.6875rem">&nbsp;&nbsp;75% effective &middot; applied 4 times</div>
-          <div class="ts" style="margin-top:.75rem">Deferred to .fixdoc-pending (session a3f8c1b2)</div>
-        </div>
-      </div>
-      <div class="terminal reveal d2">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">Search fixes</span>
-        </div>
-        <div class="term-body">
-          <div class="tc"># Instant search with effectiveness</div>
-          <div class="tp" style="margin-top:.25rem">$ fixdoc search "S3 access denied"</div>
-          <div class="tw" style="margin-top:.75rem">Found 3 matching fixes:</div>
-          <div style="margin-top:.5rem;padding-left:.75rem;border-left:2px solid var(--green)">
-            <div class="to">[1] S3 bucket AccessDenied error</div>
-            <div class="tt" style="font-size:.6875rem">aws, s3, iam &nbsp;&middot;&nbsp; 75% effective &nbsp;&middot;&nbsp; 2 weeks ago</div>
-          </div>
-          <div style="margin-top:.5rem;padding-left:.75rem;border-left:2px solid #222">
-            <div class="to">[2] Cross-account S3 access issue</div>
-            <div class="tt" style="font-size:.6875rem">aws, s3, cross-account &nbsp;&middot;&nbsp; 1 month ago</div>
-          </div>
-          <div class="tp" style="margin-top:.75rem">$ fixdoc show 1</div>
-        </div>
-      </div>
-    </div>
-    <div class="terminal reveal" style="max-width:640px;margin:1.25rem auto 0">
+<section id="get-started" style="padding-top:2rem;padding-bottom:3rem">
+  <div class="gs-inner">
+    <span class="s-eyebrow reveal">// INSTALL</span>
+    <h2 class="s-title reveal" style="margin-bottom:.75rem">Get started in 60 seconds</h2>
+    <p class="s-sub reveal" style="margin-bottom:2rem">Install FixDoc and start building your fix library.</p>
+    <div class="terminal reveal" style="text-align:left;position:relative">
       <div class="term-hdr">
         <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-        <span class="t-lbl">Analyze with score explanations</span>
+        <span class="t-lbl">quick start</span>
       </div>
-      <div class="term-body">
-        <div class="tp">$ fixdoc analyze plan.json</div>
-        <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
-        <div class="to" style="margin-top:.25rem">Why this scored 72:</div>
-        <div class="to">&nbsp;&nbsp;<span style="color:var(--red)">+25</span> delete action on IAM role</div>
-        <div class="to">&nbsp;&nbsp;<span style="color:var(--amber)">+18</span> IAM policy field changed</div>
-        <div class="to">&nbsp;&nbsp;<span style="color:var(--cyan)">+15</span> BFS propagation depth 3</div>
-        <div class="to">&nbsp;&nbsp;<span style="color:var(--green)">+14</span> 2 prior fix matches</div>
-        <div style="color:var(--cyan);margin-top:.375rem">Relevant Past Fixes: aws_iam_role [high: error code: AccessDenied]</div>
-        <div class="to">Contextual Checks: [attr] Verify IAM trust policy principals</div>
-      </div>
+      <button class="copy-btn" onclick="copyFull(this)">Copy</button>
+      <div class="term-body" id="install-body"></div>
     </div>
-    <div class="tc-center" style="margin-top:2rem">
-      <a href="demo.html" class="link-g">See the full workflow in the demo &rarr;</a>
+    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem" class="reveal">
+      <a href="demo.html" class="btn-p">Run the Demo</a>
+      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="btn-s">
+        View on GitHub
+        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+      </a>
     </div>
   </div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     FEATURES  4×3
+     INTELLIGENCE ENGINES
 ══════════════════════════════════════════════════════════════════════ -->
-<section id="features" class="section-alt">
+<section id="engines" class="section-alt">
   <div class="si">
     <div class="tc-center reveal">
-      <span class="s-eyebrow">// FEATURES</span>
-      <h2 class="s-title">Built for infrastructure engineers</h2>
-      <p class="s-sub">Every feature designed for real DevOps workflows</p>
-    </div>
-    <div class="feat-grid" style="margin-top:3rem">
-      <!-- 1 -->
-      <div class="feat-card tilt reveal d1">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
-          <div class="feat-title">Auto-detect errors</div>
-          <p class="feat-desc">Automatically parses Terraform, Kubernetes, and Helm errors. Extracts provider, resource type, and error codes.</p>
-        </div>
-      </div>
-      <!-- 2 -->
-      <div class="feat-card tilt reveal d2">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
-          <div class="feat-title">Instant search</div>
-          <p class="feat-desc">Full-text search across all your fixes. Find by error message, tags, or keywords in seconds.</p>
-        </div>
-      </div>
-      <!-- 3 -->
-      <div class="feat-card tilt reveal d3">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-          <div class="feat-title">Team sync via Git</div>
-          <p class="feat-desc">Share fixes with your team through any Git repo. Automatic conflict resolution keeps everyone in sync.</p>
-        </div>
-      </div>
-      <!-- 4 -->
-      <div class="feat-card tilt reveal d4">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
-          <div class="feat-title">Memory classification <span class="badge-new">New</span></div>
-          <p class="feat-desc">Classifies errors as memory-worthy or self-explanatory. Assigns memory types: fix, check, playbook, or insight.</p>
-        </div>
-      </div>
-      <!-- 5 -->
-      <div class="feat-card tilt reveal d5">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
-          <div class="feat-title">Privacy controls</div>
-          <p class="feat-desc">Mark fixes as private to keep sensitive solutions local. Full control over what gets shared.</p>
-        </div>
-      </div>
-      <!-- 6 -->
-      <div class="feat-card tilt reveal d6">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-          <div class="feat-title">AI diagnosis <span class="badge-new">New</span></div>
-          <p class="feat-desc">Optional AI explains WHY an error occurred and suggests fixes. Powered by Claude. Falls back to rule-based if unavailable.</p>
-        </div>
-      </div>
-      <!-- 7 -->
-      <div class="feat-card tilt reveal d7">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></div>
-          <div class="feat-title">Watch &amp; auto-capture</div>
-          <p class="feat-desc">Wrap any command with <code>fixdoc watch</code>. On failure, errors are classified and deferred. On success, linked fixes get effectiveness tracking.</p>
-        </div>
-      </div>
-      <!-- 8 -->
-      <div class="feat-card tilt reveal d8">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
-          <div class="feat-title">Slack notifications <span class="badge-new">New</span></div>
-          <p class="feat-desc">Push failure notifications to Slack with type-aware fix suggestions. Uses Block Kit with <code>--notify</code> flag.</p>
-        </div>
-      </div>
-      <!-- 9 -->
-      <div class="feat-card tilt reveal d9">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
-          <div class="feat-title">Import from Jira, ServiceNow, Notion &amp; Slack</div>
-          <p class="feat-desc">Bulk import closed tickets from Jira (CSV/JSON), ServiceNow (JSON), Notion (API), or Slack threads. Reviewed, filtered, and deduplicated.</p>
-        </div>
-      </div>
-      <!-- 10 -->
-      <div class="feat-card tilt reveal d10">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-          <div class="feat-title">Defer &amp; review</div>
-          <p class="feat-desc">Not ready to document mid-deploy? Defer any error to <code>fixdoc pending</code> and capture it when the dust settles.</p>
-        </div>
-      </div>
-      <!-- 11 -->
-      <div class="feat-card tilt reveal d11">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-          <div class="feat-title">Effectiveness tracking <span class="badge-new">New</span></div>
-          <p class="feat-desc">Tracks how often fixes are applied and whether they succeed. Surfaces effective fixes first in suggestions.</p>
-        </div>
-      </div>
-      <!-- 12 -->
-      <div class="feat-card tilt reveal d12">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
-          <div class="feat-title">Outcome learning <span class="badge-new">New</span></div>
-          <p class="feat-desc">Record what was predicted at PR time and what actually happened post-apply. Link outcomes via plan fingerprints.</p>
-        </div>
-      </div>
-    </div>
-    <div class="tc-center" style="margin-top:2.5rem">
-      <a href="demo.html" class="link-g">Try these features &rarr;</a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     THREE ENGINES
-══════════════════════════════════════════════════════════════════════ -->
-<section id="engines">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// ARCHITECTURE</span>
+      <span class="s-eyebrow">// INTELLIGENCE ENGINES</span>
       <h2 class="s-title">Three intelligence engines</h2>
       <p class="s-sub">Each engine handles a different phase of your infrastructure lifecycle</p>
-    </div>
-
-    <!-- SVG Visualization -->
-    <div class="reveal" style="margin-top:3rem">
-      <svg id="engines-svg" viewBox="0 0 900 200" width="100%" style="max-height:220px;overflow:visible">
-        <!-- Edges (animated flowing dashes) -->
-        <line class="engine-edge" id="eng-e1" x1="285" y1="100" x2="330" y2="100" stroke="#00ff88" stroke-width="2" opacity=".5"/>
-        <line class="engine-edge" id="eng-e2" x1="585" y1="100" x2="630" y2="100" stroke="#00d4ff" stroke-width="2" opacity=".5"/>
-
-        <!-- Node 1: Change Intelligence -->
-        <g class="engine-node" id="eng-n1">
-          <rect x="15" y="40" width="270" height="120" rx="12" fill="#111" stroke="#00ff88" stroke-width="2"/>
-          <text x="150" y="75" text-anchor="middle" fill="#00ff88" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">CHANGE INTELLIGENCE</text>
-          <text x="150" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Blast radius &middot; BFS propagation</text>
-          <text x="150" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">IAM scoring &middot; 8 change domains</text>
-          <text x="150" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Score explanations &middot; Outcomes</text>
-        </g>
-
-        <!-- Node 2: Failure Intelligence -->
-        <g class="engine-node" id="eng-n2">
-          <rect x="315" y="40" width="270" height="120" rx="12" fill="#111" stroke="#00d4ff" stroke-width="2"/>
-          <text x="450" y="75" text-anchor="middle" fill="#00d4ff" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">FAILURE INTELLIGENCE</text>
-          <text x="450" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Memory-worthiness classifier</text>
-          <text x="450" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">AI diagnosis &middot; Fix suggestions</text>
-          <text x="450" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Slack notifications</text>
-        </g>
-
-        <!-- Node 3: Memory Engine -->
-        <g class="engine-node" id="eng-n3">
-          <rect x="615" y="40" width="270" height="120" rx="12" fill="#111" stroke="#f59e0b" stroke-width="2"/>
-          <text x="750" y="75" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700" font-family="JetBrains Mono,monospace" letter-spacing=".5">MEMORY ENGINE</text>
-          <text x="750" y="100" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">4 types: fix &middot; check &middot; playbook &middot; insight</text>
-          <text x="750" y="118" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Effectiveness tracking</text>
-          <text x="750" y="136" text-anchor="middle" fill="#888" font-size="10" font-family="JetBrains Mono,monospace">Source error ID linking</text>
-        </g>
-      </svg>
     </div>
 
     <!-- Engine Detail Cards -->
@@ -1098,7 +626,7 @@ code{
         </div>
         <p class="engine-desc">Understands what a Terraform change will do before you apply it.</p>
         <ul class="engine-features">
-          <li>Blast radius scoring with sigmoid formula (0&ndash;100)</li>
+          <li>Change impact scoring with sigmoid formula (0&ndash;100)</li>
           <li>BFS propagation through dependency DAG</li>
           <li>IAM sensitivity scoring with wildcard trust detection</li>
           <li>Smart fix matching with 8 change domains</li>
@@ -1146,27 +674,27 @@ code{
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     BLAST RADIUS / ANALYZE
+     CHANGE IMPACT ANALYZER
 ══════════════════════════════════════════════════════════════════════ -->
 <section id="analyze">
   <div class="si">
     <div class="tc-center reveal">
-      <span class="s-eyebrow">// BLAST RADIUS ANALYZER</span>
-      <h2 class="s-title">See your blast radius. Understand why.</h2>
+      <span class="s-eyebrow">// CHANGE IMPACT ANALYZER</span>
+      <h2 class="s-title">See your change impact. Understand why.</h2>
       <p class="s-sub">Understand how one change propagates through your infrastructure</p>
     </div>
 
-    <div class="blast-wrap reveal" style="margin-top:3rem" id="blast-section">
+    <div class="impact-wrap reveal" style="margin-top:3rem" id="impact-section">
       <!-- Score counter -->
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;margin-bottom:1.25rem">
         <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3)">Score:</span>
-        <span id="blast-score" style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:var(--tx-1);line-height:1">0</span>
+        <span id="impact-score" style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:var(--tx-1);line-height:1">0</span>
         <span style="font-family:'JetBrains Mono',monospace;font-size:.875rem;color:var(--tx-3)">&nbsp;/ 100</span>
-        <span id="blast-badge" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--red);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:6px;padding:.25rem .625rem;opacity:0;transition:opacity .4s ease">[HIGH]</span>
+        <span id="impact-badge" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:700;color:var(--red);background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:6px;padding:.25rem .625rem;opacity:0;transition:opacity .4s ease">[HIGH]</span>
       </div>
 
       <!-- SVG dependency graph -->
-      <svg id="blast-svg" viewBox="0 0 900 400" width="100%" style="max-height:420px;overflow:visible">
+      <svg id="impact-svg" viewBox="0 0 900 400" width="100%" style="max-height:420px;overflow:visible">
         <text x="80"  y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Plan Change</text>
         <text x="320" y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Policy / RBAC</text>
         <text x="560" y="24" text-anchor="middle" fill="#2a2a2a" font-size="11" font-family="JetBrains Mono,monospace" font-weight="700" letter-spacing="1">Workloads</text>
@@ -1238,7 +766,7 @@ code{
       </svg>
 
       <!-- Score explanation chips (appear after counter) -->
-      <div class="score-chips" id="blast-explain">
+      <div class="score-chips" id="impact-explain">
         <span class="score-chip chip-action">+25 delete action</span>
         <span class="score-chip chip-iam">+18 IAM policy changed</span>
         <span class="score-chip chip-impact">+15 BFS depth 3</span>
@@ -1246,17 +774,17 @@ code{
       </div>
 
       <div class="tc-center" style="margin-top:1rem">
-        <button id="blast-replay" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3);background:transparent;border:1px solid #222;border-radius:6px;padding:.4rem 1.25rem;cursor:pointer;transition:color .2s,border-color .2s">Replay Animation</button>
+        <button id="impact-replay" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-3);background:transparent;border:1px solid #222;border-radius:6px;padding:.4rem 1.25rem;cursor:pointer;transition:color .2s,border-color .2s">Replay Animation</button>
       </div>
     </div>
 
     <div class="terminal reveal" style="max-width:640px;margin:2rem auto 0">
       <div class="term-hdr">
         <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-        <span class="t-lbl">analyze blast radius before applying</span>
+        <span class="t-lbl">analyze change impact before applying</span>
       </div>
       <div class="term-body">
-        <div class="tc"># Analyze your blast radius before applying</div>
+        <div class="tc"># Analyze your change impact before applying</div>
         <div class="tp" style="margin-top:.25rem">$ terraform show -json plan.tfplan &gt; plan.json</div>
         <div class="tp">$ fixdoc analyze plan.json</div>
         <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
@@ -1267,245 +795,6 @@ code{
         <div class="to">&nbsp;&nbsp;<span style="color:var(--green)">+14</span> 2 prior fix matches</div>
         <div style="color:var(--cyan);margin-top:.375rem">Relevant Past Fixes: aws_iam_role [high: error code: AccessDenied]</div>
         <div class="to">Contextual Checks: [attr] Verify IAM trust policy principals</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     CI INTEGRATION
-══════════════════════════════════════════════════════════════════════ -->
-<section class="section-alt">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// CI INTEGRATION</span>
-      <h2 class="s-title">Works in CI <span class="badge-shipped">Shipped</span></h2>
-      <p class="s-sub">Run risk analysis on every PR with 3 review modes</p>
-    </div>
-    <div class="grid-2" style="margin-top:3rem">
-      <div class="terminal reveal d1">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">terraform-risk-analysis.yml</span>
-        </div>
-        <div class="term-body" style="font-size:.75rem">
-          <div class="tc">name: Terraform Risk Analysis</div>
-          <div class="tc">on: [pull_request]</div>
-          <div class="tc">env:</div>
-          <div class="to">&nbsp;&nbsp;REVIEW_MODE: advisory <span class="tc"># or: warn, gate</span></div>
-          <div class="tc">jobs:</div>
-          <div class="tc">&nbsp;&nbsp;risk-analysis:</div>
-          <div class="tc">&nbsp;&nbsp;&nbsp;&nbsp;strategy:</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;matrix:</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;scenario: [11, 12, 13, ...]</div>
-          <div class="tc">&nbsp;&nbsp;&nbsp;&nbsp;steps:</div>
-          <div class="to">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: pip install fixdoc</div>
-          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: fixdoc analyze plan.json \</div>
-          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--format markdown --record \</div>
-          <div class="tw">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--exit-on $GATE_THRESHOLD</div>
-        </div>
-      </div>
-      <div class="terminal reveal d2">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">PR Comment</span>
-        </div>
-        <div class="term-body" style="font-size:.75rem">
-          <div class="tw" style="font-weight:700">Terraform Risk Analysis</div>
-          <div style="margin-top:.5rem">
-            <div class="to">&lt;details&gt;</div>
-            <div class="to">&lt;summary&gt;<span class="tt">&#9888;</span> <span class="tw">scenario-12: HIGH (72.4)</span>&lt;/summary&gt;</div>
-            <div class="to" style="margin-top:.25rem">&nbsp;&nbsp;Score: 72.4 / 100 [HIGH]</div>
-            <div class="to">&nbsp;&nbsp;+25 delete action on IAM role</div>
-            <div class="to">&nbsp;&nbsp;+18 IAM policy field changed</div>
-            <div class="to">&nbsp;&nbsp;Past fix: AccessDenied on aws_iam_role</div>
-            <div class="to">&lt;/details&gt;</div>
-          </div>
-          <div style="margin-top:.5rem">
-            <div class="to">&lt;details&gt;</div>
-            <div class="to">&lt;summary&gt;<span class="ts">&#10003;</span> <span class="tw">scenario-11: LOW (12.0)</span>&lt;/summary&gt;</div>
-            <div class="to">&lt;/details&gt;</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3 Review Mode Cards -->
-    <div class="ci-modes reveal">
-      <div class="ci-mode-card">
-        <div class="ci-mode-title" style="color:var(--green)">Advisory</div>
-        <p class="ci-mode-desc">Posts PR comment with analysis. No workflow impact. Default mode.</p>
-      </div>
-      <div class="ci-mode-card">
-        <div class="ci-mode-title" style="color:var(--amber)">Warn</div>
-        <p class="ci-mode-desc">Posts comment + adds GitHub warning annotation on high/critical severity.</p>
-      </div>
-      <div class="ci-mode-card">
-        <div class="ci-mode-title" style="color:var(--red)">Gate</div>
-        <p class="ci-mode-desc">Fails the workflow if severity meets or exceeds the configured threshold.</p>
-      </div>
-    </div>
-
-    <div class="tc-center" style="margin-top:2rem">
-      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="link-g">See the workflow on GitHub &rarr;</a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     AI FEATURES
-══════════════════════════════════════════════════════════════════════ -->
-<section id="ai">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// AI-POWERED</span>
-      <h2 class="s-title">Optional AI, when you want it</h2>
-      <p class="s-sub">Diagnose errors and explain blast radius with Claude. Works perfectly without it.</p>
-    </div>
-    <div class="grid-2" style="margin-top:3rem">
-      <div class="terminal reveal d1">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">AI error diagnosis</span>
-        </div>
-        <div class="term-body" id="ai-diagnose-body">
-          <div class="tp">$ fixdoc watch --diagnose -- terraform apply</div>
-          <div style="margin-top:.5rem"><span class="te">Error:</span><span class="to"> AccessDenied on aws_s3_bucket.data</span></div>
-          <div class="ti" style="margin-top:.5rem">AI Diagnosis:</div>
-          <div class="to">The S3 bucket policy does not include the</div>
-          <div class="to">s3:GetObject permission for the IAM role</div>
-          <div class="to">arn:aws:iam::123:role/app-role. The role&rsquo;s</div>
-          <div class="to">trust policy allows EC2 assume, but the</div>
-          <div class="to">bucket policy restricts to a different principal.</div>
-          <div class="ts" style="margin-top:.5rem">Suggested: Add s3:GetObject to bucket policy</div>
-        </div>
-      </div>
-      <div class="terminal reveal d2">
-        <div class="term-hdr">
-          <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-          <span class="t-lbl">AI blast radius explanation</span>
-        </div>
-        <div class="term-body" id="ai-explain-body">
-          <div class="tp">$ fixdoc analyze --ai-explain plan.json</div>
-          <div style="margin-top:.5rem;color:var(--tx-1)">Score: 72.4 / 100 &nbsp;<span style="color:var(--amber);font-weight:700">[HIGH]</span></div>
-          <div class="ti" style="margin-top:.5rem">AI Explanation:</div>
-          <div class="to">Deleting aws_iam_role.app is high-risk because</div>
-          <div class="to">it is the principal for 2 policy attachments</div>
-          <div class="to">that grant access to Lambda and ECS workloads.</div>
-          <div class="to">Those workloads depend on the role for S3,</div>
-          <div class="to">DynamoDB, and SQS access. Removing the role</div>
-          <div class="to">will immediately break all 7 downstream services.</div>
-        </div>
-      </div>
-    </div>
-    <p class="tc-center reveal" style="margin-top:1.5rem;font-size:.8125rem;color:var(--tx-3)">
-      Powered by Claude. API key stays on your machine. Falls back to rule-based if unavailable.
-      <br><code style="font-size:.75rem">pip install fixdoc[ai]</code>
-    </p>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     NOT ANOTHER TOOL
-══════════════════════════════════════════════════════════════════════ -->
-<section class="section-alt">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// POSITIONING</span>
-      <h2 class="s-title">Not another tool</h2>
-      <p class="s-sub">FixDoc does one thing well</p>
-    </div>
-    <div class="contrast-grid" style="margin-top:3rem">
-      <div class="cc cc-not reveal d1">
-        <div class="cc-title" style="color:var(--red)">FixDoc is NOT</div>
-        <ul class="cc-list">
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>An incident management SaaS with dashboards and alerts</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>A service catalog portal you have to log into</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>A generic documentation tool</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--red);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>An AI wrapper that requires an API key to function</li>
-        </ul>
-      </div>
-      <div class="cc cc-is reveal d2">
-        <div class="cc-title" style="color:var(--green)">FixDoc IS</div>
-        <ul class="cc-list">
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Terminal-first capture that fits your existing workflow</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>A searchable fix history that lives on your machine</li>
-          <li><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green);flex-shrink:0;margin-top:2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>An intelligent system that classifies errors, explains blast radius, and learns from outcomes</li>
-        </ul>
-      </div>
-    </div>
-    <div class="tc-center" style="margin-top:2.5rem">
-      <a href="#get-started" class="link-g">Get started in 60 seconds &darr;</a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     KNOWLEDGE IMPORT
-══════════════════════════════════════════════════════════════════════ -->
-<section id="import">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// KNOWLEDGE IMPORT</span>
-      <h2 class="s-title">Bring your existing knowledge in</h2>
-      <p class="s-sub">Import closed tickets from Jira, ServiceNow, Notion, and Slack &mdash; reviewed, tagged, and deduplicated</p>
-    </div>
-    <div class="import-grid" style="margin-top:3rem">
-      <div class="reveal d1">
-        <div class="import-lbl">Jira &mdash; CSV or JSON</div>
-        <div class="terminal" id="imp-jira">
-          <div class="term-hdr"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div><span class="t-lbl">import from Jira</span></div>
-          <div class="term-body" style="font-size:.75rem;min-height:195px"></div>
-        </div>
-      </div>
-      <div class="reveal d2">
-        <div class="import-lbl">ServiceNow &mdash; JSON</div>
-        <div class="terminal" id="imp-snow">
-          <div class="term-hdr"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div><span class="t-lbl">import from ServiceNow</span></div>
-          <div class="term-body" style="font-size:.75rem;min-height:195px"></div>
-        </div>
-      </div>
-      <div class="reveal d3">
-        <div class="import-lbl">Slack &mdash; API</div>
-        <div class="terminal" id="imp-slack" style="border-color:rgba(0,212,255,.15)">
-          <div class="term-hdr"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div><span class="t-lbl">import from Slack</span></div>
-          <div class="term-body" style="font-size:.75rem;min-height:195px"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="slack-banner reveal">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--tx-2)">How Slack import works:</span>
-      <span>&#128308;</span>
-      <span style="font-size:.8125rem;color:var(--tx-2)">React to a root message &rarr; marks the <strong style="color:var(--tx-1);font-weight:500">issue</strong></span>
-      <span style="color:var(--tx-3)">+</span>
-      <span>&#9989;</span>
-      <span style="font-size:.8125rem;color:var(--tx-2)">React to a reply &rarr; marks the <strong style="color:var(--tx-1);font-weight:500">resolution</strong></span>
-      <span style="color:var(--tx-3)">=</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:.8125rem;color:var(--green)">Fix captured. No bot needed.</span>
-    </div>
-
-    <div class="feat-grid" style="margin-top:0">
-      <div class="feat-card tilt reveal d1">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
-          <div class="feat-title">Review mode</div>
-          <p class="feat-desc">Step through each fix before saving. Edit issue, resolution, or tags inline. Accept all remaining with one keystroke.</p>
-        </div>
-      </div>
-      <div class="feat-card tilt reveal d2">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-          <div class="feat-title">Duplicate guard</div>
-          <p class="feat-desc">Every imported fix carries a source tag (<code>source:jira:ID</code>, <code>source:slack:channel_ts</code>&hellip;). Re-running the same import is always safe &mdash; duplicates are detected and skipped automatically.</p>
-        </div>
-      </div>
-      <div class="feat-card tilt reveal d3">
-        <div class="feat-inner">
-          <div class="feat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
-          <div class="feat-title">Auto-tagging</div>
-          <p class="feat-desc">Resource types (<code>aws_iam_role</code>), keywords (<code>kw:terraform</code>), and source IDs are extracted automatically from ticket text.</p>
-        </div>
       </div>
     </div>
   </div>
@@ -1556,9 +845,8 @@ code{
     <div class="tc-center reveal">
       <span class="s-eyebrow">// PRIVACY &amp; STORAGE</span>
       <h2 class="s-title">Your data, your machine</h2>
-      <p class="s-sub">Common questions about privacy and storage</p>
     </div>
-    <div class="faq-list" style="margin-top:3rem">
+    <div class="faq-list" style="margin-top:2.5rem">
       <div class="faq-item reveal d1">
         <div class="faq-q">What&rsquo;s stored?</div>
         <p class="faq-a">Issue descriptions, resolutions, tags, and timestamps. Each fix is a simple JSON entry + a markdown file.</p>
@@ -1572,141 +860,9 @@ code{
         <p class="faq-a">No. FixDoc makes zero network requests by default. It&rsquo;s a pure CLI tool with no telemetry or analytics.</p>
       </div>
       <div class="faq-item reveal d4">
-        <div class="faq-q">What about team sync?</div>
-        <p class="faq-a">Sync is optional. When enabled, it pushes markdown files to a Git repo you control. You choose the repo, you own the data.</p>
+        <div class="faq-q">What about AI features?</div>
+        <p class="faq-a">AI diagnosis and AI explain are fully optional. Your API key stays on your machine. No data is sent unless you explicitly use <code>--diagnose</code> or <code>--ai-explain</code>. FixDoc works perfectly without them.</p>
       </div>
-      <div class="faq-item reveal d5">
-        <div class="faq-q">Can I keep some fixes private?</div>
-        <p class="faq-a">Yes. Mark any fix as private and it stays local &mdash; it&rsquo;s never included in sync, even if sync is enabled.</p>
-      </div>
-      <div class="faq-item reveal d6">
-        <div class="faq-q">What about the AI features?</div>
-        <p class="faq-a">AI diagnosis and AI explain are fully optional. Your API key stays on your machine. No data is sent to any service unless you explicitly use <code>--diagnose</code> or <code>--ai-explain</code>. FixDoc works perfectly without them.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     ROADMAP
-══════════════════════════════════════════════════════════════════════ -->
-<section class="section-alt">
-  <div class="si">
-    <div class="tc-center reveal">
-      <span class="s-eyebrow">// ROADMAP</span>
-      <h2 class="s-title">What&rsquo;s next</h2>
-      <p class="s-sub">Recently shipped and coming up</p>
-    </div>
-    <div style="margin-top:3rem">
-      <div class="rm-lbl reveal" style="color:var(--green)">
-        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-        Shipped
-      </div>
-      <div class="rm-grid" style="margin-bottom:2rem">
-        <div class="rm-card rm-shipped reveal d1">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
-          <div>
-            <div class="rm-title">CI + PR comments</div>
-            <p class="rm-desc">3 review modes (advisory, warn, gate), matrix strategy, collapsible PR comments</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d2">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
-          <div>
-            <div class="rm-title">Memory classification</div>
-            <p class="rm-desc">Memory-worthy vs self-explanatory + 4 memory types (fix, check, playbook, insight)</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d3">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-          <div>
-            <div class="rm-title">AI diagnosis &amp; AI explain</div>
-            <p class="rm-desc">Claude-powered error diagnosis and blast radius explanations, optional install</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d4">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
-          <div>
-            <div class="rm-title">Outcome learning</div>
-            <p class="rm-desc">Record-apply, plan fingerprint linking, prior failure scoring</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d5">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
-          <div>
-            <div class="rm-title">Slack push notifications</div>
-            <p class="rm-desc">Block Kit messages with type-aware fix suggestions on failure</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d6">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-          <div>
-            <div class="rm-title">Effectiveness tracking</div>
-            <p class="rm-desc">Applied/success counts, effectiveness rate, surface high-performing fixes first</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d7">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
-          <div>
-            <div class="rm-title">Smart fix matching v3</div>
-            <p class="rm-desc">8 change domains, contextual checks, attribute-first scoring, template narratives</p>
-          </div>
-        </div>
-        <div class="rm-card rm-shipped reveal d8">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--green)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
-          <div>
-            <div class="rm-title">IAM sensitivity scoring</div>
-            <p class="rm-desc">Trust policy analysis, wildcard trust detection, cross-account ARN tracking</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="rm-lbl reveal" style="color:var(--tx-3)">Coming up</div>
-      <div class="rm-grid">
-        <div class="rm-card reveal d1">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--cyan)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg></div>
-          <div>
-            <div class="rm-title">Kubernetes blast radius</div>
-            <p class="rm-desc">Dependency graph analysis for Kubernetes manifests and Helm charts</p>
-          </div>
-        </div>
-        <div class="rm-card reveal d2">
-          <div class="rm-icon"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--cyan)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-          <div>
-            <div class="rm-title">Team analytics dashboard</div>
-            <p class="rm-desc">Fix frequency trends, most common errors, team contribution metrics</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="tc-center" style="margin-top:2.5rem">
-      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="link-g">Star the repo to follow progress &rarr;</a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     GET STARTED
-══════════════════════════════════════════════════════════════════════ -->
-<section id="get-started">
-  <div class="gs-inner">
-    <span class="s-eyebrow reveal">// INSTALL</span>
-    <h2 class="s-title reveal" style="margin-bottom:.75rem">Get started in 60 seconds</h2>
-    <p class="s-sub reveal" style="margin-bottom:2.5rem">Install FixDoc and start building your fix library.</p>
-    <div class="terminal reveal" style="text-align:left;margin-bottom:2rem;position:relative">
-      <div class="term-hdr">
-        <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
-        <span class="t-lbl">quick start</span>
-      </div>
-      <button class="copy-btn" onclick="copyFull(this)">Copy</button>
-      <div class="term-body" id="install-body"></div>
-    </div>
-    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap" class="reveal">
-      <a href="demo.html" class="btn-p">Run the Demo</a>
-      <a href="https://github.com/fiyiogunkoya/FixDoc" target="_blank" rel="noopener" class="btn-s">
-        View on GitHub
-        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-      </a>
     </div>
   </div>
 </section>
@@ -1894,33 +1050,10 @@ function typeText(el,text,speed,cb){
 })();
 </script>
 
-<!-- STEP CARDS: code snippets type in when card enters view -->
+<!-- CHANGE IMPACT: BFS-order reveal with score counter + score chips -->
 <script>
 (function(){
-  var cmds=['fixdoc watch -- terraform apply','fixdoc search "access denied"','fixdoc analyze plan.json'];
-  document.querySelectorAll('.step-card').forEach(function(card,i){
-    var span=card.querySelector('.step-code-txt');
-    var cur=card.querySelector('.cursor');
-    if(!span)return;
-    var done=false;
-    new IntersectionObserver(function(entries,obs){
-      entries.forEach(function(e){
-        if(e.isIntersecting&&!done){
-          done=true;obs.unobserve(card);
-          setTimeout(function(){
-            typeText(span,cmds[i],42,function(){if(cur)cur.style.display='none'});
-          },i*160);
-        }
-      });
-    },{threshold:0.5}).observe(card);
-  });
-})();
-</script>
-
-<!-- BLAST RADIUS: BFS-order reveal with score counter + score chips -->
-<script>
-(function(){
-  var section=document.getElementById('blast-section');
+  var section=document.getElementById('impact-section');
   if(!section)return;
 
   var waves=[
@@ -1929,9 +1062,9 @@ function typeText(el,text,speed,cb){
     {nodes:['bn-3a','bn-3b','bn-3c'],          edges:['e2a','e2b','e2c','e2d']},
     {nodes:['bn-4a','bn-4b','bn-4c','bn-4d'],  edges:['e3a','e3b','e3c','e3d','e3e']},
   ];
-  var badge=document.getElementById('blast-badge');
-  var scoreEl=document.getElementById('blast-score');
-  var chips=document.getElementById('blast-explain');
+  var badge=document.getElementById('impact-badge');
+  var scoreEl=document.getElementById('impact-score');
+  var chips=document.getElementById('impact-explain');
 
   function reset(){
     document.querySelectorAll('.bn').forEach(function(n){n.classList.remove('bv')});
@@ -1977,7 +1110,7 @@ function typeText(el,text,speed,cb){
     entries.forEach(function(e){if(e.isIntersecting&&!played){played=true;play()}});
   },{threshold:0.25}).observe(section);
 
-  var btn=document.getElementById('blast-replay');
+  var btn=document.getElementById('impact-replay');
   if(btn){
     btn.addEventListener('click',play);
     btn.addEventListener('mouseenter',function(){btn.style.color='#00ff88';btn.style.borderColor='rgba(0,255,136,.3)'});
@@ -1986,128 +1119,22 @@ function typeText(el,text,speed,cb){
 })();
 </script>
 
-<!-- ENGINE SVG ANIMATION: reveal nodes/edges in sequence + animate progress bars -->
+<!-- ENGINE PROGRESS BARS: animate on scroll enter -->
 <script>
 (function(){
-  var svg=document.getElementById('engines-svg');
-  if(!svg)return;
-
+  var section=document.getElementById('engines');
+  if(!section)return;
   var played=false;
   new IntersectionObserver(function(entries){
     entries.forEach(function(e){
       if(e.isIntersecting&&!played){
         played=true;
-        // Wave 1: first node
-        setTimeout(function(){
-          var n1=document.getElementById('eng-n1');
-          if(n1)n1.classList.add('ev');
-        },200);
-        // Wave 2: first edge + second node
-        setTimeout(function(){
-          var e1=document.getElementById('eng-e1');
-          if(e1)e1.classList.add('ed');
-          setTimeout(function(){
-            var n2=document.getElementById('eng-n2');
-            if(n2)n2.classList.add('ev');
-          },300);
-        },700);
-        // Wave 3: second edge + third node
-        setTimeout(function(){
-          var e2=document.getElementById('eng-e2');
-          if(e2)e2.classList.add('ed');
-          setTimeout(function(){
-            var n3=document.getElementById('eng-n3');
-            if(n3)n3.classList.add('ev');
-          },300);
-        },1200);
-        // Add flowing animation after reveal completes
-        setTimeout(function(){
-          var e1=document.getElementById('eng-e1');
-          var e2=document.getElementById('eng-e2');
-          if(e1)e1.classList.add('engine-flow');
-          if(e2)e2.classList.add('engine-flow');
-        },2000);
-        // Animate progress bars
         setTimeout(function(){
           document.querySelectorAll('.engine-progress-bar').forEach(function(bar){
             var w=bar.getAttribute('data-width');
             if(w)bar.style.width=w+'%';
           });
-        },1800);
-      }
-    });
-  },{threshold:0.2}).observe(svg);
-})();
-</script>
-
-<!-- IMPORT TERMINALS: sequential typing triggered on scroll enter -->
-<script>
-(function(){
-  var content={
-    'imp-jira':[
-      {cls:'tc',text:'# CSV or JSON backup export'},
-      {cls:'tp',text:'$ fixdoc import jira resolved.csv'},
-      {gap:200},
-      {cls:'to',text:'Found 142 closed issues'},
-      {cls:'to',text:'High-signal: 38 · Filtered: 104'},
-      {cls:'ti',text:'Review [y/e/s/a/q]:'},
-      {cls:'to',text:'  INFRA-291: S3 bucket policy missing GetObject...'},
-      {gap:200},
-      {cls:'ts',text:'Imported 38 · 12 duplicates skipped'},
-    ],
-    'imp-snow':[
-      {cls:'tc',text:'# JSON export from ServiceNow'},
-      {cls:'tp',text:'$ fixdoc import servicenow incidents.json'},
-      {gap:200},
-      {cls:'to',text:'Found 89 resolved incidents'},
-      {cls:'to',text:'High-signal: 24 · Filtered: 65'},
-      {cls:'ti',text:'Review [y/e/s/a/q]:'},
-      {cls:'to',text:'  INC0041823: Terraform IAM role missing PassRole...'},
-      {gap:200},
-      {cls:'ts',text:'Imported 24 · 6 duplicates skipped'},
-    ],
-    'imp-slack':[
-      {cls:'tc',text:'# Two-emoji convention'},
-      {cls:'tp',text:'$ fixdoc import slack \\'},
-      {cls:'to',text:'    --channel C0123456 --auto'},
-      {gap:200},
-      {cls:'to',text:'Found 17 issue-marked threads'},
-      {cls:'to',text:'Skipped 3 (no resolution marker)'},
-      {cls:'ti',text:'Auto-import: high-signal filter'},
-      {gap:200},
-      {cls:'ts',text:'Imported 11 · 3 duplicates skipped'},
-    ],
-  };
-  var COLS={'tc':'#444','tp':'#00ff88','to':'#888','ti':'#00d4ff','ts':'#00ff88'};
-
-  function playTerm(id,startDelay){
-    var term=document.getElementById(id);if(!term)return;
-    var body=term.querySelector('.term-body');if(!body)return;
-    body.innerHTML='';
-    var steps=content[id]||[];
-    var si=0;
-    function next(){
-      if(si>=steps.length)return;
-      var s=steps[si++];
-      if(s.gap){setTimeout(next,s.gap);return}
-      var line=document.createElement('div');
-      line.style.cssText='font-family:JetBrains Mono,monospace;font-size:.75rem;line-height:1.85;color:'+(COLS[s.cls]||'#888');
-      body.appendChild(line);
-      var spd=s.cls==='tp'?28:8;
-      typeText(line,s.text,spd,function(){setTimeout(next,s.cls==='tp'?180:40)});
-    }
-    setTimeout(next,startDelay);
-  }
-
-  var section=document.getElementById('import');if(!section)return;
-  var played=false;
-  new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(e.isIntersecting&&!played){
-        played=true;
-        playTerm('imp-jira',100);
-        playTerm('imp-snow',700);
-        playTerm('imp-slack',1300);
+        },400);
       }
     });
   },{threshold:0.2}).observe(section);

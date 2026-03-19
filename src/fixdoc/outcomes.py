@@ -2,7 +2,7 @@
 
 Records what FixDoc predicted at PR time, captures what actually happened
 post-apply, links the two, and surfaces historical outcomes in future analyses.
-v1 is observational only — outcomes are displayed, not used to alter blast scores.
+v1 is observational only — outcomes are displayed, not used to alter impact scores.
 
 Storage: per-project `.fixdoc-outcomes` at git root (like `.fixdoc-pending`).
 """
