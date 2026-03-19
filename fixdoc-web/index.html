@@ -498,6 +498,18 @@ code{
 /* Two-column helper */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
 @media(max-width:700px){.grid-2{grid-template-columns:1fr}}
+
+/* ==========================================================================
+   CONTRAST GRID (Not another tool)
+   ========================================================================== */
+.contrast-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:700px){.contrast-grid{grid-template-columns:1fr}}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem}
+.cc-not{border-color:rgba(255,77,109,.15)}
+.cc-is{border-color:rgba(0,255,136,.15)}
+.cc-title{font-size:.9375rem;font-weight:700;margin-bottom:1.25rem}
+.cc-list{list-style:none;display:flex;flex-direction:column;gap:.875rem}
+.cc-list li{display:flex;align-items:flex-start;gap:.625rem;font-size:.9375rem;color:var(--tx-2);line-height:1.5}
 </style>
 </head>
 <body>
@@ -828,11 +840,46 @@ code{
       <div class="uc-card tilt reveal d4">
         <div class="uc-icon"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
         <div class="uc-title">CI/CD Pipelines</div>
-        <p class="uc-desc">Run blast radius analysis on every PR. Gate merges by severity. Track outcomes post-apply.</p>
+        <p class="uc-desc">Run change impact analysis on every PR. Gate merges by severity. Track outcomes post-apply.</p>
       </div>
     </div>
     <div class="tc-center" style="margin-top:3rem">
       <a href="#get-started" class="btn-p">Start building your fix library</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     NOT ANOTHER TOOL — positioning
+══════════════════════════════════════════════════════════════════════ -->
+<section class="section-alt">
+  <div class="si">
+    <div class="tc-center reveal">
+      <span class="s-eyebrow">// POSITIONING</span>
+      <h2 class="s-title">Not another tool</h2>
+      <p class="s-sub" style="margin-bottom:2.5rem">FixDoc does one thing well</p>
+    </div>
+    <div class="contrast-grid">
+      <div class="cc cc-not reveal d1">
+        <div class="cc-title" style="color:var(--red)">FixDoc is NOT</div>
+        <ul class="cc-list">
+          <li><span style="color:var(--red);flex-shrink:0">&#10005;</span> An incident management SaaS with dashboards and alerts</li>
+          <li><span style="color:var(--red);flex-shrink:0">&#10005;</span> A service catalog portal you have to log into</li>
+          <li><span style="color:var(--red);flex-shrink:0">&#10005;</span> A generic documentation tool</li>
+          <li><span style="color:var(--red);flex-shrink:0">&#10005;</span> An AI wrapper that requires an API key to function</li>
+        </ul>
+      </div>
+      <div class="cc cc-is reveal d2">
+        <div class="cc-title" style="color:var(--green)">FixDoc IS</div>
+        <ul class="cc-list">
+          <li><span style="color:var(--green);flex-shrink:0">&#10003;</span> Terminal-first capture that fits your existing workflow</li>
+          <li><span style="color:var(--green);flex-shrink:0">&#10003;</span> A searchable fix history that lives on your machine</li>
+          <li><span style="color:var(--green);flex-shrink:0">&#10003;</span> An intelligent system that classifies errors, analyzes change impact, and learns from outcomes</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tc-center" style="margin-top:2.5rem">
+      <a href="#get-started" class="link-g">Get started in 60 seconds &rarr;</a>
     </div>
   </div>
 </section>
