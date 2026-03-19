@@ -3,7 +3,7 @@
 # A full apply followed by an immediate re-plan. All resources show "no-op"
 # or "read" actions in the second plan, with nothing actionable.
 #
-# Expected blast radius behavior:
+# Expected change impact behavior:
 #   - is_actionable_change() returns False for all nodes → score = 0
 #   - resource_warnings = [] (no actionable changed resources)
 #   - severity = "low"

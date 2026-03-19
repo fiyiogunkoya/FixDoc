@@ -18,7 +18,7 @@ resource "aws_security_group" "bad_cidr" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/33"]  # /33 is invalid — max is /32
+  cidr_blocks = ["10.0.0.0/33"]  # /33 is invalid — max is /32
   }
   egress {
     from_port   = 0

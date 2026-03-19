@@ -3,7 +3,7 @@
 # 50 instances of 5 resource types = 250 create actions in the plan.
 # Tests:
 #   - find_by_resource_type deduplication (5 unique types → exactly 5 DB calls)
-#   - Blast score scaling with large resource counts
+#   - Impact score scaling with large resource counts
 #   - Performance: `time fixdoc analyze plan.json --max-warnings 10` < 2s target
 #
 # Resource types:

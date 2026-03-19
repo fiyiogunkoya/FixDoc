@@ -6,7 +6,7 @@
 #   - VPC replace cascades to subnet, SG, EC2 (all replace)
 #   - Extra S3 bucket is removed (delete action)
 #
-# Expected blast radius behavior:
+# Expected change impact behavior:
 #   - has_destructive=True → L2 BFS fires, history_matches can populate
 #   - Multiple replace + delete actions → HIGH severity score
 #   - max_warnings cap tested if fix DB has relevant records

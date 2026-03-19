@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from ..classifier import classify_memory_type
 from ..models import Fix
 
 
@@ -220,10 +221,12 @@ def build_fix(
     resolution = (resolution or "").strip()[:_RESOLUTION_MAX]
     if error_excerpt:
         error_excerpt = error_excerpt.strip()[:_EXCERPT_MAX]
+    memory_type = classify_memory_type(resolution)
     return Fix(
         issue=issue,
         resolution=resolution,
         error_excerpt=error_excerpt or None,
         tags=tags or None,
         notes=notes or None,
+        memory_type=memory_type,
     )

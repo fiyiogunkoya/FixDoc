@@ -2,7 +2,7 @@
 #
 # A minimal valid Terraform config (just an S3 bucket) provides the "happy
 # path" baseline plan for comparison. The fixtures/ subdirectory contains
-# three malformed plan JSON files that stress-test blast_radius error handling:
+# three malformed plan JSON files that stress-test change_impact error handling:
 #
 #   fixtures/empty.json      — {} (no format_version, no resource_changes)
 #   fixtures/invalid.json    — not valid JSON at all

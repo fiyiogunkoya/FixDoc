@@ -79,7 +79,7 @@ fixdoc demo seed --clean   # remove old demo data before re-seeding
 **Team and CI features:**
 - Sync fixes with your team via a shared Git repo
 - Analyze Terraform plans against your fix history before `apply` to surface known failure patterns
-- Gate CI pipelines on blast radius severity (`--exit-on high`)
+- Gate CI pipelines on change impact severity (`--exit-on high`)
 - Record apply outcomes and surface historical prediction accuracy in future analyses
 - Bulk import closed tickets from Jira, ServiceNow, Notion, and Slack
 
@@ -181,7 +181,7 @@ fixdoc delete abc12345  # permanently remove a fix
 
 ### Analyzing Terraform Plans
 
-Before `terraform apply`, generate a plan JSON and run it through FixDoc to surface blast radius and known failure patterns:
+Before `terraform apply`, generate a plan JSON and run it through FixDoc to surface change impact and known failure patterns:
 
 ```bash
 terraform plan -out=plan.tfplan
@@ -189,7 +189,7 @@ terraform show -json plan.tfplan > plan.json
 fixdoc analyze plan.json
 ```
 
-FixDoc traverses the Terraform dependency graph, scores blast radius using a sigmoid formula (affected count, IAM/network boundary criticality, action type, fix history), matches changing resources against your fix history, and surfaces historical apply outcomes.
+FixDoc traverses the Terraform dependency graph, scores change impact using a sigmoid formula (affected count, IAM/network boundary criticality, action type, fix history), matches changing resources against your fix history, and surfaces historical apply outcomes.
 
 ```
 Terraform Plan Analysis
@@ -201,7 +201,7 @@ Risk Score: 61 / 100  [HIGH]
 Why this scored 61:
   +10  delete action on live resources
   +8   IAM policy field changed
-  +15  network boundary in blast radius (depth 2)
+  +15  network boundary in change impact (depth 2)
 
 Changes:
   CREATE    aws_iam_role.deploy_role   [iam boundary]
@@ -251,13 +251,13 @@ fixdoc outcome show abc12345   # full detail for one outcome
 
 Future `fixdoc analyze` runs surface matching historical outcomes in a "Historical Apply Outcomes" section, showing whether prior predictions were accurate — observational only, does not alter the risk score.
 
-### Blast Radius (Standalone)
+### Change Impact (Standalone)
 
 Risk score without history matching:
 
 ```bash
-fixdoc blast-radius plan.json
-fixdoc blast-radius plan.json --format json --exit-on critical
+fixdoc analyze plan.json
+fixdoc analyze plan.json --format json --exit-on critical
 ```
 
 ### Importing Fixes from External Systems
@@ -319,7 +319,7 @@ Fixes marked `is_private: true` are always excluded from sync.
 
 Source-specific parsers (Terraform, Kubernetes, and a generic fallback) extract structured metadata from raw error output — provider, resource type, error code, resource address — so fixes are queryable by field, not just full-text searchable. A similarity engine scores existing fixes before capture so you see matching resolutions before writing a new entry.
 
-Everything persists as structured JSON plus a human-readable markdown file per fix. The analysis engine traverses your Terraform dependency graph using bounded BFS propagation, scores blast radius with a sigmoid formula weighting IAM/network control points, and matches changes against fix history using multi-signal scoring (error code, resource address, changed attributes, recency). Sensitive field values are redacted before any output is written.
+Everything persists as structured JSON plus a human-readable markdown file per fix. The analysis engine traverses your Terraform dependency graph using bounded BFS propagation, scores change impact with a sigmoid formula weighting IAM/network control points, and matches changes against fix history using multi-signal scoring (error code, resource address, changed attributes, recency). Sensitive field values are redacted before any output is written.
 
 ## CI Integration
 

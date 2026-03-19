@@ -5,9 +5,18 @@ from typing import Optional
 
 import click
 
+from ..classifier import MEMORY_TYPES, classify_memory_type
 from ..importers.base import ImportResult, is_high_signal, parse_csv, parse_json
 from ..importers import jira, servicenow, notion, slack
 from ..storage import FixRepository
+
+_TYPE_SHORTHAND = {"f": "fix", "c": "check", "p": "playbook", "i": "insight"}
+
+
+def _resolve_type_shorthand(val: str) -> str:
+    """Resolve single-letter shorthand to full memory type name."""
+    resolved = _TYPE_SHORTHAND.get(val, val)
+    return resolved if resolved in MEMORY_TYPES else "fix"
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +80,7 @@ def _show_card(index: int, total: int, fix, source_id: str, system: str) -> None
         f"  resolution : {fix.resolution[:80]}{'...' if len(fix.resolution) > 80 else ''}"
     )
     click.echo(f"  tags       : {fix.tags or ''}")
+    click.echo(f"  type       : {fix.memory_type}")
     click.echo(f"  source     : {system} / {source_id}")
 
 
@@ -164,6 +174,17 @@ def _review_flow(
             new_issue = click.prompt("  issue", default=fix.issue)
             new_resolution = click.prompt("  resolution", default=fix.resolution)
             new_tags_raw = click.prompt("  tags", default=fix.tags or "")
+
+            # Re-classify if resolution changed
+            if new_resolution != fix.resolution:
+                type_default = classify_memory_type(new_resolution)
+            else:
+                type_default = fix.memory_type
+            new_type = click.prompt(
+                "  type [f]ix/[c]heck/[p]laybook/[i]nsight",
+                default=type_default,
+            ).strip().lower()
+            fix.memory_type = _resolve_type_shorthand(new_type)
 
             # Re-append source tag after edit
             if source_tag:

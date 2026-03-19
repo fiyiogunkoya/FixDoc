@@ -1,4 +1,4 @@
-"""Tests for the fixdoc blast-radius feature."""
+"""Tests for the fixdoc change-impact feature."""
 
 import importlib
 import json
@@ -7,26 +7,26 @@ from unittest.mock import patch, MagicMock
 import pytest
 from click.testing import CliRunner
 
-from fixdoc.blast_radius import (
+from fixdoc.change_impact import (
     classify_control_point,
     is_boundary_resource,
     parse_dot_graph,
     compute_affected_set,
     compute_tiered_affected,
-    compute_blast_score,
+    compute_impact_score,
     severity_label,
     build_score_explanation,
     compute_history_prior,
     redact_plan_values,
     generate_checks,
-    analyze_blast_radius,
+    analyze_change_impact,
     find_resource_prior_fixes,
     find_relevant_fixes,
     extract_change_fingerprint,
     generate_contextual_checks,
     is_actionable_change,
-    BlastNode,
-    BlastResult,
+    ImpactNode,
+    ImpactResult,
     ScoreExplanation,
     ATTR_CATEGORIES,
     ATTR_CHECKS,
@@ -286,7 +286,7 @@ class TestTieredAffected:
 
     def test_l2_gated_for_non_boundary_updates(self):
         """Non-boundary update should not propagate past depth 1."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
         adj = {
             "aws_s3_bucket.data": {"B"},
             "B": {"C"},
@@ -299,7 +299,7 @@ class TestTieredAffected:
 
     def test_l2_included_for_boundary_update(self):
         """Boundary resource update should include L2."""
-        nodes = [BlastNode("aws_security_group.main", "aws_security_group", "update")]
+        nodes = [ImpactNode("aws_security_group.main", "aws_security_group", "update")]
         adj = {
             "aws_security_group.main": {"B"},
             "B": {"C"},
@@ -312,7 +312,7 @@ class TestTieredAffected:
 
     def test_l2_included_for_delete(self):
         """Delete action should include L2."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")]
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")]
         adj = {
             "aws_s3_bucket.data": {"B"},
             "B": {"C"},
@@ -324,71 +324,71 @@ class TestTieredAffected:
 
 
 # ===================================================================
-# TestBlastScore
+# TestImpactScore
 # ===================================================================
 
 
-class TestBlastScore:
-    """Tests for linear blast score computation and severity labeling."""
+class TestImpactScore:
+    """Tests for linear impact score computation and severity labeling."""
 
     def test_zero_baseline(self):
         """No changed nodes gives zero score."""
-        score = compute_blast_score([], 0, 0, 0)
+        score = compute_impact_score([], 0, 0, 0)
         assert score == 0
 
     def test_single_update_non_boundary(self):
         """Single non-boundary update: 5 points."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
-        score = compute_blast_score(nodes, 0, 0, 0)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        score = compute_impact_score(nodes, 0, 0, 0)
         assert score == 5.0
 
     def test_single_sg_update_2_dependents(self):
         """In-place SG update + 2 dependents → LOW."""
-        nodes = [BlastNode("aws_security_group.cache", "aws_security_group", "update")]
-        score = compute_blast_score(nodes, 2, 0, 0)
+        nodes = [ImpactNode("aws_security_group.cache", "aws_security_group", "update")]
+        score = compute_impact_score(nodes, 2, 0, 0)
         # 5 * 1.5 (boundary) + 2 * 1.5 (boundary not all_updates_no_boundary) = 7.5 + 3 = 10.5
         assert score < 25
         assert severity_label(score) == "low"
 
     def test_delete_iam_role_7_dependents(self):
         """Delete IAM role + 7 dependents → MEDIUM."""
-        nodes = [BlastNode("aws_iam_role.app", "aws_iam_role", "delete")]
-        score = compute_blast_score(nodes, 3, 4, 0)
+        nodes = [ImpactNode("aws_iam_role.app", "aws_iam_role", "delete")]
+        score = compute_impact_score(nodes, 3, 4, 0)
         # 20 * 1.5 (boundary) + 7 * 1.5 = 30 + 10.5 = 40.5
         assert 25 <= score < 75
         assert severity_label(score) == "medium"
 
     def test_delete_higher_than_update(self):
-        nodes_del = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")]
-        nodes_upd = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
-        del_score = compute_blast_score(nodes_del, 0, 0, 0)
-        upd_score = compute_blast_score(nodes_upd, 0, 0, 0)
+        nodes_del = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")]
+        nodes_upd = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        del_score = compute_impact_score(nodes_del, 0, 0, 0)
+        upd_score = compute_impact_score(nodes_upd, 0, 0, 0)
         assert del_score > upd_score
 
     def test_history_increases_score(self):
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
-        no_hist = compute_blast_score(nodes, 0, 0, 0)
-        with_hist = compute_blast_score(nodes, 0, 0, 3)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        no_hist = compute_impact_score(nodes, 0, 0, 0)
+        with_hist = compute_impact_score(nodes, 0, 0, 3)
         assert with_hist > no_hist
 
     def test_history_capped_at_15(self):
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
-        score_3 = compute_blast_score(nodes, 0, 0, 3)
-        score_10 = compute_blast_score(nodes, 0, 0, 10)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        score_3 = compute_impact_score(nodes, 0, 0, 3)
+        score_10 = compute_impact_score(nodes, 0, 0, 10)
         # Both should have same history contribution (capped at 15)
         assert score_3 == score_10
 
     def test_impacted_count_capped_at_25(self):
-        nodes = [BlastNode("aws_iam_role.app", "aws_iam_role", "delete")]
-        score_25 = compute_blast_score(nodes, 25, 0, 0)
-        score_50 = compute_blast_score(nodes, 25, 25, 0)
+        nodes = [ImpactNode("aws_iam_role.app", "aws_iam_role", "delete")]
+        score_25 = compute_impact_score(nodes, 25, 0, 0)
+        score_50 = compute_impact_score(nodes, 25, 25, 0)
         # L1+L2 capped at 25
         assert score_25 == score_50
 
     def test_impact_multiplier_low_for_non_boundary_updates(self):
         """All updates non-boundary → impact_multiplier = 0.5."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
-        score = compute_blast_score(nodes, 5, 0, 0)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")]
+        score = compute_impact_score(nodes, 5, 0, 0)
         # 5 (update) + 5 * 0.5 (low multiplier) = 7.5
         assert score == 7.5
 
@@ -414,22 +414,22 @@ class TestBlastScore:
 
     def test_replace_action(self):
         """Replace (create+delete) is worth 25 points."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "replace")]
-        score = compute_blast_score(nodes, 0, 0, 0)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "replace")]
+        score = compute_impact_score(nodes, 0, 0, 0)
         assert score == 25.0
 
     def test_single_create_non_boundary(self):
         """Single non-boundary create gets greenfield discount: 8 * 0.3 = 2.4."""
-        nodes = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")]
-        score = compute_blast_score(nodes, 0, 0, 0)
+        nodes = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")]
+        score = compute_impact_score(nodes, 0, 0, 0)
         assert score == 2.4
 
     def test_boundary_create_greenfield_smaller_discount(self):
         """Boundary create in greenfield gets smaller discount than non-boundary: 8*1.5*0.5=6.0 vs 8*0.3=2.4."""
-        node_boundary = [BlastNode("aws_iam_role.app", "aws_iam_role", "create")]
-        node_plain = [BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")]
-        score_boundary = compute_blast_score(node_boundary, 0, 0, 0)
-        score_plain = compute_blast_score(node_plain, 0, 0, 0)
+        node_boundary = [ImpactNode("aws_iam_role.app", "aws_iam_role", "create")]
+        node_plain = [ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")]
+        score_boundary = compute_impact_score(node_boundary, 0, 0, 0)
+        score_plain = compute_impact_score(node_plain, 0, 0, 0)
         assert score_boundary == 6.0   # 8 * 1.5 * 0.5
         assert score_plain == 2.4      # 8 * 0.3
         assert score_boundary > score_plain
@@ -437,10 +437,10 @@ class TestBlastScore:
     def test_greenfield_many_creates_under_100(self):
         """13 all-create resources should NOT score 100 (greenfield discount)."""
         nodes = [
-            BlastNode(f"aws_instance.app_{i}", "aws_instance", "create")
+            ImpactNode(f"aws_instance.app_{i}", "aws_instance", "create")
             for i in range(13)
         ]
-        score = compute_blast_score(nodes, 0, 0, 0)
+        score = compute_impact_score(nodes, 0, 0, 0)
         # 13 * 8 * 0.4 = 41.6 — well under 100
         # Severity thresholds: >=75 critical, >=50 high, >=25 medium
         assert score < 75
@@ -449,32 +449,32 @@ class TestBlastScore:
     def test_greenfield_lower_than_equivalent_update(self):
         """Greenfield plan scores lower than same resources with one update mixed in."""
         nodes_create = [
-            BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create"),
-            BlastNode("aws_instance.app", "aws_instance", "create"),
+            ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create"),
+            ImpactNode("aws_instance.app", "aws_instance", "create"),
         ]
         nodes_mixed = [
-            BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update"),  # not greenfield
-            BlastNode("aws_instance.app", "aws_instance", "create"),
+            ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update"),  # not greenfield
+            ImpactNode("aws_instance.app", "aws_instance", "create"),
         ]
-        score_create = compute_blast_score(nodes_create, 5, 0, 0)
-        score_mixed = compute_blast_score(nodes_mixed, 5, 0, 0)
+        score_create = compute_impact_score(nodes_create, 5, 0, 0)
+        score_mixed = compute_impact_score(nodes_mixed, 5, 0, 0)
         assert score_create < score_mixed
 
     def test_greenfield_50_boundary_creates_caps_at_medium(self):
         """50 boundary creates (scenario-16 case) must not score CRITICAL."""
         nodes = (
-            [BlastNode(f"aws_iam_role.r_{i}", "aws_iam_role", "create") for i in range(50)]
-            + [BlastNode(f"aws_security_group.sg_{i}", "aws_security_group", "create") for i in range(50)]
+            [ImpactNode(f"aws_iam_role.r_{i}", "aws_iam_role", "create") for i in range(50)]
+            + [ImpactNode(f"aws_security_group.sg_{i}", "aws_security_group", "create") for i in range(50)]
         )
-        score = compute_blast_score(nodes, 0, 0, 0)
+        score = compute_impact_score(nodes, 0, 0, 0)
         assert score <= 45.0
         assert severity_label(score) == "medium"
 
     def test_greenfield_cap_does_not_apply_with_external_dependents(self):
         """If a greenfield plan has L1 cross-boundary dependents, no cap — can score higher."""
-        nodes = [BlastNode(f"aws_iam_role.r_{i}", "aws_iam_role", "create") for i in range(5)]
-        score_no_deps = compute_blast_score(nodes, 0, 0, 0)
-        score_with_deps = compute_blast_score(nodes, 10, 0, 0)
+        nodes = [ImpactNode(f"aws_iam_role.r_{i}", "aws_iam_role", "create") for i in range(5)]
+        score_no_deps = compute_impact_score(nodes, 0, 0, 0)
+        score_with_deps = compute_impact_score(nodes, 10, 0, 0)
         assert score_no_deps <= 45.0   # cap applies when no external deps
         assert score_with_deps > score_no_deps   # external deps push it higher
 
@@ -493,7 +493,7 @@ def test_greenfield_dot_indexed_resource_name_mismatch_caps_at_medium(tmp_path):
     dot_text = '''digraph {
         "aws_security_group.bulk" -> "aws_vpc.main"
     }'''
-    result = analyze_blast_radius(plan, dot_text=dot_text, repo=repo)
+    result = analyze_change_impact(plan, dot_text=dot_text, repo=repo)
     assert result.score <= 45.0, f"Expected MEDIUM cap, got {result.score}"
     assert result.severity != "critical"
 
@@ -555,7 +555,7 @@ class TestHistoryPrior:
     def test_matching_fixes(self, tmp_path):
         """Boundary node + category-tagged fix → match returned."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_iam_role.app", "aws_iam_role", "update")
+        node = ImpactNode("aws_iam_role.app", "aws_iam_role", "update")
         repo.save(Fix(issue="IAM role issue", resolution="Fixed it",
                       tags="aws_iam_role, iam"))
         count, matches = compute_history_prior(["aws_iam_role"], [node], repo)
@@ -565,7 +565,7 @@ class TestHistoryPrior:
     def test_no_matches(self, tmp_path):
         """Empty repo → zero matches regardless of nodes."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "update")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "update")
         count, matches = compute_history_prior(["aws_s3_bucket"], [node], repo)
         assert count == 0
         assert len(matches) == 0
@@ -573,7 +573,7 @@ class TestHistoryPrior:
     def test_count_is_exact(self, tmp_path):
         """3 fixes with distinct cluster keys under boundary gate → exactly 3 returned."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_iam_role.app", "aws_iam_role", "update")
+        node = ImpactNode("aws_iam_role.app", "aws_iam_role", "update")
         for issue in (
             "timeout connecting to iam service",
             "permission denied on role attach",
@@ -587,8 +587,8 @@ class TestHistoryPrior:
         """Two boundary nodes, two category-tagged fixes → 2 matches."""
         repo = FixRepository(tmp_path)
         nodes = [
-            BlastNode("aws_iam_role.app", "aws_iam_role", "delete"),
-            BlastNode("aws_security_group.web", "aws_security_group", "update"),
+            ImpactNode("aws_iam_role.app", "aws_iam_role", "delete"),
+            ImpactNode("aws_security_group.web", "aws_security_group", "update"),
         ]
         repo.save(Fix(issue="IAM issue", resolution="Fix",
                       tags="aws_iam_role, iam"))
@@ -606,7 +606,7 @@ class TestHistoryPrior:
     def test_no_history_for_plain_updates_no_address_match(self, tmp_path):
         """Non-boundary update + no address in fix text → no matches (gate closed)."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_instance.app_a", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app_a", "aws_instance", "update")
         repo.save(Fix(issue="instance type issue", resolution="Fix",
                       tags="aws_instance, storage"))
         count, matches = compute_history_prior(["aws_instance"], [node], repo)
@@ -616,7 +616,7 @@ class TestHistoryPrior:
     def test_address_override_for_plain_update(self, tmp_path):
         """Fix whose issue text contains the changed address surfaces via Phase 1."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_instance.app_a", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app_a", "aws_instance", "update")
         repo.save(Fix(
             issue="aws_instance.app_a ran out of capacity",
             resolution="Changed AZ",
@@ -629,7 +629,7 @@ class TestHistoryPrior:
     def test_category_tag_filter_excludes_resource_type_only_tagged_fixes(self, tmp_path):
         """Fix tagged only with resource-type (no category tag) is excluded even under gate."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update")
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update")
         repo.save(Fix(issue="sg update failed", resolution="Fix",
                       tags="aws_security_group"))
         count, matches = compute_history_prior(["aws_security_group"], [node], repo)
@@ -639,7 +639,7 @@ class TestHistoryPrior:
     def test_dedup_most_complete_wins(self, tmp_path):
         """Two fixes with same cluster key → the one with error_excerpt wins."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update")
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update")
         fix_no_excerpt = Fix(
             issue="SecurityGroupUpdateFailed rule conflict",
             resolution="Fixed it",
@@ -660,7 +660,7 @@ class TestHistoryPrior:
     def test_cap_at_3_after_dedup(self, tmp_path):
         """5 fixes with distinct cluster keys, all category-tagged → capped at 3."""
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update")
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update")
         for name in ("TimeoutError", "ConnectError", "QuotaError", "AuthError", "NetworkError"):
             repo.save(Fix(
                 issue=f"{name} on security group update",
@@ -681,24 +681,24 @@ class TestGenerateChecks:
     """Tests for recommended check generation."""
 
     def test_iam_checks(self):
-        cps = [BlastNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9)]
+        cps = [ImpactNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9)]
         checks = generate_checks(cps, has_deletes=False)
         assert any("IAM" in c for c in checks)
 
     def test_network_checks(self):
-        cps = [BlastNode("a", "aws_security_group", "update", category="network", criticality=0.8)]
+        cps = [ImpactNode("a", "aws_security_group", "update", category="network", criticality=0.8)]
         checks = generate_checks(cps, has_deletes=False)
         assert any("security group" in c for c in checks)
 
     def test_delete_check_added(self):
-        cps = [BlastNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9)]
+        cps = [ImpactNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9)]
         checks = generate_checks(cps, has_deletes=True)
         assert any("not referenced" in c for c in checks)
 
     def test_no_duplicates_same_category(self):
         cps = [
-            BlastNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9),
-            BlastNode("b", "aws_iam_policy", "update", category="iam", criticality=0.85),
+            ImpactNode("a", "aws_iam_role", "delete", category="iam", criticality=0.9),
+            ImpactNode("b", "aws_iam_policy", "update", category="iam", criticality=0.85),
         ]
         checks = generate_checks(cps, has_deletes=False)
         iam_checks = [c for c in checks if "IAM" in c]
@@ -707,7 +707,7 @@ class TestGenerateChecks:
 
 
 # ===================================================================
-# TestAnalyzeCommand (replaces TestBlastRadiusCommand)
+# TestAnalyzeCommand
 # ===================================================================
 
 
@@ -1090,7 +1090,7 @@ class TestEndToEnd:
     "aws_lambda_function.api" -> "aws_iam_role.app_role"
 }"""
 
-        result = analyze_blast_radius(plan, repo, dot_text=dot, max_depth=5)
+        result = analyze_change_impact(plan, repo, dot_text=dot, max_depth=5)
 
         assert result.score > 0
         assert result.severity in ("low", "medium", "high", "critical")
@@ -1112,7 +1112,7 @@ class TestEndToEnd:
     "aws_instance.web" -> "aws_security_group.main"
 }"""
 
-        result = analyze_blast_radius(plan, repo, dot_text=dot, max_depth=5)
+        result = analyze_change_impact(plan, repo, dot_text=dot, max_depth=5)
 
         assert result.score > 0
         assert len(result.control_points) == 1
@@ -1141,7 +1141,7 @@ class TestEndToEnd:
   "aws_iam_role_policy.inline" -> "aws_iam_role.app_role";
   "aws_instance.app" -> "aws_iam_instance_profile.profile";
 }"""
-        result = analyze_blast_radius(plan, repo, dot_text=dot)
+        result = analyze_change_impact(plan, repo, dot_text=dot)
         affected_addrs = {a["address"] for a in result.affected}
         assert "aws_iam_instance_profile.profile" in affected_addrs
         assert "aws_instance.app" in affected_addrs
@@ -1155,7 +1155,7 @@ class TestEndToEnd:
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["no-op"]),
         ])
 
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
 
         assert result.score == 0
         assert result.severity == "low"
@@ -1171,35 +1171,35 @@ class TestIsActionableChange:
     """Tests for is_actionable_change()."""
 
     def test_create_is_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="create")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="create")
         assert is_actionable_change(node) is True
 
     def test_update_is_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="update")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="update")
         assert is_actionable_change(node) is True
 
     def test_delete_is_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="delete")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="delete")
         assert is_actionable_change(node) is True
 
     def test_replace_is_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="replace")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="replace")
         assert is_actionable_change(node) is True
 
     def test_noop_not_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="no-op")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="no-op")
         assert is_actionable_change(node) is False
 
     def test_read_not_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="read")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="read")
         assert is_actionable_change(node) is False
 
     def test_refresh_only_not_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="refresh-only")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="refresh-only")
         assert is_actionable_change(node) is False
 
     def test_unknown_not_actionable(self):
-        node = BlastNode(address="a", resource_type="aws_s3_bucket", action="unknown")
+        node = ImpactNode(address="a", resource_type="aws_s3_bucket", action="unknown")
         assert is_actionable_change(node) is False
 
 
@@ -1209,7 +1209,7 @@ class TestIsActionableChange:
 
 
 def _make_node(address, resource_type, action="create"):
-    return BlastNode(address=address, resource_type=resource_type, action=action)
+    return ImpactNode(address=address, resource_type=resource_type, action=action)
 
 
 class TestFindResourcePriorFixes:
@@ -1399,12 +1399,12 @@ class TestFindResourcePriorFixes:
 
 
 # ===================================================================
-# TestAnalyzeBlastRadiusResourceWarnings
+# TestAnalyzeChangeImpactResourceWarnings
 # ===================================================================
 
 
-class TestAnalyzeBlastRadiusResourceWarnings:
-    """Tests for resource_warnings in analyze_blast_radius()."""
+class TestAnalyzeChangeImpactResourceWarnings:
+    """Tests for resource_warnings in analyze_change_impact()."""
 
     def test_resource_warnings_populated(self, tmp_path):
         repo = FixRepository(tmp_path)
@@ -1416,7 +1416,7 @@ class TestAnalyzeBlastRadiusResourceWarnings:
         plan = make_plan([
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["create"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         assert len(result.resource_warnings) >= 1
         # match_reason is now a dict with signal field
         mr = result.resource_warnings[0]["match_reason"]
@@ -1434,7 +1434,7 @@ class TestAnalyzeBlastRadiusResourceWarnings:
         plan = make_plan([
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["create"]),
         ])
-        result = analyze_blast_radius(plan, repo, tag_only=True)
+        result = analyze_change_impact(plan, repo, tag_only=True)
         # Under new unified matching, text matches are surfaced as low confidence
         if result.resource_warnings:
             assert result.resource_warnings[0]["confidence"] == "low"
@@ -1450,7 +1450,7 @@ class TestAnalyzeBlastRadiusResourceWarnings:
         plan = make_plan([
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["create"]),
         ])
-        result = analyze_blast_radius(plan, repo, max_resource_warnings=3)
+        result = analyze_change_impact(plan, repo, max_resource_warnings=3)
         assert len(result.resource_warnings) <= 3
 
 
@@ -1460,8 +1460,8 @@ class TestAnalyzeBlastRadiusResourceWarnings:
 
 
 def _make_result_with_warnings(warnings):
-    """Build a minimal BlastResult with given resource_warnings."""
-    return BlastResult(
+    """Build a minimal ImpactResult with given resource_warnings."""
+    return ImpactResult(
         score=8.0,
         severity="low",
         changes=[{"address": "aws_s3_bucket.data", "resource_type": "aws_s3_bucket",
@@ -1707,10 +1707,10 @@ class TestIAMSensitivity:
         assert wildcard is False
 
     def test_wildcard_trust_forces_high_floor(self):
-        """BlastNode with wildcard_trust=True forces score >= 50 (HIGH)."""
-        nodes = [BlastNode("aws_iam_role.r", "aws_iam_role", "update",
+        """ImpactNode with wildcard_trust=True forces score >= 50 (HIGH)."""
+        nodes = [ImpactNode("aws_iam_role.r", "aws_iam_role", "update",
                            sensitivity_delta=0, wildcard_trust=True)]
-        score = compute_blast_score(nodes, 0, 0, 0)
+        score = compute_impact_score(nodes, 0, 0, 0)
         assert score >= 50.0
         assert severity_label(score) == "high"
 
@@ -1728,7 +1728,7 @@ class TestBuildScoreExplanation:
         assert result == []
 
     def test_delete_action_bullet(self):
-        nodes = [BlastNode("aws_vpc.main", "aws_vpc", "delete")]
+        nodes = [ImpactNode("aws_vpc.main", "aws_vpc", "delete")]
         bullets = build_score_explanation(nodes, 0, 0, 0)
         action_bullets = [b for b in bullets if b.kind == "action"]
         assert len(action_bullets) == 1
@@ -1736,7 +1736,7 @@ class TestBuildScoreExplanation:
         assert action_bullets[0].delta > 0
 
     def test_iam_sensitivity_bullet(self):
-        node = BlastNode(
+        node = ImpactNode(
             "aws_iam_role.api", "aws_iam_role", "update",
             sensitivity_delta=18.0, sensitivity_reason="lambda.amazonaws.com",
         )
@@ -1747,7 +1747,7 @@ class TestBuildScoreExplanation:
         assert "aws_iam_role.api" in iam_bullets[0].label
 
     def test_wildcard_trust_modifier_bullet(self):
-        node = BlastNode(
+        node = ImpactNode(
             "aws_iam_role.api", "aws_iam_role", "update",
             sensitivity_delta=8.0, wildcard_trust=True,
         )
@@ -1758,7 +1758,7 @@ class TestBuildScoreExplanation:
         assert modifier_bullets[0].delta == 0.0
 
     def test_l1_impact_bullet(self):
-        nodes = [BlastNode("aws_vpc.main", "aws_vpc", "delete")]
+        nodes = [ImpactNode("aws_vpc.main", "aws_vpc", "delete")]
         bullets = build_score_explanation(nodes, l1_count=3, l2_count=0, history_count=0)
         impact_bullets = [b for b in bullets if b.kind == "impact"]
         assert len(impact_bullets) == 1
@@ -1766,14 +1766,14 @@ class TestBuildScoreExplanation:
         assert "3" in impact_bullets[0].label
 
     def test_history_bullet_single(self):
-        nodes = [BlastNode("aws_vpc.main", "aws_vpc", "delete")]
+        nodes = [ImpactNode("aws_vpc.main", "aws_vpc", "delete")]
         bullets = build_score_explanation(nodes, 0, 0, history_count=1)
         history_bullets = [b for b in bullets if b.kind == "history"]
         assert len(history_bullets) == 1
         assert history_bullets[0].delta == 5.0
 
     def test_history_bullet_multiple(self):
-        nodes = [BlastNode("aws_vpc.main", "aws_vpc", "delete")]
+        nodes = [ImpactNode("aws_vpc.main", "aws_vpc", "delete")]
         bullets = build_score_explanation(nodes, 0, 0, history_count=3)
         history_bullets = [b for b in bullets if b.kind == "history"]
         assert len(history_bullets) == 1
@@ -1781,8 +1781,8 @@ class TestBuildScoreExplanation:
 
     def test_greenfield_cap_modifier(self):
         nodes = [
-            BlastNode("aws_s3_bucket.a", "aws_s3_bucket", "create"),
-            BlastNode("aws_s3_bucket.b", "aws_s3_bucket", "create"),
+            ImpactNode("aws_s3_bucket.a", "aws_s3_bucket", "create"),
+            ImpactNode("aws_s3_bucket.b", "aws_s3_bucket", "create"),
         ]
         bullets = build_score_explanation(nodes, l1_count=0, l2_count=0, history_count=0)
         modifier_bullets = [b for b in bullets if b.kind == "modifier"]
@@ -1794,7 +1794,7 @@ class TestBuildScoreExplanation:
         assert len(cap_modifiers) == 0
 
     def test_kinds_are_correct(self):
-        node = BlastNode(
+        node = ImpactNode(
             "aws_iam_role.api", "aws_iam_role", "delete",
             sensitivity_delta=8.0, wildcard_trust=True,
         )
@@ -1808,13 +1808,13 @@ class TestBuildScoreExplanation:
         for b in bullets:
             assert b.kind in ("action", "iam", "modifier", "impact", "history")
 
-    def test_score_explanation_in_blast_result(self, tmp_path):
+    def test_score_explanation_in_impact_result(self, tmp_path):
         repo = FixRepository(tmp_path)
         plan = make_plan([
             make_resource_change("aws_iam_role.api", "aws_iam_role", ["update"]),
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["create"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         assert isinstance(result.score_explanation, list)
         assert len(result.score_explanation) > 0
         first = result.score_explanation[0]
@@ -1918,7 +1918,7 @@ class TestFindRelevantFixes:
             resolution="Changed instance type to t3.micro",
             tags="aws_instance",
         ))
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
         assert result[0]["confidence"] == "high"
@@ -1933,7 +1933,7 @@ class TestFindRelevantFixes:
             tags="aws_s3_bucket",
         ))
         # Changing an IAM role, not a bucket
-        node = BlastNode("aws_iam_role.app", "aws_iam_role", "update")
+        node = ImpactNode("aws_iam_role.app", "aws_iam_role", "update")
         result = find_relevant_fixes([node], repo)
         # Should not match at error_code tier since resource types differ
         for r in result:
@@ -1948,7 +1948,7 @@ class TestFindRelevantFixes:
             resolution="Changed AZ to us-east-2",
             tags="aws_instance",
         ))
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
         assert result[0]["confidence"] == "high"
@@ -1962,7 +1962,7 @@ class TestFindRelevantFixes:
             resolution="Updated AMI",
             tags="aws_instance",
         ))
-        node = BlastNode("module.web.aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("module.web.aws_instance.app", "aws_instance", "update")
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
         assert result[0]["score"] >= 120
@@ -1975,7 +1975,7 @@ class TestFindRelevantFixes:
             resolution="Restricted ingress to VPC CIDR only",
             tags="aws_security_group",
         ))
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update",
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update",
                         change_fingerprint={"changed_attrs": ["ingress"],
                                           "changed_attr_count": 1,
                                           "attr_categories": {"networking"},
@@ -1994,7 +1994,7 @@ class TestFindRelevantFixes:
             resolution="Fixed route table",
             tags="aws_security_group,networking",
         ))
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update",
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update",
                         change_fingerprint={"changed_attrs": ["egress"],
                                           "changed_attr_count": 1,
                                           "attr_categories": {"networking"},
@@ -2012,7 +2012,7 @@ class TestFindRelevantFixes:
             resolution="Empty bucket first",
             tags="aws_s3_bucket",
         ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")
         result = find_relevant_fixes([node], repo)
         # Standalone type_action is suppressed in attribute-first engine
         assert len(result) == 0
@@ -2025,7 +2025,7 @@ class TestFindRelevantFixes:
             resolution="Fixed it somehow",
             tags="aws_s3_bucket",
         ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         # Standalone type_tag is suppressed
         assert len(result) == 0
@@ -2038,7 +2038,7 @@ class TestFindRelevantFixes:
             resolution="Re-enabled versioning",
             tags="storage",
         ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         # type_text is fully killed
         assert len(result) == 0
@@ -2052,7 +2052,7 @@ class TestFindRelevantFixes:
             resolution="Fixed it",
             tags="aws_s3_bucket",
         ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         assert len(result) >= 1
         # Address match (120) + recency (30) = 150+
@@ -2066,7 +2066,7 @@ class TestFindRelevantFixes:
             resolution="Fixed route table in module.networking",
             tags="aws_vpc",
         ))
-        node = BlastNode("module.networking.aws_vpc.main", "aws_vpc", "update",
+        node = ImpactNode("module.networking.aws_vpc.main", "aws_vpc", "update",
                         change_fingerprint={"changed_attrs": ["route_table_id"],
                                           "changed_attr_count": 1,
                                           "attr_categories": {"networking"},
@@ -2089,8 +2089,8 @@ class TestFindRelevantFixes:
             tags="aws_s3_bucket",
         ))
         nodes = [
-            BlastNode("aws_s3_bucket.a", "aws_s3_bucket", "create"),
-            BlastNode("aws_s3_bucket.b", "aws_s3_bucket", "create"),
+            ImpactNode("aws_s3_bucket.a", "aws_s3_bucket", "create"),
+            ImpactNode("aws_s3_bucket.b", "aws_s3_bucket", "create"),
         ]
         result = find_relevant_fixes(nodes, repo)
         # Should appear once with both resources in matched_resources
@@ -2107,7 +2107,7 @@ class TestFindRelevantFixes:
                 tags="aws_s3_bucket",
             ))
         nodes = [
-            BlastNode(f"aws_s3_bucket.data_{i}", "aws_s3_bucket", "create")
+            ImpactNode(f"aws_s3_bucket.data_{i}", "aws_s3_bucket", "create")
             for i in range(5)
         ]
         result = find_relevant_fixes(nodes, repo, max_total=2)
@@ -2122,7 +2122,7 @@ class TestFindRelevantFixes:
             resolution="Changed AZ",
             tags="aws_instance",
         ))
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         result = find_relevant_fixes([node], repo)
         assert result[0]["confidence"] == "high"
 
@@ -2134,7 +2134,7 @@ class TestFindRelevantFixes:
             resolution="Set to private",
             tags="aws_s3_bucket",
         ))
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         mr = result[0]["match_reason"]
         assert "signal" in mr
@@ -2152,7 +2152,7 @@ class TestFindRelevantFixes:
             resolution="Changed instance_type to t3.large in us-east-1",
             tags="aws_instance",
         ))
-        node = BlastNode("aws_instance.app", "aws_instance", "update",
+        node = ImpactNode("aws_instance.app", "aws_instance", "update",
                         change_fingerprint={"changed_attrs": ["instance_type"],
                                           "changed_attr_count": 1,
                                           "attr_categories": {"sizing"},
@@ -2166,7 +2166,7 @@ class TestFindRelevantFixes:
         # Should have supporting signals
         assert len(mr["supporting_signals"]) >= 1
 
-    def test_blast_score_threshold(self, tmp_path):
+    def test_impact_score_threshold(self, tmp_path):
         """High confidence qualifies for history; low never qualifies."""
         repo = FixRepository(tmp_path)
         # High confidence fix (address match)
@@ -2175,17 +2175,17 @@ class TestFindRelevantFixes:
             resolution="Recreated role with correct policy, check IAM thoroughly",
             tags="aws_iam_role,iam",
         ))
-        node = BlastNode("aws_iam_role.app", "aws_iam_role", "update")
+        node = ImpactNode("aws_iam_role.app", "aws_iam_role", "update")
         plan = make_plan([
             make_resource_change("aws_iam_role.app", "aws_iam_role", ["update"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         # Should have qualifying history matches
         assert len(result.history_matches) >= 1
 
     def test_empty_repo(self, tmp_path):
         repo = FixRepository(tmp_path)
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "create")
         result = find_relevant_fixes([node], repo)
         assert result == []
 
@@ -2200,7 +2200,7 @@ class TestGenerateContextualChecks:
 
     def test_attr_checks_generated(self):
         """Attribute-specific checks generated for changed attrs."""
-        node = BlastNode("aws_security_group.web", "aws_security_group", "update",
+        node = ImpactNode("aws_security_group.web", "aws_security_group", "update",
                         change_fingerprint={"changed_attrs": ["ingress"],
                                           "changed_attr_count": 1,
                                           "attr_categories": {"networking"},
@@ -2213,7 +2213,7 @@ class TestGenerateContextualChecks:
 
     def test_history_selective_high_confidence_only(self):
         """Only high-confidence fixes generate history checks."""
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         # High confidence fix
         high_fix = {
             "confidence": "high",
@@ -2234,7 +2234,7 @@ class TestGenerateContextualChecks:
 
     def test_history_skips_generic_resolutions(self):
         """Generic resolutions like 'fixed it' are skipped."""
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         fix = {
             "confidence": "high",
             "resolution": "fixed it",
@@ -2246,7 +2246,7 @@ class TestGenerateContextualChecks:
 
     def test_history_capped_at_2(self):
         """At most 2 history-derived checks."""
-        node = BlastNode("aws_instance.app", "aws_instance", "update")
+        node = ImpactNode("aws_instance.app", "aws_instance", "update")
         fixes = [
             {"confidence": "high", "resolution": f"Resolution number {i} is long enough to be meaningful",
              "matched_resources": [{"address": "aws_instance.app", "action": "update"}]}
@@ -2258,7 +2258,7 @@ class TestGenerateContextualChecks:
 
     def test_category_fallback(self):
         """Category fallback when no attr-specific checks."""
-        node = BlastNode("aws_iam_role.app", "aws_iam_role", "delete",
+        node = ImpactNode("aws_iam_role.app", "aws_iam_role", "delete",
                         category="iam", is_control_point=True,
                         change_fingerprint={"changed_attrs": ["tags"],
                                           "changed_attr_count": 1,
@@ -2272,20 +2272,20 @@ class TestGenerateContextualChecks:
 
     def test_delete_check_included(self):
         """Delete checks included for delete actions."""
-        node = BlastNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")
+        node = ImpactNode("aws_s3_bucket.data", "aws_s3_bucket", "delete")
         checks = generate_contextual_checks([node], [])
         assert any("not referenced" in c["check"] for c in checks)
 
     def test_dedup_checks(self):
         """No duplicate check texts."""
         nodes = [
-            BlastNode("aws_security_group.a", "aws_security_group", "update",
+            ImpactNode("aws_security_group.a", "aws_security_group", "update",
                      change_fingerprint={"changed_attrs": ["ingress"],
                                        "changed_attr_count": 1,
                                        "attr_categories": {"networking"},
                                        "action": "update",
                                        "sensitive_changed": False}),
-            BlastNode("aws_security_group.b", "aws_security_group", "update",
+            ImpactNode("aws_security_group.b", "aws_security_group", "update",
                      change_fingerprint={"changed_attrs": ["ingress"],
                                        "changed_attr_count": 1,
                                        "attr_categories": {"networking"},
@@ -2316,7 +2316,7 @@ class TestBackwardCompat:
         plan = make_plan([
             make_resource_change("aws_s3_bucket.data", "aws_s3_bucket", ["create"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         # resource_warnings should be populated from relevant_fixes
         assert result.resource_warnings == result.relevant_fixes
 
@@ -2331,7 +2331,7 @@ class TestBackwardCompat:
         plan = make_plan([
             make_resource_change("aws_iam_role.app", "aws_iam_role", ["delete"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         assert len(result.history_matches) <= 3
 
     def test_checks_populated(self, tmp_path):
@@ -2340,7 +2340,7 @@ class TestBackwardCompat:
         plan = make_plan([
             make_resource_change("aws_iam_role.app", "aws_iam_role", ["delete"]),
         ])
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         assert len(result.checks) > 0
         assert all(isinstance(c, str) for c in result.checks)
 
@@ -2351,7 +2351,7 @@ class TestBackwardCompat:
             make_resource_change("aws_iam_role.app", "aws_iam_role", ["delete"]),
         ])
         repo = FixRepository(tmp_path)
-        result = analyze_blast_radius(plan, repo)
+        result = analyze_change_impact(plan, repo)
         data = json.loads(_format_json(result))
         # New keys
         assert "relevant_fixes" in data
@@ -2734,10 +2734,10 @@ class TestAINarrative:
 
 
 class TestOutcomeScoring:
-    """Tests for outcome_failure_count parameter in compute_blast_score."""
+    """Tests for outcome_failure_count parameter in compute_impact_score."""
 
     def _make_node(self, action="update", resource_type="aws_s3_bucket"):
-        return BlastNode(
+        return ImpactNode(
             address=f"{resource_type}.test",
             resource_type=resource_type,
             action=action,
@@ -2746,53 +2746,53 @@ class TestOutcomeScoring:
     def test_outcome_zero_no_change(self):
         """Default outcome_failure_count=0 gives same score as before."""
         nodes = [self._make_node()]
-        score_without = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
-        score_default = compute_blast_score(nodes, 0, 0, 0)
+        score_without = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        score_default = compute_impact_score(nodes, 0, 0, 0)
         assert score_without == score_default
 
     def test_one_failure_adds_10(self):
         nodes = [self._make_node()]
-        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
-        with_one = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=1)
+        base = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_one = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=1)
         assert with_one == base + 10
 
     def test_two_failures_adds_20(self):
         nodes = [self._make_node()]
-        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
-        with_two = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=2)
+        base = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_two = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=2)
         assert with_two == base + 20
 
     def test_three_failures_capped_at_25(self):
         nodes = [self._make_node()]
-        base = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=0)
-        with_three = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=3)
+        base = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=0)
+        with_three = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=3)
         assert with_three == base + 25
 
     def test_outcome_combined_with_history(self):
         """History and outcome add independently."""
         nodes = [self._make_node()]
-        base = compute_blast_score(nodes, 0, 0, 0)
-        with_both = compute_blast_score(nodes, 0, 0, 2, outcome_failure_count=1)
+        base = compute_impact_score(nodes, 0, 0, 0)
+        with_both = compute_impact_score(nodes, 0, 0, 2, outcome_failure_count=1)
         # history: min(2*5, 15) = 10, outcome: min(1*10, 25) = 10
         assert with_both == base + 10 + 10
 
     def test_greenfield_cap_applies_after_outcome(self):
         """Greenfield ceiling (45) still applies even with outcome failures."""
-        nodes = [BlastNode(
+        nodes = [ImpactNode(
             address=f"aws_s3_bucket.b{i}", resource_type="aws_s3_bucket", action="create"
         ) for i in range(20)]
-        score = compute_blast_score(nodes, 0, 0, 0, outcome_failure_count=3)
+        score = compute_impact_score(nodes, 0, 0, 0, outcome_failure_count=3)
         assert score <= 45.0
 
     def test_wildcard_trust_overrides_outcome(self):
         """Wildcard trust floor (50) still overrides."""
-        node = BlastNode(
+        node = ImpactNode(
             address="aws_iam_role.app",
             resource_type="aws_iam_role",
             action="update",
             wildcard_trust=True,
         )
-        score = compute_blast_score([node], 0, 0, 0, outcome_failure_count=0)
+        score = compute_impact_score([node], 0, 0, 0, outcome_failure_count=0)
         assert score >= 50.0
 
 
@@ -2800,7 +2800,7 @@ class TestOutcomeExplanation:
     """Tests for outcome bullet in build_score_explanation."""
 
     def _make_node(self, action="update"):
-        return BlastNode(
+        return ImpactNode(
             address="aws_s3_bucket.test",
             resource_type="aws_s3_bucket",
             action=action,
