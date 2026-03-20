@@ -287,6 +287,42 @@ _CATALOG: list[CatalogEntry] = [
         display_name="NGINX Ingress to Contour",
         breaking_changes=[
             BreakingChange(
+                id="ingress-controller-workload",
+                title="Ingress controller deployment must be replaced",
+                severity="high",
+                description=(
+                    "The NGINX ingress controller deployment/daemonset must be "
+                    "replaced with Contour. The controller handles all Ingress "
+                    "routing — removing it before Contour is ready causes a "
+                    "full routing outage."
+                ),
+                consequence=(
+                    "All Ingress-based traffic stops if the old controller is "
+                    "removed before the replacement is serving."
+                ),
+                detection_hints=[
+                    {
+                        "field": "images",
+                        "pattern": r"ingress-nginx|nginx-ingress",
+                        "applies_to": {
+                            "kinds": ["Deployment", "DaemonSet"],
+                        },
+                        "reason": "This is the ingress controller workload being replaced",
+                        "impact": "Must be replaced with Contour controller",
+                    },
+                    {
+                        "field": "labels",
+                        "pattern": r"ingress-nginx",
+                        "applies_to": {
+                            "kinds": ["Deployment", "DaemonSet"],
+                        },
+                        "reason": "Workload is labeled as part of the ingress-nginx system",
+                        "impact": "This workload is part of the controller being replaced",
+                    },
+                ],
+                tags=["ingress", "nginx", "contour", "controller", "aks"],
+            ),
+            BreakingChange(
                 id="ingress-nginx-annotations",
                 title="NGINX-specific annotations lost",
                 severity="critical",
@@ -307,6 +343,12 @@ _CATALOG: list[CatalogEntry] = [
                         "pattern": r"nginx\.ingress\.kubernetes\.io",
                         "reason": "Ingress uses NGINX-specific annotations that Contour ignores",
                         "impact": "NGINX annotations will be silently dropped",
+                    },
+                    {
+                        "field": "ingress_class",
+                        "pattern": r"nginx",
+                        "reason": "Ingress uses NGINX ingress class that will no longer exist",
+                        "impact": "Ingress becomes unmanaged after controller replacement",
                     },
                 ],
                 tags=["ingress", "nginx", "contour", "annotations", "aks"],
@@ -335,6 +377,9 @@ _CATALOG: list[CatalogEntry] = [
                     {
                         "field": "tls",
                         "pattern": r".",
+                        "applies_to": {
+                            "kinds": ["Ingress"],
+                        },
                         "reason": "Ingress has TLS configuration that may need Contour-specific adjustments",
                         "impact": "TLS termination behavior may change",
                     },

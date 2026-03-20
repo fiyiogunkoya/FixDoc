@@ -43,13 +43,133 @@ _RECOMMENDATION = {
     "critical": "Block until critical risks are mitigated. See pre-migration checklist.",
 }
 
-# Tags used when querying fix database for relevant team knowledge
+# Deprecated — kept for backward compat. Use _K8S_TAG_TIERS instead.
 _K8S_SEARCH_TAGS = {
     "os-upgrade": ["azurelinux", "os-upgrade", "cgroup", "glibc", "aks", "kubernetes"],
     "k8s-version": ["kubernetes", "k8s", "api-deprecation", "kubelet", "aks"],
     "ingress-controller": ["ingress", "nginx", "contour", "envoy", "aks", "kubernetes"],
     "node-pool-sku": ["node-pool", "sku", "oom", "gpu", "aks", "kubernetes"],
 }
+
+# Tiered tag system: fix must match at least 1 required tag.
+_K8S_TAG_TIERS = {
+    "os-upgrade": {
+        "required": ["os-upgrade", "azurelinux", "cgroup", "cgroupv2", "glibc", "systemd", "kernel"],
+        "boost": ["aks", "kubernetes"],
+    },
+    "k8s-version": {
+        "required": ["api-deprecation", "flowcontrol", "kubelet", "feature-gate", "k8s-version"],
+        "boost": ["kubernetes", "k8s", "aks"],
+    },
+    "ingress-controller": {
+        "required": ["ingress", "nginx", "contour", "envoy", "gateway-api", "httproute", "tls", "ssl"],
+        "boost": ["aks", "kubernetes"],
+    },
+    "node-pool-sku": {
+        "required": ["node-pool", "sku", "oom", "gpu", "vm-size"],
+        "boost": ["aks", "kubernetes"],
+    },
+}
+
+_CONFIDENCE_WEIGHT = {"high": 1.0, "medium": 0.5, "low": 0.25}
+
+
+# ---------------------------------------------------------------------------
+# Match confidence classification
+# ---------------------------------------------------------------------------
+
+
+def _classify_match_confidence(hint: dict) -> str:
+    """Classify match confidence based on hint pattern specificity."""
+    pattern = hint.get("pattern", "")
+    has_scope = bool(hint.get("applies_to"))
+
+    # Trivial patterns
+    if pattern in (".", ".*", ".+", ".?") or len(pattern) <= 2:
+        return "medium" if has_scope else "low"
+
+    # Broad OR patterns with only short tokens
+    tokens = [t.strip() for t in pattern.replace("(", "").replace(")", "").split("|")]
+    if all(len(t) <= 5 for t in tokens) and len(tokens) <= 3:
+        return "medium" if has_scope else "low"
+
+    return "high"
+
+
+# ---------------------------------------------------------------------------
+# applies_to scope matching
+# ---------------------------------------------------------------------------
+
+
+def _matches_applies_to(applies_to: dict, entity, is_ingress: bool) -> bool:
+    """Check if an entity matches the applies_to scope.
+
+    All sub-fields use AND logic. Multiple values within a sub-field use OR logic.
+    If applies_to is empty or None -> match all (backward compat).
+    """
+    if not applies_to:
+        return True
+
+    # Kind check
+    kinds = applies_to.get("kinds")
+    if kinds:
+        entity_kind = "Ingress" if is_ingress else getattr(entity, "kind", "")
+        if entity_kind not in kinds:
+            return False
+
+    # Namespace check (regex)
+    namespaces = applies_to.get("namespaces")
+    if namespaces:
+        entity_ns = getattr(entity, "namespace", "")
+        if not any(re.search(ns_pat, entity_ns, re.IGNORECASE) for ns_pat in namespaces):
+            return False
+
+    # Name check (regex)
+    names = applies_to.get("names")
+    if names:
+        entity_name = getattr(entity, "name", "")
+        if not any(re.search(name_pat, entity_name, re.IGNORECASE) for name_pat in names):
+            return False
+
+    # Image check (regex) — only for workloads
+    images = applies_to.get("images")
+    if images and not is_ingress:
+        entity_images = getattr(entity, "images", []) or []
+        matched = False
+        for img_pat in images:
+            for img in entity_images:
+                if re.search(img_pat, img, re.IGNORECASE):
+                    matched = True
+                    break
+            if matched:
+                break
+        if not matched:
+            return False
+
+    # Label check (regex on values)
+    # Supports dict {"key": "pattern"} or list ["key=pattern", ...]
+    labels = applies_to.get("labels")
+    if labels:
+        entity_labels = getattr(entity, "labels", {}) or {}
+        if isinstance(labels, list):
+            # Convert list of "key=value" strings to dict
+            label_dict = {}
+            for item in labels:
+                if "=" in str(item):
+                    k, v = str(item).split("=", 1)
+                    label_dict[k] = v
+                else:
+                    # Bare key — match any value
+                    label_dict[str(item)] = ".*"
+            labels = label_dict
+        for key, val_pattern in labels.items():
+            entity_val = entity_labels.get(key)
+            if entity_val is None:
+                return False
+            if not re.search(val_pattern, str(entity_val), re.IGNORECASE):
+                return False
+
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +179,11 @@ _K8S_SEARCH_TAGS = {
 
 def _match_hint_against_workload(hint: dict, workload: Workload) -> bool:
     """Check if a detection hint matches a workload."""
+    # Check applies_to scope first
+    applies_to = hint.get("applies_to")
+    if applies_to and not _matches_applies_to(applies_to, workload, is_ingress=False):
+        return False
+
     field_name = hint.get("field", "")
     pattern = hint.get("pattern", "")
     if not field_name or not pattern:
@@ -131,6 +256,11 @@ def _traverse_spec(spec: dict, path: str):
 
 def _match_hint_against_ingress(hint: dict, ingress) -> bool:
     """Check if a detection hint matches an ingress resource."""
+    # Check applies_to scope first
+    applies_to = hint.get("applies_to")
+    if applies_to and not _matches_applies_to(applies_to, ingress, is_ingress=True):
+        return False
+
     field_name = hint.get("field", "")
     pattern = hint.get("pattern", "")
     if not field_name or not pattern:
@@ -145,6 +275,7 @@ def _match_hint_against_ingress(hint: dict, ingress) -> bool:
         "annotations": ingress.annotations,
         "rules": ingress.rules,
         "tls": ingress.tls,
+        "ingress_class": ingress.ingress_class,
     }
 
     value = field_map.get(field_name)
@@ -198,24 +329,45 @@ def _severity_label(score: float) -> str:
 
 
 def _find_relevant_fixes(category: str, repo) -> list:
-    """Query fix database for team knowledge relevant to this change type."""
+    """Query fix database for team knowledge relevant to this change type.
+
+    Uses tiered tag scoring: fix must match at least 1 required tag.
+    Required tags score 10 pts each, boost tags score 2 pts each.
+    """
     if repo is None:
         return []
 
-    search_tags = _K8S_SEARCH_TAGS.get(category, ["kubernetes", "aks"])
+    tiers = _K8S_TAG_TIERS.get(category)
+    if tiers is None:
+        return []
+
+    required = set(tiers["required"])
+    boost = set(tiers["boost"])
+
     all_fixes = repo.list_all()
-    relevant = []
+    scored = []
 
     for fix in all_fixes:
-        if fix.matches_tags(search_tags, match_any=True):
-            relevant.append({
-                "id": fix.id[:8],
-                "issue": fix.issue,
-                "resolution": fix.resolution,
-                "tags": fix.tags,
-            })
+        fix_tags = set()
+        if isinstance(fix.tags, str):
+            fix_tags = {t.strip().lower() for t in fix.tags.split(",") if t.strip()}
+        elif isinstance(fix.tags, list):
+            fix_tags = {t.strip().lower() for t in fix.tags if isinstance(t, str)}
 
-    return relevant[:10]  # cap at 10
+        required_matches = fix_tags & required
+        if not required_matches:
+            continue
+
+        score = len(required_matches) * 10 + len(fix_tags & boost) * 2
+        scored.append((score, {
+            "id": fix.id[:8],
+            "issue": fix.issue,
+            "resolution": fix.resolution,
+            "tags": fix.tags,
+        }))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [item for _, item in scored[:10]]
 
 
 # ---------------------------------------------------------------------------
@@ -267,43 +419,68 @@ def analyze_k8s_change(
         {"label": f"Baseline: {len(breaking_changes)} known breaking changes", "delta": baseline, "kind": "baseline"},
     ]
 
-    # --- Step 2: Workload exposure ---
-    exposed_workloads = []
-    exposed_ingresses = []
+    # --- Step 2: Workload exposure (with dedup + confidence) ---
+    raw_wl_matches = []  # (workload, bc_id, reason, impact, confidence)
+    raw_ing_matches = []  # (ingress, bc_id, reason, impact, confidence)
 
     if has_cluster:
-        # Match workloads
         for bc in breaking_changes:
             for hint in bc.detection_hints:
+                confidence = _classify_match_confidence(hint)
                 for wl in snapshot.workloads:
                     if _match_hint_against_workload(hint, wl):
-                        exposed_workloads.append(ExposedWorkload(
-                            workload=wl,
-                            breaking_change_id=bc.id,
-                            reason=hint.get("reason", ""),
-                            impact=hint.get("impact", ""),
-                        ))
+                        raw_wl_matches.append((wl, bc.id, hint.get("reason", ""), hint.get("impact", ""), confidence))
 
-                # Also match ingresses for ingress-controller changes
                 if category == "ingress-controller":
                     for ing in snapshot.ingresses:
                         if _match_hint_against_ingress(hint, ing):
-                            exposed_ingresses.append({
-                                "ingress": ing.to_dict(),
-                                "breaking_change_id": bc.id,
-                                "reason": hint.get("reason", ""),
-                                "impact": hint.get("impact", ""),
-                            })
+                            raw_ing_matches.append((ing, bc.id, hint.get("reason", ""), hint.get("impact", ""), confidence))
 
-    exposure_score = _compute_exposure_score(exposed_workloads)
+    # Aggregate by workload identity — each unique workload counted once
+    wl_map = {}  # (name, ns) -> {workload, matches, best_confidence}
+    for wl, bc_id, reason, impact, conf in raw_wl_matches:
+        key = (wl.name, wl.namespace)
+        if key not in wl_map:
+            wl_map[key] = {"workload": wl, "matches": [], "best_confidence": conf}
+        # Dedup per (workload, bc_id)
+        existing_bcs = {m["bc_id"] for m in wl_map[key]["matches"]}
+        if bc_id not in existing_bcs:
+            wl_map[key]["matches"].append({"bc_id": bc_id, "reason": reason, "impact": impact, "confidence": conf})
+        # Track best confidence
+        if _CONFIDENCE_WEIGHT.get(conf, 0) > _CONFIDENCE_WEIGHT.get(wl_map[key]["best_confidence"], 0):
+            wl_map[key]["best_confidence"] = conf
+
+    ing_map = {}  # (name, ns) -> {ingress, matches, best_confidence}
+    for ing, bc_id, reason, impact, conf in raw_ing_matches:
+        key = (ing.name, ing.namespace)
+        if key not in ing_map:
+            ing_map[key] = {"ingress": ing, "matches": [], "best_confidence": conf}
+        existing_bcs = {m["bc_id"] for m in ing_map[key]["matches"]}
+        if bc_id not in existing_bcs:
+            ing_map[key]["matches"].append({"bc_id": bc_id, "reason": reason, "impact": impact, "confidence": conf})
+        if _CONFIDENCE_WEIGHT.get(conf, 0) > _CONFIDENCE_WEIGHT.get(ing_map[key]["best_confidence"], 0):
+            ing_map[key]["best_confidence"] = conf
+
+    # Compute exposure score from unique entities, weighted by confidence
+    kind_weights = {"DaemonSet": 5, "StatefulSet": 4, "Deployment": 2, "Job": 1}
+    exposure_total = 0.0
+    for agg in wl_map.values():
+        kind = agg["workload"].kind
+        conf_weight = _CONFIDENCE_WEIGHT.get(agg["best_confidence"], 1.0)
+        exposure_total += kind_weights.get(kind, 1) * conf_weight
+    for agg in ing_map.values():
+        exposure_total += 2.0 * _CONFIDENCE_WEIGHT.get(agg["best_confidence"], 1.0)
+    exposure_score = min(exposure_total, 30.0)
+
+    unique_count = len(wl_map) + len(ing_map)
     if exposure_score > 0:
         explanations.append(
-            {"label": f"Workload exposure: {len(exposed_workloads)} workloads matched", "delta": exposure_score, "kind": "exposure"}
+            {"label": f"Workload exposure: {unique_count} unique workloads matched", "delta": exposure_score, "kind": "exposure"}
         )
 
     # --- Step 3: Known-safe discount ---
     safe_discount = 0.0
-    if has_cluster and not exposed_workloads and not exposed_ingresses:
+    if has_cluster and not wl_map and not ing_map:
         safe_discount = -(baseline + exposure_score) * 0.2
         explanations.append(
             {"label": "Known-safe discount: cluster present, no workloads matched", "delta": safe_discount, "kind": "discount"}
@@ -321,20 +498,29 @@ def analyze_k8s_change(
     score = max(0.0, min(100.0, baseline + exposure_score + safe_discount + history_score))
     severity = _severity_label(score)
 
-    # --- Rollout risk ---
+    # --- Rollout risk (category-specific) ---
     rollout_risk = None
     if has_cluster:
-        ds_count = sum(1 for w in snapshot.workloads if w.kind == "DaemonSet")
-        ss_count = sum(1 for w in snapshot.workloads if w.kind == "StatefulSet")
-        total_pods = sum(w.replicas for w in snapshot.workloads)
-        total_nodes = sum(np.count for np in snapshot.node_pools)
-        rollout_risk = RolloutRisk(
-            total_node_count=total_nodes,
-            affected_node_pool_count=len(snapshot.node_pools),
-            total_pod_estimate=total_pods,
-            daemonset_count=ds_count,
-            statefulset_count=ss_count,
-        ).to_dict()
+        if category == "ingress-controller":
+            rollout_risk = {
+                "type": "routing",
+                "ingress_count": len(snapshot.ingresses),
+                "affected_namespaces": len({ing.namespace for ing in snapshot.ingresses}),
+                "has_tls": any(ing.tls for ing in snapshot.ingresses),
+                "total_pod_estimate": sum(w.replicas for w in snapshot.workloads),
+            }
+        else:
+            ds_count = sum(1 for w in snapshot.workloads if w.kind == "DaemonSet")
+            ss_count = sum(1 for w in snapshot.workloads if w.kind == "StatefulSet")
+            total_pods = sum(w.replicas for w in snapshot.workloads)
+            total_nodes = sum(np.count for np in snapshot.node_pools)
+            rollout_risk = RolloutRisk(
+                total_node_count=total_nodes,
+                affected_node_pool_count=len(snapshot.node_pools),
+                total_pod_estimate=total_pods,
+                daemonset_count=ds_count,
+                statefulset_count=ss_count,
+            ).to_dict()
 
     # --- Platform risks ---
     platform_risks = []
@@ -348,22 +534,37 @@ def analyze_k8s_change(
             "tags": bc.tags,
         })
 
-    # --- Cluster exposure (deduplicated by workload name + breaking change) ---
-    seen_exposure = set()
+    # --- Build cluster exposure output (aggregated) ---
     deduped_exposure = []
-    for ew in exposed_workloads:
-        key = (ew.workload.name, ew.workload.namespace, ew.breaking_change_id)
-        if key not in seen_exposure:
-            seen_exposure.add(key)
-            deduped_exposure.append(ew.to_dict())
+    for agg in wl_map.values():
+        matches = agg["matches"]
+        first = matches[0]
+        entry_dict = ExposedWorkload(
+            workload=agg["workload"],
+            breaking_change_id=first["bc_id"],
+            reason=first["reason"],
+            impact=first["impact"],
+        ).to_dict()
+        entry_dict["match_count"] = len(matches)
+        entry_dict["confidence"] = agg["best_confidence"]
+        if len(matches) > 1:
+            entry_dict["all_matches"] = matches
+        deduped_exposure.append(entry_dict)
 
-    # Add ingress exposure
-    for ie in exposed_ingresses:
-        ing = ie["ingress"]
-        key = (ing["name"], ing["namespace"], ie["breaking_change_id"])
-        if key not in seen_exposure:
-            seen_exposure.add(key)
-            deduped_exposure.append(ie)
+    for agg in ing_map.values():
+        matches = agg["matches"]
+        first = matches[0]
+        entry_dict = {
+            "ingress": agg["ingress"].to_dict(),
+            "breaking_change_id": first["bc_id"],
+            "reason": first["reason"],
+            "impact": first["impact"],
+            "match_count": len(matches),
+            "confidence": agg["best_confidence"],
+        }
+        if len(matches) > 1:
+            entry_dict["all_matches"] = matches
+        deduped_exposure.append(entry_dict)
 
     return K8sImpactResult(
         change_name=entry.display_name,

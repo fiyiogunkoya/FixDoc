@@ -1,0 +1,219 @@
+category: linuxOS
+from_version: "azlinux2"
+to_version: "azlinux3"
+display_name: "Azure Linux 2 to Azure Linux 3 OS Upgrade"
+breaking_changes:
+  - id: os-azl3-glibc-upgrade
+    title: "glibc upgraded to newer major version in Azure Linux 3"
+    severity: high
+    description: >
+      Azure Linux 3 ships a newer version of glibc compared to Azure Linux 2.
+      Statically linked binaries or binaries compiled against the older glibc ABI
+      may encounter symbol version mismatches at runtime.
+    consequence: >
+      Pods may crash on startup with errors such as 'version GLIBC_x.xx not found'
+      if workloads bundle statically linked or glibc-pinned binaries.
+    detection_hints:
+      - field: images
+        pattern: "(distroless|scratch|static|busybox|alpine)"
+        reason: >
+          Minimal or scratch-based images often bundle statically linked binaries
+          compiled against a specific glibc version that may not match Azure Linux 3.
+        impact: "Binary may fail at runtime with glibc symbol version errors"
+        applies_to:
+          kinds: [Deployment, StatefulSet, DaemonSet, Job, CronJob]
+    tags: [glibc, azurelinux, azlinux3, binary-compatibility]
+
+  - id: os-azl3-kernel-upgrade
+    title: "Linux kernel version bump in Azure Linux 3"
+    severity: high
+    description: >
+      Azure Linux 3 ships a newer Linux kernel than Azure Linux 2. Workloads that
+      rely on specific kernel interfaces, syscalls, eBPF program versions, or kernel
+      module APIs may behave differently or fail after the upgrade.
+    consequence: >
+      Workloads using eBPF, kernel modules, or privileged syscalls may fail to load
+      or produce unexpected behavior due to changed kernel interfaces.
+    detection_hints:
+      - field: security_context
+        pattern: "privileged:\\s*true"
+        reason: >
+          Privileged containers often interact directly with kernel interfaces,
+          syscalls, or load kernel modules that may have changed in the new kernel.
+        impact: "Privileged workload may fail if it depends on removed or changed kernel APIs"
+        applies_to:
+          kinds: [DaemonSet, Deployment, StatefulSet]
+      - field: volumes
+        pattern: "(hostPath|/proc|/sys|/dev)"
+        reason: >
+          Workloads mounting host proc, sys, or dev paths depend on kernel-provided
+          interfaces that may differ between Azure Linux 2 and 3 kernels.
+        impact: "Volume mount may expose changed or removed kernel interfaces causing workload failures"
+        applies_to:
+          kinds: [DaemonSet, Deployment]
+    tags: [kernel, azurelinux, azlinux3, syscall, ebpf]
+
+  - id: os-azl3-cgroup-v2
+    title: "Default cgroup version may change to cgroup v2 in Azure Linux 3"
+    severity: high
+    description: >
+      Azure Linux 3 defaults to cgroup v2 (unified hierarchy), whereas Azure Linux 2
+      used cgroup v1. Applications or runtimes that explicitly depend on cgroup v1
+      paths or semantics (e.g. /sys/fs/cgroup/memory) will fail to find expected
+      cgroup subsystem directories.
+    consequence: >
+      Workloads or init systems that rely on cgroup v1 paths will encounter missing
+      directories or unexpected behavior, potentially causing OOM handling failures
+      or incorrect resource accounting.
+    detection_hints:
+      - field: volumes
+        pattern: "/sys/fs/cgroup"
+        reason: >
+          Mounting the cgroup filesystem directly often implies cgroup v1 path
+          assumptions that are incompatible with the cgroup v2 unified hierarchy.
+        impact: "Workload may fail to find expected cgroup v1 subsystem paths under cgroup v2"
+        applies_to:
+          kinds: [DaemonSet, Deployment, StatefulSet]
+      - field: security_context
+        pattern: "privileged:\\s*true"
+        reason: >
+          Privileged containers that manage cgroup hierarchies or container runtimes
+          may assume cgroup v1 layout and break under cgroup v2.
+        impact: "Container runtime or cgroup manager may malfunction under cgroup v2"
+        applies_to:
+          kinds: [DaemonSet]
+    tags: [cgroup, cgroupv2, azurelinux, azlinux3, resource-management]
+
+  - id: os-azl3-package-manager-change
+    title: "Package ecosystem changes between Azure Linux 2 and 3"
+    severity: medium
+    description: >
+      Azure Linux 3 may include updated, renamed, or removed RPM packages compared
+      to Azure Linux 2. Init scripts, entrypoints, or Dockerfile-based images that
+      install packages by name at runtime (e.g. via tdnf or dnf) may fail if
+      package names have changed or been split.
+    consequence: >
+      Container builds or runtime package installations may fail with 'package not found'
+      errors, causing pod initialization failures.
+    detection_hints:
+      - field: images
+        pattern: "(azurelinux|azlinux|cbl-mariner|mcr\\.microsoft\\.com/cbl-mariner)"
+        reason: >
+          Images based on Azure Linux or CBL-Mariner may install packages at runtime
+          using tdnf/dnf and could reference packages that have been renamed or
+          removed in Azure Linux 3.
+        impact: "Image build or runtime package install may fail due to missing or renamed packages"
+        applies_to:
+          kinds: [Deployment, StatefulSet, DaemonSet, Job, CronJob]
+    tags: [packages, tdnf, dnf, azurelinux, azlinux3, rpm]
+
+  - id: os-azl3-openssl-upgrade
+    title: "OpenSSL version upgrade in Azure Linux 3"
+    severity: high
+    description: >
+      Azure Linux 3 ships a newer major version of OpenSSL compared to Azure Linux 2.
+      Applications that dynamically link against the system OpenSSL or rely on
+      deprecated TLS cipher suites, legacy APIs, or specific engine interfaces
+      may break after the upgrade.
+    consequence: >
+      Applications using removed OpenSSL APIs or deprecated cipher suites may
+      crash or fail TLS negotiation, causing service disruption.
+    detection_hints:
+      - field: images
+        pattern: "(openssl|ssl|tls|crypto|libssl)"
+        reason: >
+          Images or workloads referencing OpenSSL libraries may depend on APIs
+          or cipher suites removed in the newer OpenSSL version shipped with Azure Linux 3.
+        impact: "TLS handshake failures or runtime crashes due to removed OpenSSL APIs or ciphers"
+        applies_to:
+          kinds: [Deployment, StatefulSet, DaemonSet]
+    tags: [openssl, tls, ssl, crypto, azurelinux, azlinux3]
+
+  - id: os-azl3-python-runtime-change
+    title: "Default Python version change in Azure Linux 3"
+    severity: medium
+    description: >
+      Azure Linux 3 ships a newer default Python version than Azure Linux 2.
+      Workloads relying on the system Python interpreter (e.g. via /usr/bin/python3)
+      without pinning to a specific minor version may encounter compatibility issues
+      with Python syntax, removed standard library modules, or changed behavior.
+    consequence: >
+      Python-based workloads or scripts that use removed or changed standard library
+      features may fail at runtime, causing pod crashes or incorrect behavior.
+    detection_hints:
+      - field: images
+        pattern: "(python|django|flask|gunicorn|uwsgi|celery)"
+        reason: >
+          Python-based images or frameworks may depend on specific Python standard
+          library behavior that changed between versions shipped in Azure Linux 2 and 3.
+        impact: "Python runtime errors or import failures due to changed or removed standard library modules"
+        applies_to:
+          kinds: [Deployment, StatefulSet, Job, CronJob]
+    tags: [python, azurelinux, azlinux3, runtime]
+
+  - id: os-azl3-selinux-policy-changes
+    title: "SELinux policy changes in Azure Linux 3"
+    severity: medium
+    description: >
+      Azure Linux 3 may ship updated SELinux policies that differ from Azure Linux 2.
+      Workloads depending on specific SELinux label assignments or policy rules may
+      encounter access denials after the upgrade if their expected policies are
+      modified or removed.
+    consequence: >
+      Workloads may receive SELinux AVC denials blocking file access, network
+      operations, or inter-process communication, resulting in permission errors.
+    detection_hints:
+      - field: security_context
+        pattern: "seLinuxOptions:"
+        reason: >
+          Workloads that explicitly set SELinux options depend on specific policy
+          rules that may have changed between Azure Linux 2 and 3 SELinux policy versions.
+        impact: "SELinux AVC denials may block workload operations after policy changes"
+        applies_to:
+          kinds: [Deployment, StatefulSet, DaemonSet, Pod]
+    tags: [selinux, security, azurelinux, azlinux3, policy]
+
+  - id: os-azl3-systemd-version-bump
+    title: "systemd version upgrade in Azure Linux 3"
+    severity: low
+    description: >
+      Azure Linux 3 ships a newer version of systemd than Azure Linux 2. Workloads
+      that interact with systemd via the D-Bus API, use systemd unit files, or depend
+      on specific journald behavior may be affected by changed APIs or defaults.
+    consequence: >
+      Workloads or sidecars that communicate with the host systemd or rely on
+      journald logging format may encounter API incompatibilities or changed defaults.
+    detection_hints:
+      - field: volumes
+        pattern: "(/run/systemd|/var/run/systemd|dbus\\.socket)"
+        reason: >
+          Mounting systemd runtime directories or D-Bus sockets implies direct
+          interaction with systemd APIs that may have changed in the newer version.
+        impact: "Systemd API or D-Bus communication may fail due to version incompatibilities"
+        applies_to:
+          kinds: [DaemonSet, Deployment]
+    tags: [systemd, dbus, azurelinux, azlinux3, init]
+
+pre_checks:
+  - "Audit all container images for glibc version compatibility with Azure Linux 3"
+  - "Identify workloads using statically linked binaries compiled against Azure Linux 2 glibc"
+  - "Check all DaemonSets and privileged workloads for cgroup v1 path dependencies"
+  - "Review custom eBPF programs for kernel API compatibility with the Azure Linux 3 kernel"
+  - "Inventory runtime package installations (tdnf/dnf) in images and validate package names against Azure Linux 3 repos"
+  - "Test OpenSSL-dependent services against the OpenSSL version in Azure Linux 3"
+  - "Validate Python-based workloads against the Python version shipped in Azure Linux 3"
+  - "Review SELinux policies and labels for compatibility with Azure Linux 3 policy versions"
+  - "Identify any workloads mounting systemd or D-Bus sockets from the host"
+
+post_checks:
+  - "Verify all pods reach Running state and pass readiness probes after node OS upgrade"
+  - "Monitor pod logs for glibc symbol version errors or linker failures"
+  - "Confirm cgroup v2 resource limits are applied correctly by checking cgroup paths"
+  - "Validate eBPF programs load successfully on upgraded nodes"
+  - "Check application logs for OpenSSL TLS negotiation errors or cipher suite rejections"
+  - "Verify Python-based workloads operate without import or syntax errors"
+  - "Review system audit logs for SELinux AVC denials on upgraded nodes"
+  - "Confirm DaemonSets on upgraded nodes are healthy and reporting correct status"
+  - "Run end-to-end smoke tests against all critical services on upgraded node pools"
+
+tags: [azurelinux, azlinux3, os-upgrade, linuxOS]

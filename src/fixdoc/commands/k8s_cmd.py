@@ -274,7 +274,7 @@ def k8s_catalog_generate(
 
     click.echo("Generating catalog entry with AI...", err=True)
 
-    from ..k8s.generate import generate_catalog_entry, validate_generated_yaml
+    from ..k8s.generate import generate_catalog_entry, validate_generated_yaml, validate_generated_entry
 
     yaml_text = generate_catalog_entry(
         category=change_category,
@@ -298,6 +298,14 @@ def k8s_catalog_generate(
         click.echo("Warning: generated YAML did not validate. Raw output:", err=True)
         click.echo(yaml_text)
         sys.exit(1)
+
+    # Content validation warnings
+    entry_warnings = validate_generated_entry(entry)
+    if entry_warnings:
+        click.echo("", err=True)
+        click.echo(f"Review warnings ({len(entry_warnings)}):", err=True)
+        for w in entry_warnings:
+            click.echo(f"  - {w}", err=True)
 
     # Write to .fixdoc-catalog/
     from ..pending import _find_git_root

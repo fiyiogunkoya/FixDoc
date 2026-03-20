@@ -1,0 +1,200 @@
+category: ingress-controller
+from_version: "azlinux2"
+to_version: "azlinux3"
+display_name: "Ingress Controller Base OS: Azure Linux 2 to Azure Linux 3"
+breaking_changes:
+  - id: ic-azl3-base-os-glibc
+    title: "glibc upgrade from 2.35 to 2.38 in Azure Linux 3 base image"
+    severity: high
+    description: >
+      The ingress controller container image is now built on Azure Linux 3, which ships
+      glibc 2.38 (up from 2.35 in Azure Linux 2). Any native modules, custom auth plugins,
+      or sidecar binaries statically or dynamically linked against an older glibc may fail
+      to load or crash at startup due to symbol version mismatches.
+    consequence: >
+      Ingress controller pods or injected sidecars may crash on startup with errors such as
+      'version GLIBC_2.36 not found', causing ingress traffic to be dropped.
+    detection_hints:
+      - field: images
+        pattern: "nginx-ingress|ingress-nginx|kong|traefik|haproxy-ingress"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+        reason: >
+          Ingress controller deployments using custom or third-party images built on Azure Linux 2
+          may bundle glibc-linked binaries incompatible with glibc 2.38.
+        impact: >
+          Pod fails to start; ingress traffic is interrupted until the image is rebuilt against
+          the Azure Linux 3 base.
+      - field: annotations
+        pattern: "sidecar\\.istio\\.io/inject|linkerd\\.io/inject"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+        reason: >
+          Service mesh sidecars injected alongside the ingress controller may themselves be
+          built against an older glibc or pull incompatible shared libraries.
+        impact: >
+          Sidecar container crashes prevent the ingress pod from reaching Ready state.
+    tags: [glibc, azurelinux, ingress-controller, base-os]
+
+  - id: ic-azl3-openssl-version
+    title: "OpenSSL version change affects TLS cipher and certificate handling"
+    severity: high
+    description: >
+      Azure Linux 3 ships OpenSSL 3.x (replacing OpenSSL 1.1.x in Azure Linux 2). The ingress
+      controller now links against OpenSSL 3.x, which has removed support for several legacy
+      TLS 1.0/1.1 ciphers and deprecated MD5/SHA1-signed certificates by default. Custom
+      nginx/OpenSSL cipher suite strings valid in 1.1.x may be rejected at startup.
+    consequence: >
+      The ingress controller may fail to start or refuse to serve TLS traffic if ConfigMap-based
+      ssl-ciphers include removed ciphers, or if backend services present SHA1-signed certificates.
+    detection_hints:
+      - field: annotations
+        pattern: "nginx\\.ingress\\.kubernetes\\.io/ssl-ciphers"
+        applies_to:
+          kinds: [Ingress]
+        reason: >
+          Per-Ingress cipher suite overrides may reference cipher names removed in OpenSSL 3.x,
+          causing the ingress controller to reject the configuration.
+        impact: >
+          TLS listener fails to initialize; HTTPS traffic to affected hosts is dropped.
+      - field: annotations
+        pattern: "nginx\\.ingress\\.kubernetes\\.io/proxy-ssl-ciphers|nginx\\.ingress\\.kubernetes\\.io/proxy-ssl-protocols"
+        applies_to:
+          kinds: [Ingress]
+        reason: >
+          Proxy-side SSL configuration annotations referencing TLS 1.0/1.1 or legacy ciphers
+          will be rejected by the OpenSSL 3.x-linked ingress controller.
+        impact: >
+          Upstream proxy TLS handshake fails, resulting in 502 errors for affected backends.
+      - field: labels
+        pattern: "app\\.kubernetes\\.io/name=ingress-nginx|app=nginx-ingress"
+        applies_to:
+          kinds: [ConfigMap]
+          namespaces: ["ingress-nginx", "kube-system", "ingress"]
+        reason: >
+          The ingress controller ConfigMap may set ssl-ciphers or ssl-protocols cluster-wide,
+          impacting all Ingress resources if legacy values are present.
+        impact: >
+          Controller fails to apply configuration; all ingress routes become unavailable.
+    tags: [openssl, tls, ciphers, azurelinux, ingress-controller]
+
+  - id: ic-azl3-kernel-module-compat
+    title: "Kernel module and eBPF compatibility requirements changed"
+    severity: medium
+    description: >
+      Azure Linux 3 ships a newer kernel series. Ingress controllers that rely on kernel modules
+      (e.g., ip_tables, nf_conntrack) or eBPF-based data planes may require updated kernel
+      headers or module versions. Controllers running with privileged access or custom seccomp
+      profiles may behave differently due to updated syscall policies.
+    consequence: >
+      Ingress controllers using eBPF or directly manipulating netfilter rules may fail to
+      initialize their data plane, resulting in dropped traffic or failed pod startup.
+    detection_hints:
+      - field: security_context
+        pattern: "privileged:\\s*true"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+        reason: >
+          Privileged ingress controller containers (e.g., those managing iptables directly)
+          may rely on kernel interfaces that have changed between Azure Linux 2 and 3.
+        impact: >
+          Network rules may fail to apply, causing ingress traffic to be silently dropped.
+      - field: volumes
+        pattern: "hostPath"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+        reason: >
+          Ingress controllers mounting host paths for kernel modules or eBPF maps may
+          encounter path changes or permission differences in Azure Linux 3.
+        impact: >
+          Volume mount failures prevent the controller pod from starting.
+    tags: [kernel, ebpf, iptables, security, azurelinux, ingress-controller]
+
+  - id: ic-azl3-resource-defaults-change
+    title: "Default cgroup v2 enforcement may affect resource limit behaviour"
+    severity: medium
+    description: >
+      Azure Linux 3 enforces cgroup v2 by default. Ingress controllers that relied on cgroup v1
+      memory and CPU accounting behaviour may observe different OOM kill thresholds or CPU
+      throttling characteristics. Resource limits expressed in millicores may be applied more
+      strictly under cgroup v2.
+    consequence: >
+      Ingress controller pods previously stable under cgroup v1 resource limits may be OOM-killed
+      or CPU-throttled more aggressively, leading to latency spikes or pod restarts under load.
+    detection_hints:
+      - field: resource_limits
+        pattern: "memory:\\s*[0-9]+(Mi|Gi)"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+          labels:
+            - "app.kubernetes.io/component=controller"
+        reason: >
+          Memory limits set for ingress controller pods will be enforced via cgroup v2 memory
+          accounting, which may trigger OOM kills at thresholds not previously hit under cgroup v1.
+        impact: >
+          Pod is OOM-killed under traffic load, causing ingress outages and high restart counts.
+      - field: resource_requests
+        pattern: "cpu:\\s*[0-9]+(m)?"
+        applies_to:
+          kinds: [Deployment, DaemonSet]
+          labels:
+            - "app.kubernetes.io/component=controller"
+        reason: >
+          CPU requests and limits are enforced more strictly under cgroup v2; previously
+          unconstrained bursting behaviour may be throttled.
+        impact: >
+          Increased request latency or timeout errors during traffic bursts.
+    tags: [cgroup, resource-limits, azurelinux, ingress-controller]
+
+  - id: ic-azl3-ingress-class-annotation-deprecation
+    title: "Ingress class annotation superseded; strict validation enforced"
+    severity: low
+    description: >
+      With the Azure Linux 3 based ingress controller image, the bundled controller version
+      enforces stricter validation of the IngressClass resource. The legacy annotation
+      'kubernetes.io/ingress.class' is no longer processed by default; resources relying solely
+      on this annotation instead of the 'ingressClassName' field may be silently ignored.
+    consequence: >
+      Ingress resources using only the deprecated annotation will not be picked up by the
+      upgraded controller, causing all routes defined in those resources to stop functioning.
+    detection_hints:
+      - field: annotations
+        pattern: "kubernetes\\.io/ingress\\.class"
+        applies_to:
+          kinds: [Ingress]
+        reason: >
+          Ingress resources annotated with the legacy 'kubernetes.io/ingress.class' annotation
+          instead of setting 'spec.ingressClassName' will be ignored by the updated controller.
+        impact: >
+          Routes defined in affected Ingress resources are no longer served; downstream services
+          become unreachable via the ingress.
+      - field: ingress_class
+        pattern: "nginx|kong|haproxy|traefik"
+        applies_to:
+          kinds: [Ingress]
+        reason: >
+          Verify that IngressClass resources exist and that Ingress objects reference them via
+          spec.ingressClassName rather than the deprecated annotation.
+        impact: >
+          Missing or misconfigured IngressClass causes the controller to ignore affected Ingress objects.
+    tags: [ingress-class, annotation, deprecation, azurelinux, ingress-controller]
+
+pre_checks:
+  - "Audit all container images used by the ingress controller Deployment/DaemonSet for glibc version compatibility with glibc 2.38."
+  - "Review all Ingress annotations for ssl-ciphers and ssl-protocols; remove or replace any TLS 1.0/1.1 or legacy cipher references."
+  - "Audit ConfigMaps in the ingress controller namespace for ssl-ciphers, ssl-protocols, and use-forwarded-headers settings."
+  - "Verify that all Ingress resources use spec.ingressClassName instead of the kubernetes.io/ingress.class annotation."
+  - "Check whether the ingress controller requires privileged access or hostPath mounts and validate compatibility with Azure Linux 3 kernel."
+  - "Review resource requests and limits on ingress controller pods; consider increasing memory limits to account for stricter cgroup v2 enforcement."
+  - "Validate TLS certificates presented by backends are not SHA1-signed; replace any MD5/SHA1 certificates before upgrade."
+
+post_checks:
+  - "Verify all ingress controller pods reach Running/Ready state with 0 restarts after the upgrade."
+  - "Confirm HTTPS listeners are active by checking controller logs for TLS initialization errors."
+  - "Send synthetic traffic through each Ingress host and verify HTTP 200 responses end-to-end."
+  - "Check ingress controller metrics for elevated error rates, latency increases, or OOM kill events."
+  - "Validate that all Ingress resources are listed as 'ADDRESS' assigned in kubectl get ingress output."
+  - "Review controller logs for warnings about ignored Ingress resources or unrecognized annotations."
+  - "Confirm backend proxy TLS handshakes succeed when ssl-protocols or proxy-ssl-ciphers annotations are in use."
+
+tags: [azurelinux, os-upgrade, ingress-controller, azlinux2-to-azlinux3]
