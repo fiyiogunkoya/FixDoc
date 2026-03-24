@@ -642,12 +642,12 @@ class TestHistoryPrior:
         node = ImpactNode("aws_security_group.web", "aws_security_group", "update")
         fix_no_excerpt = Fix(
             issue="SecurityGroupUpdateFailed rule conflict",
-            resolution="Fixed it",
+            resolution="Fixed the rule conflict",
             tags="aws_security_group, networking",
         )
         fix_with_excerpt = Fix(
             issue="SecurityGroupUpdateFailed rule conflict",
-            resolution="Fixed it",
+            resolution="Fixed the rule conflict by removing duplicate port 443",
             tags="aws_security_group, networking",
             error_excerpt="sg rule conflict: port 443",
         )

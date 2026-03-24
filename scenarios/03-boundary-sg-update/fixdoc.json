@@ -1,8 +1,8 @@
 {
-  "analysis_id": "ac77d532",
-  "timestamp": "2026-03-13T17:36:47.168244+00:00",
-  "score": 27.0,
-  "severity": "medium",
+  "analysis_id": "da7a7e89",
+  "timestamp": "2026-03-21T21:27:43.136970+00:00",
+  "score": 17.0,
+  "severity": "low",
   "changes": [
     {
       "address": "aws_security_group.web",
@@ -77,25 +77,14 @@
   ],
   "checks": [
     "Review new ingress rules for overly permissive CIDRs (0.0.0.0/0)",
-    "Prior fix: Removed duplicate ingress rule and re-ran apply.",
-    "Prior fix: Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
+    "Prior fix: The /32 CIDR is technically valid but usually wrong for security group rules (it",
     "Verify security group rules",
     "Check for open 0.0.0.0/0 rules"
   ],
   "history_matches": [
     {
-      "id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
-      "resource_type": "aws_security_group"
-    },
-    {
-      "id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resource_type": "aws_security_group"
-    },
-    {
-      "id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
+      "id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
       "resource_type": "aws_security_group"
     }
   ],
@@ -109,28 +98,28 @@
   },
   "resource_warnings": [
     {
-      "fix_id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "short_id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010014",
-      "created_at": "2026-03-03T01:59:17.225341+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
+        "detail": "creating",
         "resource_type": "aws_security_group",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_security_group"
           }
         ],
         "confidence": "high"
@@ -140,309 +129,10 @@
           "address": "aws_security_group.web",
           "action": "update"
         }
-      ]
-    },
-    {
-      "fix_id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "short_id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010019",
-      "created_at": "2026-03-03T01:59:17.225530+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "short_id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010032",
-      "created_at": "2026-03-03T01:59:17.225645+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "short_id": "cf8b9019",
-      "issue": "Terraform apply failed on aws_security_group variant 10",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010023",
-      "created_at": "2026-03-03T01:59:17.225693+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "short_id": "9e0602e9",
-      "issue": "Terraform apply failed on aws_security_group variant 14",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010027",
-      "created_at": "2026-03-03T01:59:17.225734+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "short_id": "a61ceb51",
-      "issue": "Terraform apply failed - aws_security_group",
-      "resolution": "Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
-      "tags": "aws_security_group,kw:ec2,kw:role,kw:terraform,source:servicenow:inc0010004",
-      "created_at": "2026-03-03T01:59:17.225787+00:00",
-      "error_excerpt": "Error: AccessDenied when calling ec2:AuthorizeSecurityGroupIngress on aws_security_group.web",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "accessdenied",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "short_id": "739847f3",
-      "issue": "Terraform apply failed on aws_security_group variant 2",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010015",
-      "created_at": "2026-03-03T01:59:17.225812+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "short_id": "3a66eb83",
-      "issue": "Terraform apply failed on aws_security_group variant 7",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010020",
-      "created_at": "2026-03-03T01:59:17.225837+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "short_id": "edc96374",
-      "issue": "Terraform apply failed on aws_security_group variant 11",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010024",
-      "created_at": "2026-03-03T01:59:17.225862+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "short_id": "bb89dd37",
-      "issue": "Terraform apply failed on aws_security_group variant 15",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010028",
-      "created_at": "2026-03-03T01:59:17.225921+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_security_group."
     }
   ],
   "score_explanation": [
@@ -457,35 +147,35 @@
       "kind": "impact"
     },
     {
-      "label": "Prior similar incidents detected in fix history (3 matches)",
-      "delta": 15.0,
+      "label": "Prior similar incident detected in fix history (1 match)",
+      "delta": 5.0,
       "kind": "history"
     }
   ],
   "relevant_fixes": [
     {
-      "fix_id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "short_id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010014",
-      "created_at": "2026-03-03T01:59:17.225341+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
+        "detail": "creating",
         "resource_type": "aws_security_group",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_security_group"
           }
         ],
         "confidence": "high"
@@ -495,309 +185,10 @@
           "address": "aws_security_group.web",
           "action": "update"
         }
-      ]
-    },
-    {
-      "fix_id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "short_id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010019",
-      "created_at": "2026-03-03T01:59:17.225530+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "short_id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010032",
-      "created_at": "2026-03-03T01:59:17.225645+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "short_id": "cf8b9019",
-      "issue": "Terraform apply failed on aws_security_group variant 10",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010023",
-      "created_at": "2026-03-03T01:59:17.225693+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "short_id": "9e0602e9",
-      "issue": "Terraform apply failed on aws_security_group variant 14",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010027",
-      "created_at": "2026-03-03T01:59:17.225734+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "short_id": "a61ceb51",
-      "issue": "Terraform apply failed - aws_security_group",
-      "resolution": "Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
-      "tags": "aws_security_group,kw:ec2,kw:role,kw:terraform,source:servicenow:inc0010004",
-      "created_at": "2026-03-03T01:59:17.225787+00:00",
-      "error_excerpt": "Error: AccessDenied when calling ec2:AuthorizeSecurityGroupIngress on aws_security_group.web",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "accessdenied",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "short_id": "739847f3",
-      "issue": "Terraform apply failed on aws_security_group variant 2",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010015",
-      "created_at": "2026-03-03T01:59:17.225812+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "short_id": "3a66eb83",
-      "issue": "Terraform apply failed on aws_security_group variant 7",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010020",
-      "created_at": "2026-03-03T01:59:17.225837+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "short_id": "edc96374",
-      "issue": "Terraform apply failed on aws_security_group variant 11",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010024",
-      "created_at": "2026-03-03T01:59:17.225862+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "short_id": "bb89dd37",
-      "issue": "Terraform apply failed on aws_security_group variant 15",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010028",
-      "created_at": "2026-03-03T01:59:17.225921+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.web",
-          "action": "update"
-        }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_security_group."
     }
   ],
   "contextual_checks": [
@@ -807,12 +198,7 @@
       "resource": "aws_security_group.web"
     },
     {
-      "check": "Prior fix: Removed duplicate ingress rule and re-ran apply.",
-      "source": "history",
-      "resource": "aws_security_group.web"
-    },
-    {
-      "check": "Prior fix: Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
+      "check": "Prior fix: The /32 CIDR is technically valid but usually wrong for security group rules (it",
       "source": "history",
       "resource": "aws_security_group.web"
     },

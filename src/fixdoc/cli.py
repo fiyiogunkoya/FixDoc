@@ -3,7 +3,7 @@
 import click
 
 from .config import ConfigManager, resolve_base_path
-from .commands import capture, search, show, analyze, list_fixes, stats, delete, edit, sync, demo, watch, pending, import_group, resolve, outcome, k8s_group
+from .commands import capture, search, show, analyze, list_fixes, stats, delete, edit, sync, demo, watch, pending, import_group, resolve, outcome, k8s_group, deduplicate
 
 
 def create_cli() -> click.Group:
@@ -36,5 +36,6 @@ def create_cli() -> click.Group:
     cli.add_command(resolve)
     cli.add_command(outcome)
     cli.add_command(k8s_group)
+    cli.add_command(deduplicate)
 
     return cli

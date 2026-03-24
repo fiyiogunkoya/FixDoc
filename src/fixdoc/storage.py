@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from .config import resolve_base_path
-from .models import Fix
+from .models import Fix, compute_content_hash
 from .formatter import fix_to_markdown
 
 
@@ -54,16 +54,29 @@ class FixRepository:
         return md_path
 
     def save(self, fix: Fix) -> Fix:
-        """Save a fix to the database and generate markdown."""
-        fixes = self._read_db()        
+        """Save a fix to the database and generate markdown.
+
+        If a new fix (unknown ID) has the same content_hash as an existing fix,
+        the existing fix is returned and no duplicate is created.
+        """
+        fixes = self._read_db()
 
         existing_idx = next(
             (i for i, f in enumerate(fixes) if f.get("id") == fix.id), None
         )
 
         if existing_idx is not None:
+            # Known ID — update in place (edit, sync, effectiveness tracking)
             fixes[existing_idx] = fix.to_dict()
         else:
+            # New fix — check for content duplicate
+            new_hash = fix.content_hash
+            for f in fixes:
+                stored_hash = f.get("content_hash") or compute_content_hash(
+                    f.get("issue", ""), f.get("resolution", "")
+                )
+                if stored_hash == new_hash:
+                    return Fix.from_dict(f)
             fixes.append(fix.to_dict())
 
         self._write_db(fixes)

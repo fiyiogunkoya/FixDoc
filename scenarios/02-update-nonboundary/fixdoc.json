@@ -1,7 +1,7 @@
 {
-  "analysis_id": "ac157ef7",
-  "timestamp": "2026-03-13T17:35:31.334331+00:00",
-  "score": 10.0,
+  "analysis_id": "b06187d2",
+  "timestamp": "2026-03-21T21:26:24.132144+00:00",
+  "score": 15.0,
   "severity": "low",
   "changes": [
     {
@@ -18,12 +18,18 @@
   "affected": [],
   "why_paths": [],
   "checks": [
-    "Verify instance type availability in target AZ and region"
+    "Verify instance type availability in target AZ and region",
+    "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t"
   ],
   "history_matches": [
     {
-      "id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
+      "id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resource_type": "aws_instance"
+    },
+    {
+      "id": "fc968a9e",
+      "issue": "Terraform: MissingRequiredArgument - Missing required argument in module call, no value supplied for required variable.",
       "resource_type": "aws_instance"
     }
   ],
@@ -37,24 +43,28 @@
   },
   "resource_warnings": [
     {
-      "fix_id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "short_id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
-      "resolution": "deleted the module",
-      "tags": "terraform,aws,aws_instance,InvalidInstanceType,terraform,aws,aws_instance,InvalidInstanceType",
-      "created_at": "2026-03-05T02:43:35.524290+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInstanceTypes, https response error StatusCode: 400, RequestID: 5c937bd6-cac8-4ee9-86f1-62a920887005, api error InvalidInstanceType: The following supplied instance types do not exist: [grgr]\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with module.app_a.aws_instance.app,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on modules/app/main.tf line 2, in resource \"aws_instance\" \"app\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   2: resource \"aws_instance\" \"app\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidinstancetype",
+        "detail": "creating",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "8 days ago"
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
@@ -64,127 +74,43 @@
           "address": "aws_instance.app",
           "action": "update"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "short_id": "04e3ef11",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T02:04:40.840856+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
+      "fix_id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "short_id": "fc968a9e",
+      "issue": "Terraform: MissingRequiredArgument - Missing required argument in module call, no value supplied for required variable.",
+      "resolution": "Add the missing variable to the module block. Check the module's variables.tf for all required inputs (those without a `default` value). Example: `module \"app\" { source = \"./mod\" instance_type = \"t3.micro\" }`",
+      "tags": "demo,terraform,aws,MissingRequiredArgument,module",
+      "created_at": "2026-03-17T01:37:24.211778+00:00",
+      "error_excerpt": "\u2502 Error: Missing required argument\n\u2502\n\u2502   on main.tf line 3, in module \"app_a\":\n\u2502    3: module \"app_a\" {\n\u2502\n\u2502 The argument \"instance_type\" is required, but no definition was found.",
+      "score": 100,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
+        "signal": "change_domain",
+        "detail": "capacity_sizing",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "low"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
           "address": "aws_instance.app",
           "action": "update"
         }
-      ]
-    },
-    {
-      "fix_id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "short_id": "a1f50f57",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T12:58:25.145341+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "short_id": "4c652e91",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T13:24:55.090124+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "10414504-6c5b-4812-9529-4e04582addac",
-      "id": "10414504-6c5b-4812-9529-4e04582addac",
-      "short_id": "10414504",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-04T01:50:44.688825+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "9 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
+      ],
+      "domain": "capacity_sizing",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **resource sizing / capacity** issue: Terraform: MissingRequiredArgument - Missing required argument in module call, n...."
     }
   ],
   "score_explanation": [
@@ -194,31 +120,35 @@
       "kind": "action"
     },
     {
-      "label": "Prior similar incident detected in fix history (1 match)",
-      "delta": 5.0,
+      "label": "Prior similar incidents detected in fix history (2 matches)",
+      "delta": 10.0,
       "kind": "history"
     }
   ],
   "relevant_fixes": [
     {
-      "fix_id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "short_id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
-      "resolution": "deleted the module",
-      "tags": "terraform,aws,aws_instance,InvalidInstanceType,terraform,aws,aws_instance,InvalidInstanceType",
-      "created_at": "2026-03-05T02:43:35.524290+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInstanceTypes, https response error StatusCode: 400, RequestID: 5c937bd6-cac8-4ee9-86f1-62a920887005, api error InvalidInstanceType: The following supplied instance types do not exist: [grgr]\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with module.app_a.aws_instance.app,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on modules/app/main.tf line 2, in resource \"aws_instance\" \"app\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   2: resource \"aws_instance\" \"app\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidinstancetype",
+        "detail": "creating",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "8 days ago"
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
@@ -228,133 +158,54 @@
           "address": "aws_instance.app",
           "action": "update"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "short_id": "04e3ef11",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T02:04:40.840856+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
+      "fix_id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "short_id": "fc968a9e",
+      "issue": "Terraform: MissingRequiredArgument - Missing required argument in module call, no value supplied for required variable.",
+      "resolution": "Add the missing variable to the module block. Check the module's variables.tf for all required inputs (those without a `default` value). Example: `module \"app\" { source = \"./mod\" instance_type = \"t3.micro\" }`",
+      "tags": "demo,terraform,aws,MissingRequiredArgument,module",
+      "created_at": "2026-03-17T01:37:24.211778+00:00",
+      "error_excerpt": "\u2502 Error: Missing required argument\n\u2502\n\u2502   on main.tf line 3, in module \"app_a\":\n\u2502    3: module \"app_a\" {\n\u2502\n\u2502 The argument \"instance_type\" is required, but no definition was found.",
+      "score": 100,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
+        "signal": "change_domain",
+        "detail": "capacity_sizing",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "low"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
           "address": "aws_instance.app",
           "action": "update"
         }
-      ]
-    },
-    {
-      "fix_id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "short_id": "a1f50f57",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T12:58:25.145341+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "short_id": "4c652e91",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T13:24:55.090124+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
-    },
-    {
-      "fix_id": "10414504-6c5b-4812-9529-4e04582addac",
-      "id": "10414504-6c5b-4812-9529-4e04582addac",
-      "short_id": "10414504",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-04T01:50:44.688825+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "9 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "update"
-        }
-      ]
+      ],
+      "domain": "capacity_sizing",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **resource sizing / capacity** issue: Terraform: MissingRequiredArgument - Missing required argument in module call, n...."
     }
   ],
   "contextual_checks": [
     {
       "check": "Verify instance type availability in target AZ and region",
       "source": "attribute",
+      "resource": "aws_instance.app"
+    },
+    {
+      "check": "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t",
+      "source": "history",
       "resource": "aws_instance.app"
     }
   ],

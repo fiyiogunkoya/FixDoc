@@ -1,5 +1,7 @@
 """Fix data model for fixdoc."""
 
+import hashlib
+import re
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -9,6 +11,17 @@ import uuid
 def _now_iso() -> str:
     """Get current UTC time as ISO string."""
     return datetime.now(timezone.utc).isoformat()
+
+
+def _normalize_for_hash(text: str) -> str:
+    """Normalize text for content hashing: strip, collapse whitespace, lowercase."""
+    return re.sub(r"\s+", " ", text.strip()).lower()
+
+
+def compute_content_hash(issue: str, resolution: str) -> str:
+    """Compute a 16-char hex SHA-256 hash of normalized issue + resolution."""
+    normalized = _normalize_for_hash(issue) + "\n" + _normalize_for_hash(resolution)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -37,6 +50,11 @@ class Fix:
     success_count: int = 0
     last_applied_at: Optional[str] = None
     memory_type: str = "fix"
+    content_hash: str = ""
+
+    def __post_init__(self):
+        if not self.content_hash:
+            self.content_hash = compute_content_hash(self.issue, self.resolution)
 
     @property
     def effectiveness_rate(self) -> Optional[float]:
@@ -69,6 +87,7 @@ class Fix:
             success_count=data.get("success_count", 0),
             last_applied_at=data.get("last_applied_at"),
             memory_type=data.get("memory_type", "fix"),
+            content_hash=data.get("content_hash", ""),
         )
 
     def summary(self) -> str:

@@ -87,9 +87,12 @@ def pending_capture(ctx, error_id_or_number):
     )
 
     if fix:
-        repo.save(fix)
+        saved = repo.save(fix)
         store.remove(entry.error_id)
-        click.echo(f"\nFix saved: {fix.id[:8]}")
+        if saved.id != fix.id:
+            click.echo(f"\nDuplicate detected, using existing fix: {saved.id[:8]}")
+        else:
+            click.echo(f"\nFix saved: {saved.id[:8]}")
         click.echo("Removed from pending.")
     else:
         click.echo("No fix created. Entry remains in pending.")

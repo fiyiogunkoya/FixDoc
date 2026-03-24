@@ -306,7 +306,7 @@ class TestWatchCommandFailure:
                 input="c\n1\n",
             )
 
-        assert "Fix saved" in result.output
+        assert ("Fix saved" in result.output or "Duplicate detected" in result.output)
         store_instance.remove.assert_called_once()
 
     def test_empty_output_no_capture_prompt(self, tmp_path):
@@ -382,7 +382,7 @@ class TestWatchCommandFailureGeneric:
                 input="c\n1\n",
             )
 
-        assert "Fix saved" in result.output
+        assert ("Fix saved" in result.output or "Duplicate detected" in result.output)
 
     def test_generic_skip_no_fix(self, tmp_path):
         """Choosing 's' on generic error exits without fix."""

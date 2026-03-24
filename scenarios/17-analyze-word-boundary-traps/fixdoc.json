@@ -1,7 +1,7 @@
 {
-  "analysis_id": "c88467e2",
-  "timestamp": "2026-03-13T17:46:00.426018+00:00",
-  "score": 4.8,
+  "analysis_id": "12efe002",
+  "timestamp": "2026-03-21T21:37:06.088403+00:00",
+  "score": 9.8,
   "severity": "low",
   "changes": [
     {
@@ -26,8 +26,16 @@
   "control_points": [],
   "affected": [],
   "why_paths": [],
-  "checks": [],
-  "history_matches": [],
+  "checks": [
+    "Prior fix: S3 bucket names are globally unique. Add a random suffix or use a naming convent"
+  ],
+  "history_matches": [
+    {
+      "id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resource_type": "aws_s3_bucket"
+    }
+  ],
   "plan_summary": {
     "total_changes": 2,
     "control_points": 0,
@@ -36,7 +44,49 @@
       "create": 2
     }
   },
-  "resource_warnings": [],
+  "resource_warnings": [
+    {
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 145,
+      "confidence": "high",
+      "match_reason": {
+        "signal": "changed_attribute",
+        "detail": "bucket",
+        "resource_type": "aws_s3_bucket",
+        "supporting_signals": [
+          {
+            "signal": "recency",
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
+          }
+        ],
+        "confidence": "high"
+      },
+      "matched_resources": [
+        {
+          "address": "aws_s3_bucket.main",
+          "action": "create"
+        },
+        {
+          "address": "aws_s3_bucket.secondary",
+          "action": "create"
+        }
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "When **bucket** changed previously on aws_s3_bucket, the team resolved it by: S3 bucket names are globally unique. Add a random suffix or use a naming convention with your accoun...."
+    }
+  ],
   "score_explanation": [
     {
       "label": "create aws_s3_bucket.main (greenfield)",
@@ -49,13 +99,66 @@
       "kind": "action"
     },
     {
+      "label": "Prior similar incident detected in fix history (1 match)",
+      "delta": 5.0,
+      "kind": "history"
+    },
+    {
       "label": "Greenfield plan (all creates, no cross-boundary impact) \u2014 capped at MEDIUM",
       "delta": 0.0,
       "kind": "modifier"
     }
   ],
-  "relevant_fixes": [],
-  "contextual_checks": [],
+  "relevant_fixes": [
+    {
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 145,
+      "confidence": "high",
+      "match_reason": {
+        "signal": "changed_attribute",
+        "detail": "bucket",
+        "resource_type": "aws_s3_bucket",
+        "supporting_signals": [
+          {
+            "signal": "recency",
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
+          }
+        ],
+        "confidence": "high"
+      },
+      "matched_resources": [
+        {
+          "address": "aws_s3_bucket.main",
+          "action": "create"
+        },
+        {
+          "address": "aws_s3_bucket.secondary",
+          "action": "create"
+        }
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "When **bucket** changed previously on aws_s3_bucket, the team resolved it by: S3 bucket names are globally unique. Add a random suffix or use a naming convention with your accoun...."
+    }
+  ],
+  "contextual_checks": [
+    {
+      "check": "Prior fix: S3 bucket names are globally unique. Add a random suffix or use a naming convent",
+      "source": "history",
+      "resource": "aws_s3_bucket.main"
+    }
+  ],
   "outcome_matches": [],
   "plan_fingerprint": "4e3c82afdb6ecf1d"
 }

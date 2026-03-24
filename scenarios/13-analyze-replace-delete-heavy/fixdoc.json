@@ -1,6 +1,6 @@
 {
-  "analysis_id": "9f4f9c1f",
-  "timestamp": "2026-03-13T17:43:29.307407+00:00",
+  "analysis_id": "2a487ffe",
+  "timestamp": "2026-03-21T21:34:12.591956+00:00",
   "score": 100.0,
   "severity": "critical",
   "changes": [
@@ -66,27 +66,27 @@
     "Review new ingress rules for overly permissive CIDRs (0.0.0.0/0)",
     "Subnet CIDR change forces replacement \u2014 check ENI dependencies",
     "CIDR change forces replacement \u2014 verify peering/route table dependencies",
-    "Prior fix: Removed duplicate ingress rule and re-ran apply.",
-    "Prior fix: Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
+    "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t",
+    "Prior fix: The /32 CIDR is technically valid but usually wrong for security group rules (it",
     "Verify security group rules",
     "Check for open 0.0.0.0/0 rules",
     "Confirm resource is not referenced by other stacks"
   ],
   "history_matches": [
     {
-      "id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
+      "id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resource_type": "aws_instance"
+    },
+    {
+      "id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
       "resource_type": "aws_security_group"
     },
     {
-      "id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resource_type": "aws_security_group"
-    },
-    {
-      "id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
-      "resource_type": "aws_security_group"
+      "id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resource_type": "aws_s3_bucket"
     }
   ],
   "plan_summary": {
@@ -100,340 +100,234 @@
   },
   "resource_warnings": [
     {
-      "fix_id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "short_id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010014",
-      "created_at": "2026-03-03T01:59:17.225341+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "detail": "creating",
+        "resource_type": "aws_instance",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
+          "address": "aws_instance.app",
+          "action": "replace"
+        },
+        {
           "address": "aws_security_group.app",
           "action": "replace"
+        },
+        {
+          "address": "aws_subnet.public",
+          "action": "replace"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "short_id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010019",
-      "created_at": "2026-03-03T01:59:17.225530+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
+        "detail": "creating",
         "resource_type": "aws_security_group",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_security_group"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
+          "address": "aws_instance.app",
+          "action": "replace"
+        },
+        {
           "address": "aws_security_group.app",
           "action": "replace"
+        },
+        {
+          "address": "aws_subnet.public",
+          "action": "replace"
+        },
+        {
+          "address": "aws_vpc.main",
+          "action": "replace"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_security_group."
     },
     {
-      "fix_id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "short_id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010032",
-      "created_at": "2026-03-03T01:59:17.225645+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 145,
       "confidence": "high",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "changed_attribute",
+        "detail": "bucket",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "When **bucket** changed previously on aws_s3_bucket, the team resolved it by: S3 bucket names are globally unique. Add a random suffix or use a naming convention with your accoun...."
     },
     {
-      "fix_id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "short_id": "cf8b9019",
-      "issue": "Terraform apply failed on aws_security_group variant 10",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010023",
-      "created_at": "2026-03-03T01:59:17.225693+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "f7fac4b2-c4a6-4226-b6d7-9927afcc0f1c",
+      "id": "f7fac4b2-c4a6-4226-b6d7-9927afcc0f1c",
+      "short_id": "f7fac4b2",
+      "issue": "aws_iam_role.app: AccessDenied",
+      "resolution": "Added role binding",
+      "tags": "aws,terraform",
+      "created_at": "2026-03-16T17:06:16.113504+00:00",
+      "error_excerpt": "",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "short_id": "9e0602e9",
-      "issue": "Terraform apply failed on aws_security_group variant 14",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010027",
-      "created_at": "2026-03-03T01:59:17.225734+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "short_id": "a61ceb51",
-      "issue": "Terraform apply failed - aws_security_group",
-      "resolution": "Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
-      "tags": "aws_security_group,kw:ec2,kw:role,kw:terraform,source:servicenow:inc0010004",
-      "created_at": "2026-03-03T01:59:17.225787+00:00",
-      "error_excerpt": "Error: AccessDenied when calling ec2:AuthorizeSecurityGroupIngress on aws_security_group.web",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "accessdenied",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "5 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: aws_iam_role.app: AccessDenied."
     },
     {
-      "fix_id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "short_id": "739847f3",
-      "issue": "Terraform apply failed on aws_security_group variant 2",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010015",
-      "created_at": "2026-03-03T01:59:17.225812+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "674d25e8-936a-4cb4-8dfb-71b1093d7d59",
+      "id": "674d25e8-936a-4cb4-8dfb-71b1093d7d59",
+      "short_id": "674d25e8",
+      "issue": "unknown: failed to refresh cached credentials, no EC2 IMDS role found,",
+      "resolution": "added provider to aws list",
+      "tags": "terraform",
+      "created_at": "2026-03-16T23:29:46.629808+00:00",
+      "error_excerpt": "Error: failed to refresh cached credentials, no EC2 IMDS role found,\n\u001b[31m\u2502\u001b[0m \u001b[0moperation error ec2imds: GetMetadata, request canceled, context deadline\n\u001b[31m\u2502\u001b[0m \u001b[0mexceeded\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: unknown: failed to refresh cached credentials, no EC2 IMDS role found,."
     },
     {
-      "fix_id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "short_id": "3a66eb83",
-      "issue": "Terraform apply failed on aws_security_group variant 7",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010020",
-      "created_at": "2026-03-03T01:59:17.225837+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "42d586c3-ae3c-4505-b1aa-f558fed304ea",
+      "id": "42d586c3-ae3c-4505-b1aa-f558fed304ea",
+      "short_id": "42d586c3",
+      "issue": "Terraform AWS: Invalid JSON in assume_role_policy - aws_iam_role policy document is not valid JSON.",
+      "resolution": "The assume_role_policy value must be valid JSON. Use `jsonencode()` instead of a raw string to avoid quoting errors: `assume_role_policy = jsonencode({ Version = \"2012-10-17\", Statement = [...] })`. Validate with `echo '...' | jq .`",
+      "tags": "demo,terraform,aws,aws_iam_role,MalformedPolicyDocument",
+      "created_at": "2026-03-17T01:37:24.211769+00:00",
+      "error_excerpt": "\u2502 Error: creating IAM Role (bad_json_role): MalformedPolicyDocument: Syntax errors in policy.\n\u2502\n\u2502   with aws_iam_role.bad_policy,\n\u2502   on main.tf line 18, in resource \"aws_iam_role\" \"bad_policy\":",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
-    },
-    {
-      "fix_id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "short_id": "edc96374",
-      "issue": "Terraform apply failed on aws_security_group variant 11",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010024",
-      "created_at": "2026-03-03T01:59:17.225862+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "short_id": "bb89dd37",
-      "issue": "Terraform apply failed on aws_security_group variant 15",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010028",
-      "created_at": "2026-03-03T01:59:17.225921+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: Terraform AWS: Invalid JSON in assume_role_policy - aws_iam_role policy document...."
     }
   ],
   "score_explanation": [
@@ -470,340 +364,234 @@
   ],
   "relevant_fixes": [
     {
-      "fix_id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "id": "f9d13df6-d789-426a-b372-2317540ff222",
-      "short_id": "f9d13df6",
-      "issue": "Terraform apply failed on aws_security_group variant 1",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010014",
-      "created_at": "2026-03-03T01:59:17.225341+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "detail": "creating",
+        "resource_type": "aws_instance",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
+          "address": "aws_instance.app",
+          "action": "replace"
+        },
+        {
           "address": "aws_security_group.app",
           "action": "replace"
+        },
+        {
+          "address": "aws_subnet.public",
+          "action": "replace"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "id": "f17fc920-20df-469d-abd4-e8b7aeafc91c",
-      "short_id": "f17fc920",
-      "issue": "Terraform apply failed on aws_security_group variant 6",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010019",
-      "created_at": "2026-03-03T01:59:17.225530+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
+        "detail": "creating",
         "resource_type": "aws_security_group",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_security_group"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
+          "address": "aws_instance.app",
+          "action": "replace"
+        },
+        {
           "address": "aws_security_group.app",
           "action": "replace"
+        },
+        {
+          "address": "aws_subnet.public",
+          "action": "replace"
+        },
+        {
+          "address": "aws_vpc.main",
+          "action": "replace"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_security_group."
     },
     {
-      "fix_id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "id": "22a65c43-8aea-409d-b0e6-caaf0a022410",
-      "short_id": "22a65c43",
-      "issue": "Terraform apply failed on aws_security_group variant 19",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010032",
-      "created_at": "2026-03-03T01:59:17.225645+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 145,
       "confidence": "high",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "changed_attribute",
+        "detail": "bucket",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "10 days ago"
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "When **bucket** changed previously on aws_s3_bucket, the team resolved it by: S3 bucket names are globally unique. Add a random suffix or use a naming convention with your accoun...."
     },
     {
-      "fix_id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "id": "cf8b9019-c698-4c61-8ae2-e703ea0fcddb",
-      "short_id": "cf8b9019",
-      "issue": "Terraform apply failed on aws_security_group variant 10",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010023",
-      "created_at": "2026-03-03T01:59:17.225693+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "f7fac4b2-c4a6-4226-b6d7-9927afcc0f1c",
+      "id": "f7fac4b2-c4a6-4226-b6d7-9927afcc0f1c",
+      "short_id": "f7fac4b2",
+      "issue": "aws_iam_role.app: AccessDenied",
+      "resolution": "Added role binding",
+      "tags": "aws,terraform",
+      "created_at": "2026-03-16T17:06:16.113504+00:00",
+      "error_excerpt": "",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "id": "9e0602e9-9e07-4701-9ebb-e163b8b565f5",
-      "short_id": "9e0602e9",
-      "issue": "Terraform apply failed on aws_security_group variant 14",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010027",
-      "created_at": "2026-03-03T01:59:17.225734+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "id": "a61ceb51-41d4-4796-9bfd-93290d7fc6ae",
-      "short_id": "a61ceb51",
-      "issue": "Terraform apply failed - aws_security_group",
-      "resolution": "Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
-      "tags": "aws_security_group,kw:ec2,kw:role,kw:terraform,source:servicenow:inc0010004",
-      "created_at": "2026-03-03T01:59:17.225787+00:00",
-      "error_excerpt": "Error: AccessDenied when calling ec2:AuthorizeSecurityGroupIngress on aws_security_group.web",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "accessdenied",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "5 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: aws_iam_role.app: AccessDenied."
     },
     {
-      "fix_id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "id": "739847f3-3c3b-487f-ad54-68b856f6b34d",
-      "short_id": "739847f3",
-      "issue": "Terraform apply failed on aws_security_group variant 2",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010015",
-      "created_at": "2026-03-03T01:59:17.225812+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "674d25e8-936a-4cb4-8dfb-71b1093d7d59",
+      "id": "674d25e8-936a-4cb4-8dfb-71b1093d7d59",
+      "short_id": "674d25e8",
+      "issue": "unknown: failed to refresh cached credentials, no EC2 IMDS role found,",
+      "resolution": "added provider to aws list",
+      "tags": "terraform",
+      "created_at": "2026-03-16T23:29:46.629808+00:00",
+      "error_excerpt": "Error: failed to refresh cached credentials, no EC2 IMDS role found,\n\u001b[31m\u2502\u001b[0m \u001b[0moperation error ec2imds: GetMetadata, request canceled, context deadline\n\u001b[31m\u2502\u001b[0m \u001b[0mexceeded\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: unknown: failed to refresh cached credentials, no EC2 IMDS role found,."
     },
     {
-      "fix_id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "id": "3a66eb83-31e9-46bf-9ef3-358c31175452",
-      "short_id": "3a66eb83",
-      "issue": "Terraform apply failed on aws_security_group variant 7",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010020",
-      "created_at": "2026-03-03T01:59:17.225837+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
+      "fix_id": "42d586c3-ae3c-4505-b1aa-f558fed304ea",
+      "id": "42d586c3-ae3c-4505-b1aa-f558fed304ea",
+      "short_id": "42d586c3",
+      "issue": "Terraform AWS: Invalid JSON in assume_role_policy - aws_iam_role policy document is not valid JSON.",
+      "resolution": "The assume_role_policy value must be valid JSON. Use `jsonencode()` instead of a raw string to avoid quoting errors: `assume_role_policy = jsonencode({ Version = \"2012-10-17\", Statement = [...] })`. Validate with `echo '...' | jq .`",
+      "tags": "demo,terraform,aws,aws_iam_role,MalformedPolicyDocument",
+      "created_at": "2026-03-17T01:37:24.211769+00:00",
+      "error_excerpt": "\u2502 Error: creating IAM Role (bad_json_role): MalformedPolicyDocument: Syntax errors in policy.\n\u2502\n\u2502   with aws_iam_role.bad_policy,\n\u2502   on main.tf line 18, in resource \"aws_iam_role\" \"bad_policy\":",
+      "score": 115,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
+        "signal": "change_domain",
+        "detail": "iam_trust_boundary",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "high"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
-          "address": "aws_security_group.app",
-          "action": "replace"
+          "address": "aws_s3_bucket.extra[0]",
+          "action": "delete"
         }
-      ]
-    },
-    {
-      "fix_id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "id": "edc96374-bdf6-4ff9-9102-dcda98a81b8e",
-      "short_id": "edc96374",
-      "issue": "Terraform apply failed on aws_security_group variant 11",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010024",
-      "created_at": "2026-03-03T01:59:17.225862+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
-    },
-    {
-      "fix_id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "id": "bb89dd37-5a37-4333-b49c-293bb19ce56e",
-      "short_id": "bb89dd37",
-      "issue": "Terraform apply failed on aws_security_group variant 15",
-      "resolution": "Removed duplicate ingress rule and re-ran apply.",
-      "tags": "aws_security_group,kw:terraform,source:servicenow:inc0010028",
-      "created_at": "2026-03-03T01:59:17.225921+00:00",
-      "error_excerpt": "Error: InvalidPermission.Duplicate in aws_security_group rule.",
-      "score": 180,
-      "confidence": "high",
-      "match_reason": {
-        "signal": "error_code",
-        "detail": "invalidpermission.duplicate",
-        "resource_type": "aws_security_group",
-        "supporting_signals": [
-          {
-            "signal": "attribute",
-            "detail": "ingress"
-          },
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "high"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_security_group.app",
-          "action": "replace"
-        }
-      ]
+      ],
+      "domain": "iam_trust_boundary",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **IAM trust boundary** issue: Terraform AWS: Invalid JSON in assume_role_policy - aws_iam_role policy document...."
     }
   ],
   "contextual_checks": [
@@ -828,14 +616,14 @@
       "resource": "aws_vpc.main"
     },
     {
-      "check": "Prior fix: Removed duplicate ingress rule and re-ran apply.",
+      "check": "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t",
       "source": "history",
-      "resource": "aws_security_group.app"
+      "resource": "aws_instance.app"
     },
     {
-      "check": "Prior fix: Added ec2:AuthorizeSecurityGroupIngress permission to deployment role.",
+      "check": "Prior fix: The /32 CIDR is technically valid but usually wrong for security group rules (it",
       "source": "history",
-      "resource": "aws_security_group.app"
+      "resource": "aws_instance.app"
     },
     {
       "check": "Verify security group rules",
@@ -854,5 +642,5 @@
     }
   ],
   "outcome_matches": [],
-  "plan_fingerprint": "8f6bf37ce882edda"
+  "plan_fingerprint": "77e22a9c46e7c2fb"
 }

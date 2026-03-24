@@ -409,9 +409,12 @@ def watch(ctx, command, tags, no_prompt, diagnose, notify):
                                 config=config,
                             )
                     if fix:
-                        repo.save(fix)
+                        saved = repo.save(fix)
                         store.remove(selected_entry.error_id)
-                        click.echo(f"Fix saved: {fix.id[:8]}")
+                        if saved.id != fix.id:
+                            click.echo(f"Duplicate detected, using existing fix: {saved.id[:8]}")
+                        else:
+                            click.echo(f"Fix saved: {saved.id[:8]}")
 
         sys.exit(exit_code)
 

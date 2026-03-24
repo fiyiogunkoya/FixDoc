@@ -84,11 +84,20 @@ def resolve_pending_entries(
         )
         if fix:
             fix.source_error_ids = [e.error_id for e in group]
-            repo.save(fix)
+            saved = repo.save(fix)
+            if saved.id != fix.id:
+                # Duplicate — merge source_error_ids onto existing fix
+                existing_ids = set(saved.source_error_ids or [])
+                existing_ids.update(fix.source_error_ids)
+                saved.source_error_ids = list(existing_ids)
+                saved.touch()
+                repo.save(saved)
+                click.echo(f"Duplicate detected, linked to existing fix: {saved.id[:8]}")
+            else:
+                click.echo(f"Fix saved: {saved.id[:8]}")
             for e in group:
                 store.remove(e.error_id)
                 removed_ids.add(e.error_id)
-            click.echo(f"Fix saved: {fix.id[:8]}")
 
     # Clear-on-resolve: remove all remaining entries that were passed in
     for eid in all_ids - removed_ids:

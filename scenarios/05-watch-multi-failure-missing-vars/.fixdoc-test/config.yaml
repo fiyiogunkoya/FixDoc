@@ -22,3 +22,12 @@ suggestion_weights:
   issue_keyword_weight: 2
   resolution_keyword_weight: 1
 private_fixes: []
+diagnosis:
+  enabled: false
+  max_errors: 3
+  model: claude-haiku-4-5-20251001
+notification:
+  slack_enabled: false
+  slack_token: null
+  slack_channel: null
+  slack_min_matches: 1

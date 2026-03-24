@@ -1,6 +1,6 @@
 {
-  "analysis_id": "8d00455b",
-  "timestamp": "2026-03-13T17:41:13.611712+00:00",
+  "analysis_id": "0fd21cd8",
+  "timestamp": "2026-03-21T21:31:56.498853+00:00",
   "score": 29.4,
   "severity": "medium",
   "changes": [
@@ -67,22 +67,23 @@
     "Verify instance type availability in target AZ and region",
     "Subnet CIDR change forces replacement \u2014 check ENI dependencies",
     "CIDR change forces replacement \u2014 verify peering/route table dependencies",
-    "Prior fix: enabled colima to make sure docker daemon was running"
+    "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t",
+    "Prior fix: S3 bucket names are globally unique. Add a random suffix or use a naming convent"
   ],
   "history_matches": [
     {
-      "id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
+      "id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
       "resource_type": "aws_instance"
     },
     {
-      "id": "bd4224b7",
-      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
-      "resource_type": "aws_vpc"
+      "id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resource_type": "aws_s3_bucket"
     },
     {
-      "id": "8b9275a7",
-      "issue": "JSON blob in description",
+      "id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
       "resource_type": "aws_subnet"
     }
   ],
@@ -96,24 +97,28 @@
   },
   "resource_warnings": [
     {
-      "fix_id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "short_id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
-      "resolution": "deleted the module",
-      "tags": "terraform,aws,aws_instance,InvalidInstanceType,terraform,aws,aws_instance,InvalidInstanceType",
-      "created_at": "2026-03-05T02:43:35.524290+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInstanceTypes, https response error StatusCode: 400, RequestID: 5c937bd6-cac8-4ee9-86f1-62a920887005, api error InvalidInstanceType: The following supplied instance types do not exist: [grgr]\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with module.app_a.aws_instance.app,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on modules/app/main.tf line 2, in resource \"aws_instance\" \"app\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   2: resource \"aws_instance\" \"app\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidinstancetype",
+        "detail": "creating",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "8 days ago"
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
@@ -122,62 +127,80 @@
         {
           "address": "aws_instance.app",
           "action": "create"
+        },
+        {
+          "address": "aws_subnet.public_a",
+          "action": "create"
+        },
+        {
+          "address": "aws_subnet.public_b",
+          "action": "create"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
-      "id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
-      "short_id": "bd4224b7",
-      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
-      "resolution": "enabled colima to make sure docker daemon was running",
-      "tags": "terraform,aws,aws_vpc,0,terraform,aws,aws_vpc,0",
-      "created_at": "2026-03-13T15:18:18.914249+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts, 9, https response error StatusCode: 0, RequestID: , request send failed, Post \"http://localhost:4566/\": dial tcp [::1]:4566: connect: connection refused\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_vpc.main,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 8, in resource \"aws_vpc\" \"main\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   8: resource \"aws_vpc\" \"main\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31m",
-      "score": 150,
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 165,
       "confidence": "high",
       "match_reason": {
         "signal": "address",
-        "detail": "aws_vpc.main",
-        "resource_type": "aws_vpc",
+        "detail": "aws_s3_bucket.data",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "type_action",
-            "detail": "create"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "0 days ago"
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
-          "address": "aws_vpc.main",
+          "address": "aws_s3_bucket.data",
+          "action": "create"
+        },
+        {
+          "address": "aws_s3_bucket.logs",
           "action": "create"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "A prior fix for this exact resource exists (**aws_s3_bucket.data**)."
     },
     {
-      "fix_id": "8b9275a7-038b-4c8c-a21e-cb48ce8bae26",
-      "id": "8b9275a7-038b-4c8c-a21e-cb48ce8bae26",
-      "short_id": "8b9275a7",
-      "issue": "JSON blob in description",
-      "resolution": "Updated subnet CIDR block.",
-      "tags": "aws_subnet,kw:subnet,source:servicenow:inc0010045",
-      "created_at": "2026-03-03T01:59:17.226437+00:00",
-      "error_excerpt": "{\"error\":\"InvalidSubnet\",\"resource\":\"aws_subnet.private\"}",
-      "score": 70,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 110,
       "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_tag",
-        "detail": "aws_subnet",
+        "signal": "change_domain",
+        "detail": "network_perimeter",
         "resource_type": "aws_subnet",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
         "confidence": "medium"
@@ -190,128 +213,48 @@
         {
           "address": "aws_subnet.public_b",
           "action": "create"
+        },
+        {
+          "address": "aws_vpc.main",
+          "action": "create"
         }
-      ]
+      ],
+      "domain": "network_perimeter",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **network perimeter / firewall rules** issue: Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule i...."
     },
     {
-      "fix_id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "short_id": "04e3ef11",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T02:04:40.840856+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
+      "fix_id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "short_id": "fc968a9e",
+      "issue": "Terraform: MissingRequiredArgument - Missing required argument in module call, no value supplied for required variable.",
+      "resolution": "Add the missing variable to the module block. Check the module's variables.tf for all required inputs (those without a `default` value). Example: `module \"app\" { source = \"./mod\" instance_type = \"t3.micro\" }`",
+      "tags": "demo,terraform,aws,MissingRequiredArgument,module",
+      "created_at": "2026-03-17T01:37:24.211778+00:00",
+      "error_excerpt": "\u2502 Error: Missing required argument\n\u2502\n\u2502   on main.tf line 3, in module \"app_a\":\n\u2502    3: module \"app_a\" {\n\u2502\n\u2502 The argument \"instance_type\" is required, but no definition was found.",
+      "score": 100,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
+        "signal": "change_domain",
+        "detail": "capacity_sizing",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "low"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
           "address": "aws_instance.app",
           "action": "create"
         }
-      ]
-    },
-    {
-      "fix_id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "short_id": "a1f50f57",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T12:58:25.145341+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
-    },
-    {
-      "fix_id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "short_id": "4c652e91",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T13:24:55.090124+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
-    },
-    {
-      "fix_id": "10414504-6c5b-4812-9529-4e04582addac",
-      "id": "10414504-6c5b-4812-9529-4e04582addac",
-      "short_id": "10414504",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-04T01:50:44.688825+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "9 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
+      ],
+      "domain": "capacity_sizing",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **resource sizing / capacity** issue: Terraform: MissingRequiredArgument - Missing required argument in module call, n...."
     }
   ],
   "score_explanation": [
@@ -358,24 +301,28 @@
   ],
   "relevant_fixes": [
     {
-      "fix_id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "id": "9c8242a1-6930-44a2-adb0-a870f09dffc5",
-      "short_id": "9c8242a1",
-      "issue": "module.app_a.aws_instance.app: InvalidInstanceType: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInst",
-      "resolution": "deleted the module",
-      "tags": "terraform,aws,aws_instance,InvalidInstanceType,terraform,aws,aws_instance,InvalidInstanceType",
-      "created_at": "2026-03-05T02:43:35.524290+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mreading EC2 Instance Type (grgr): operation error EC2: DescribeInstanceTypes, https response error StatusCode: 400, RequestID: 5c937bd6-cac8-4ee9-86f1-62a920887005, api error InvalidInstanceType: The following supplied instance types do not exist: [grgr]\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with module.app_a.aws_instance.app,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on modules/app/main.tf line 2, in resource \"aws_instance\" \"app\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   2: resource \"aws_instance\" \"app\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m",
-      "score": 180,
+      "fix_id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "id": "a66038cc-6b16-4e93-9621-38881b4ef161",
+      "short_id": "a66038cc",
+      "issue": "Terraform AWS: EC2 InsufficientInstanceCapacity - We currently do not have sufficient capacity in the Availability Zone you requested.",
+      "resolution": "Try a different availability zone or instance type. Use `availability_zone` to target a specific AZ, or add multiple subnets across AZs for auto-placement.",
+      "tags": "demo,terraform,aws,ec2,aws_instance",
+      "created_at": "2026-03-17T01:37:24.211708+00:00",
+      "error_excerpt": "\u2502 Error: creating EC2 Instance: InsufficientInstanceCapacity: We currently do not have sufficient\n\u2502   capacity in the Availability Zone you requested (us-east-1a).\n\u2502\n\u2502   with aws_instance.web_server,\n\u2502   on compute.tf line 25, in resource \"aws_instance\" \"web_server\":",
+      "score": 195,
       "confidence": "high",
       "match_reason": {
         "signal": "error_code",
-        "detail": "invalidinstancetype",
+        "detail": "creating",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "8 days ago"
+            "detail": "4 days ago"
+          },
+          {
+            "signal": "type_tag",
+            "detail": "aws_instance"
           }
         ],
         "confidence": "high"
@@ -384,62 +331,80 @@
         {
           "address": "aws_instance.app",
           "action": "create"
+        },
+        {
+          "address": "aws_subnet.public_a",
+          "action": "create"
+        },
+        {
+          "address": "aws_subnet.public_b",
+          "action": "create"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "Previously encountered **creating** when changing aws_instance."
     },
     {
-      "fix_id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
-      "id": "bd4224b7-06e1-4761-bebe-a6db1faadeed",
-      "short_id": "bd4224b7",
-      "issue": "aws_vpc.main: 0: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts",
-      "resolution": "enabled colima to make sure docker daemon was running",
-      "tags": "terraform,aws,aws_vpc,0,terraform,aws,aws_vpc,0",
-      "created_at": "2026-03-13T15:18:18.914249+00:00",
-      "error_excerpt": "Error: \u001b[0m\u001b[0m\u001b[1mcreating EC2 VPC: operation error EC2: CreateVpc, exceeded maximum number of attempts, 9, https response error StatusCode: 0, RequestID: , request send failed, Post \"http://localhost:4566/\": dial tcp [::1]:4566: connect: connection refused\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[0m  with aws_vpc.main,\n\u001b[31m\u2502\u001b[0m \u001b[0m  on main.tf line 8, in resource \"aws_vpc\" \"main\":\n\u001b[31m\u2502\u001b[0m \u001b[0m   8: resource \"aws_vpc\" \"main\" \u001b[4m{\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\n\u001b[31m\u2575\u001b[0m\u001b[0m\n\u001b[31m\u2577\u001b[0m\u001b[0m\n\u001b[31m\u2502\u001b[0m \u001b[0m\u001b[1m\u001b[31m",
-      "score": 150,
+      "fix_id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "id": "93434c1d-7e05-4f49-ad58-2e99070a7dd9",
+      "short_id": "93434c1d",
+      "issue": "Terraform AWS: S3 BucketAlreadyExists - error creating S3 Bucket (my-app-data-bucket): The requested bucket name is not available.",
+      "resolution": "S3 bucket names are globally unique. Add a random suffix or use a naming convention with your account ID: \"my-app-data-${data.aws_caller_identity.current.account_id}\"",
+      "tags": "demo,terraform,aws,s3,aws_s3_bucket",
+      "created_at": "2026-03-17T01:37:24.211696+00:00",
+      "error_excerpt": "\u2502 Error: error creating S3 Bucket (my-app-data-bucket): BucketAlreadyExists:\n\u2502   The requested bucket name is not available.\n\u2502\n\u2502   with aws_s3_bucket.data,\n\u2502   on storage.tf line 12, in resource \"aws_s3_bucket\" \"data\":\n\u2502   12: resource \"aws_s3_bucket\" \"data\" {\n",
+      "score": 165,
       "confidence": "high",
       "match_reason": {
         "signal": "address",
-        "detail": "aws_vpc.main",
-        "resource_type": "aws_vpc",
+        "detail": "aws_s3_bucket.data",
+        "resource_type": "aws_s3_bucket",
         "supporting_signals": [
           {
-            "signal": "type_action",
-            "detail": "create"
+            "signal": "recency",
+            "detail": "4 days ago"
           },
           {
-            "signal": "recency",
-            "detail": "0 days ago"
+            "signal": "type_tag",
+            "detail": "aws_s3_bucket"
           }
         ],
         "confidence": "high"
       },
       "matched_resources": [
         {
-          "address": "aws_vpc.main",
+          "address": "aws_s3_bucket.data",
+          "action": "create"
+        },
+        {
+          "address": "aws_s3_bucket.logs",
           "action": "create"
         }
-      ]
+      ],
+      "domain": null,
+      "similar_count": 0,
+      "narrative": "A prior fix for this exact resource exists (**aws_s3_bucket.data**)."
     },
     {
-      "fix_id": "8b9275a7-038b-4c8c-a21e-cb48ce8bae26",
-      "id": "8b9275a7-038b-4c8c-a21e-cb48ce8bae26",
-      "short_id": "8b9275a7",
-      "issue": "JSON blob in description",
-      "resolution": "Updated subnet CIDR block.",
-      "tags": "aws_subnet,kw:subnet,source:servicenow:inc0010045",
-      "created_at": "2026-03-03T01:59:17.226437+00:00",
-      "error_excerpt": "{\"error\":\"InvalidSubnet\",\"resource\":\"aws_subnet.private\"}",
-      "score": 70,
+      "fix_id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "id": "c8321cee-974f-4c66-adb8-94e9f3c13d37",
+      "short_id": "c8321cee",
+      "issue": "Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule in aws_security_group.",
+      "resolution": "The /32 CIDR is technically valid but usually wrong for security group rules (it means a single IP). Use /16 or /24 for subnet ranges: `cidr_blocks = [\"10.0.0.0/16\"]`. For a single host, confirm /32 is intentional.",
+      "tags": "demo,terraform,aws,aws_security_group,InvalidCIDR",
+      "created_at": "2026-03-17T01:37:24.211759+00:00",
+      "error_excerpt": "\u2502 Error: creating Security Group Rule: InvalidParameterValue: Value (10.0.0.0/32) for parameter cidr is invalid.\n\u2502\n\u2502   with aws_security_group.bad_cidr,\n\u2502   on main.tf line 5, in resource \"aws_security_group\" \"bad_cidr\":",
+      "score": 110,
       "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_tag",
-        "detail": "aws_subnet",
+        "signal": "change_domain",
+        "detail": "network_perimeter",
         "resource_type": "aws_subnet",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
         "confidence": "medium"
@@ -452,128 +417,48 @@
         {
           "address": "aws_subnet.public_b",
           "action": "create"
+        },
+        {
+          "address": "aws_vpc.main",
+          "action": "create"
         }
-      ]
+      ],
+      "domain": "network_perimeter",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **network perimeter / firewall rules** issue: Terraform AWS: InvalidCIDR - Invalid CIDR block \"10.0.0.0/32\" for ingress rule i...."
     },
     {
-      "fix_id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "id": "04e3ef11-d9db-4688-88a4-a4510c00a514",
-      "short_id": "04e3ef11",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T02:04:40.840856+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
+      "fix_id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "id": "fc968a9e-793f-480f-9f56-6dc80a3de314",
+      "short_id": "fc968a9e",
+      "issue": "Terraform: MissingRequiredArgument - Missing required argument in module call, no value supplied for required variable.",
+      "resolution": "Add the missing variable to the module block. Check the module's variables.tf for all required inputs (those without a `default` value). Example: `module \"app\" { source = \"./mod\" instance_type = \"t3.micro\" }`",
+      "tags": "demo,terraform,aws,MissingRequiredArgument,module",
+      "created_at": "2026-03-17T01:37:24.211778+00:00",
+      "error_excerpt": "\u2502 Error: Missing required argument\n\u2502\n\u2502   on main.tf line 3, in module \"app_a\":\n\u2502    3: module \"app_a\" {\n\u2502\n\u2502 The argument \"instance_type\" is required, but no definition was found.",
+      "score": 100,
+      "confidence": "medium",
       "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
+        "signal": "change_domain",
+        "detail": "capacity_sizing",
         "resource_type": "aws_instance",
         "supporting_signals": [
           {
             "signal": "recency",
-            "detail": "10 days ago"
+            "detail": "4 days ago"
           }
         ],
-        "confidence": "low"
+        "confidence": "medium"
       },
       "matched_resources": [
         {
           "address": "aws_instance.app",
           "action": "create"
         }
-      ]
-    },
-    {
-      "fix_id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "id": "a1f50f57-52ad-4241-9195-38a19a19cc3c",
-      "short_id": "a1f50f57",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T12:58:25.145341+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
-    },
-    {
-      "fix_id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "id": "4c652e91-adfc-4d5f-b2ec-720013357a80",
-      "short_id": "4c652e91",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-03T13:24:55.090124+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "10 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
-    },
-    {
-      "fix_id": "10414504-6c5b-4812-9529-4e04582addac",
-      "id": "10414504-6c5b-4812-9529-4e04582addac",
-      "short_id": "10414504",
-      "issue": "aws_instance.web: InsufficientInstanceCapacity",
-      "resolution": "Changed AZ",
-      "tags": "",
-      "created_at": "2026-03-04T01:50:44.688825+00:00",
-      "error_excerpt": "",
-      "score": 50,
-      "confidence": "low",
-      "match_reason": {
-        "signal": "resource_type_text",
-        "detail": "aws_instance",
-        "resource_type": "aws_instance",
-        "supporting_signals": [
-          {
-            "signal": "recency",
-            "detail": "9 days ago"
-          }
-        ],
-        "confidence": "low"
-      },
-      "matched_resources": [
-        {
-          "address": "aws_instance.app",
-          "action": "create"
-        }
-      ]
+      ],
+      "domain": "capacity_sizing",
+      "similar_count": 0,
+      "narrative": "This change overlaps with a prior **resource sizing / capacity** issue: Terraform: MissingRequiredArgument - Missing required argument in module call, n...."
     }
   ],
   "contextual_checks": [
@@ -598,9 +483,14 @@
       "resource": "aws_vpc.main"
     },
     {
-      "check": "Prior fix: enabled colima to make sure docker daemon was running",
+      "check": "Prior fix: Try a different availability zone or instance type. Use `availability_zone` to t",
       "source": "history",
-      "resource": "aws_vpc.main"
+      "resource": "aws_instance.app"
+    },
+    {
+      "check": "Prior fix: S3 bucket names are globally unique. Add a random suffix or use a naming convent",
+      "source": "history",
+      "resource": "aws_s3_bucket.data"
     }
   ],
   "outcome_matches": [],
