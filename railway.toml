@@ -1,3 +1,12 @@
+# Root railway.toml — describes the default service in this Railway project.
+#
+# Marketing site (fixdoc-web/) lives here. The backend and frontend are
+# *sibling services* in the same Railway project; their configs live in
+# backend/railway.toml and frontend/railway.toml. Railway ties them to
+# directory-scoped build contexts via the dashboard (Settings → Source).
+#
+# See DEPLOY.md at the repo root for the end-to-end deploy walkthrough.
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "fixdoc-web/Dockerfile"

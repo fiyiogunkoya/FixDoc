@@ -1,0 +1,240 @@
+{
+  "node_pools": [
+    {
+      "name": "system",
+      "os": "Azure Linux 2.0",
+      "k8s_version": "v1.28.5",
+      "sku": "Standard_D4s_v3",
+      "labels": {"agentpool": "system"},
+      "taints": [],
+      "count": 3
+    },
+    {
+      "name": "workload",
+      "os": "Azure Linux 2.0",
+      "k8s_version": "v1.28.5",
+      "sku": "Standard_D8s_v3",
+      "labels": {"agentpool": "workload"},
+      "taints": [],
+      "count": 5
+    }
+  ],
+  "workloads": [
+    {
+      "kind": "Deployment",
+      "name": "api-server",
+      "namespace": "production",
+      "replicas": 3,
+      "images": ["myregistry.azurecr.io/api-server:v2.1.0"],
+      "volumes": [],
+      "security_context": null,
+      "node_selector": {"agentpool": "workload"},
+      "tolerations": [],
+      "labels": {"app": "api-server"},
+      "annotations": {},
+      "resource_requests": {"cpu": "500m", "memory": "512Mi"},
+      "resource_limits": {"cpu": "1000m", "memory": "1Gi"},
+      "spec_raw": {
+        "containers": [
+          {
+            "name": "api",
+            "image": "myregistry.azurecr.io/api-server:v2.1.0",
+            "resources": {
+              "requests": {"cpu": "500m", "memory": "512Mi"},
+              "limits": {"cpu": "1000m", "memory": "1Gi"}
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "DaemonSet",
+      "name": "log-collector",
+      "namespace": "monitoring",
+      "replicas": 8,
+      "images": ["fluent/fluent-bit:2.1"],
+      "volumes": [
+        {"name": "varlog", "hostPath": {"path": "/var/log"}},
+        {"name": "journal", "hostPath": {"path": "/var/log/journal"}}
+      ],
+      "security_context": {"privileged": true},
+      "node_selector": null,
+      "tolerations": [{"key": "node-role.kubernetes.io/master", "effect": "NoSchedule"}],
+      "labels": {"app": "log-collector"},
+      "annotations": {},
+      "resource_requests": {"cpu": "100m", "memory": "128Mi"},
+      "resource_limits": {"cpu": "200m", "memory": "256Mi"},
+      "spec_raw": {
+        "containers": [
+          {
+            "name": "fluent-bit",
+            "image": "fluent/fluent-bit:2.1",
+            "volumeMounts": [
+              {"name": "varlog", "mountPath": "/var/log"},
+              {"name": "journal", "mountPath": "/var/log/journal"}
+            ]
+          }
+        ],
+        "volumes": [
+          {"name": "varlog", "hostPath": {"path": "/var/log"}},
+          {"name": "journal", "hostPath": {"path": "/var/log/journal"}}
+        ]
+      }
+    },
+    {
+      "kind": "DaemonSet",
+      "name": "cgroup-monitor",
+      "namespace": "monitoring",
+      "replicas": 8,
+      "images": ["myregistry.azurecr.io/cgroup-mon:1.0"],
+      "volumes": [
+        {"name": "cgroup", "hostPath": {"path": "/sys/fs/cgroup"}}
+      ],
+      "security_context": {"privileged": true},
+      "node_selector": null,
+      "tolerations": [],
+      "labels": {"app": "cgroup-monitor"},
+      "annotations": {},
+      "resource_requests": null,
+      "resource_limits": null,
+      "spec_raw": {
+        "containers": [
+          {
+            "name": "monitor",
+            "image": "myregistry.azurecr.io/cgroup-mon:1.0",
+            "volumeMounts": [
+              {"name": "cgroup", "mountPath": "/sys/fs/cgroup"}
+            ]
+          }
+        ],
+        "volumes": [
+          {"name": "cgroup", "hostPath": {"path": "/sys/fs/cgroup"}}
+        ]
+      }
+    },
+    {
+      "kind": "StatefulSet",
+      "name": "redis-cluster",
+      "namespace": "data",
+      "replicas": 3,
+      "images": ["redis:7.2"],
+      "volumes": [
+        {"name": "data", "emptyDir": {"sizeLimit": "10Gi"}}
+      ],
+      "security_context": null,
+      "node_selector": {"agentpool": "workload"},
+      "tolerations": [],
+      "labels": {"app": "redis"},
+      "annotations": {},
+      "resource_requests": {"cpu": "1000m", "memory": "2Gi"},
+      "resource_limits": {"cpu": "2000m", "memory": "4Gi"},
+      "spec_raw": {
+        "containers": [
+          {
+            "name": "redis",
+            "image": "redis:7.2"
+          }
+        ],
+        "volumes": [
+          {"name": "data", "emptyDir": {"sizeLimit": "10Gi"}}
+        ]
+      }
+    },
+    {
+      "kind": "Deployment",
+      "name": "static-app",
+      "namespace": "production",
+      "replicas": 2,
+      "images": ["gcr.io/distroless/static:nonroot"],
+      "volumes": [],
+      "security_context": null,
+      "node_selector": null,
+      "tolerations": [],
+      "labels": {"app": "static-app"},
+      "annotations": {},
+      "resource_requests": {"cpu": "100m", "memory": "64Mi"},
+      "resource_limits": {"cpu": "200m", "memory": "128Mi"},
+      "spec_raw": {}
+    },
+    {
+      "kind": "Job",
+      "name": "migration-job",
+      "namespace": "production",
+      "replicas": 1,
+      "images": ["myregistry.azurecr.io/migrator:latest"],
+      "volumes": [],
+      "security_context": null,
+      "node_selector": null,
+      "tolerations": [],
+      "labels": {"app": "migration"},
+      "annotations": {},
+      "resource_requests": null,
+      "resource_limits": null,
+      "spec_raw": {}
+    }
+  ],
+  "ingresses": [
+    {
+      "name": "api-ingress",
+      "namespace": "production",
+      "ingress_class": "nginx",
+      "rules": [
+        {
+          "host": "api.example.com",
+          "http": {
+            "paths": [
+              {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "api-server", "port": {"number": 8080}}}}
+            ]
+          }
+        }
+      ],
+      "tls": [
+        {"hosts": ["api.example.com"], "secretName": "api-tls"}
+      ],
+      "annotations": {
+        "nginx.ingress.kubernetes.io/rate-limit": "100",
+        "nginx.ingress.kubernetes.io/proxy-body-size": "10m",
+        "nginx.ingress.kubernetes.io/ssl-passthrough": "true"
+      }
+    },
+    {
+      "name": "web-ingress",
+      "namespace": "production",
+      "ingress_class": "nginx",
+      "rules": [
+        {
+          "host": "www.example.com",
+          "http": {
+            "paths": [
+              {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "web-app", "port": {"number": 80}}}
+              }
+            ]
+          }
+        }
+      ],
+      "tls": [],
+      "annotations": {
+        "nginx.ingress.kubernetes.io/rewrite-target": "/"
+      }
+    }
+  ],
+  "services": [
+    {"name": "api-server", "namespace": "production", "type": "ClusterIP"},
+    {"name": "web-app", "namespace": "production", "type": "ClusterIP"},
+    {"name": "redis-cluster", "namespace": "data", "type": "ClusterIP"}
+  ],
+  "network_policies": [
+    {"name": "deny-all", "namespace": "production"},
+    {"name": "allow-api", "namespace": "production"}
+  ],
+  "crds": [
+    "certificates.cert-manager.io",
+    "issuers.cert-manager.io"
+  ],
+  "helm_releases": [
+    {"name": "cert-manager", "namespace": "cert-manager", "chart": "cert-manager", "app_version": "1.13.0"},
+    {"name": "ingress-nginx", "namespace": "ingress-nginx", "chart": "ingress-nginx", "app_version": "1.9.0"}
+  ],
+  "namespaces": ["default", "production", "monitoring", "data", "cert-manager", "ingress-nginx", "kube-system"],
+  "snapshot_at": "2026-03-19T10:00:00+00:00"
+}

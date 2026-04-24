@@ -5,9 +5,51 @@ src/fixdoc.egg-info/
 dist/
 .claude/
 CLAUDE.md
-.gitignore
+
+# Markdown: ignore ad-hoc notes by default, but track the canonical docs
 *.md
-test*
-tests/
+!README.md
+!DEPLOY.md
+!ROADMAP.md
+!prd.md
+!ARCHITECTURE.md
+!Saas.md
+!deep-research-report.md
+!fixdoc-site-improvements.md
+!fixdoc-week-1-coding-deliverables.md
+!backend/README.md
+!frontend/README.md
+!fixdoc-web/README.md
+!github-action/README.md
+!scenarios/RUNBOOK.md
+
+# Working files
 .fixdoc-pending
 scratch/
+
+# Terraform runtime artifacts — provider binaries + state are bulky/sensitive
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfplan
+**/plan.json
+**/plan.bin
+**/*.zip
+
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+!.env.local.example
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Build artifacts
+frontend/.next/
+frontend/node_modules/
+backend/.venv/
+.venv/

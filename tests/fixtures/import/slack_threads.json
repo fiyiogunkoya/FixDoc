@@ -1,0 +1,166 @@
+{
+  "threads": [
+    {
+      "_description": "Thread 1: Complete fix — TF error with fix reply",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709000001.000100",
+        "user": "U001",
+        "text": "Getting error on terraform apply: ```Error: creating Security Group (sg-12345): InvalidGroup.Duplicate: The security group 'web-sg' already exists for VPC 'vpc-abc123'```\nAnyone seen this before?",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U002"]}],
+        "reply_count": 2
+      },
+      "replies": [
+        {
+          "ts": "1709000002.000200",
+          "user": "U002",
+          "text": "Yeah, check if someone created it manually in the console. You'll need to import it:\n```terraform import aws_security_group.web sg-12345```",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U001"]}]
+        },
+        {
+          "ts": "1709000003.000300",
+          "user": "U001",
+          "text": "That worked, thanks!",
+          "reactions": []
+        }
+      ]
+    },
+    {
+      "_description": "Thread 2: Multiple resolution replies — two steps",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709100001.000100",
+        "user": "U001",
+        "text": "Our aws_s3_bucket replication is failing with AccessDenied. The IAM role looks correct but cross-account access isn't working.",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U003"]}],
+        "reply_count": 3
+      },
+      "replies": [
+        {
+          "ts": "1709100002.000200",
+          "user": "U002",
+          "text": "First we need to add the bucket policy on the destination account to allow the source role.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U001"]}]
+        },
+        {
+          "ts": "1709100003.000300",
+          "user": "U003",
+          "text": "Also make sure the KMS key policy in the destination allows the source role to decrypt. That was our issue last time.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U001"]}]
+        },
+        {
+          "ts": "1709100004.000400",
+          "user": "U001",
+          "text": "Both steps fixed it, thanks team!",
+          "reactions": []
+        }
+      ]
+    },
+    {
+      "_description": "Thread 3: Self-solved — same author on root and fix",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709200001.000100",
+        "user": "U001",
+        "text": "Terraform plan keeps showing changes to aws_lambda_function even though nothing changed in code. Phantom diffs on the runtime attribute.",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U001"]}],
+        "reply_count": 1
+      },
+      "replies": [
+        {
+          "ts": "1709200002.000200",
+          "user": "U001",
+          "text": "Figured it out. AWS deprecated python3.8, so the provider is normalizing it to python3.9. Need to update our variable default and add a lifecycle ignore_changes block.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U001"]}]
+        }
+      ]
+    },
+    {
+      "_description": "Thread 4: Issue only, no resolution marker — should be skipped",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709300001.000100",
+        "user": "U002",
+        "text": "Anyone else seeing 503s from the ALB after the latest deploy? Health checks are passing but real traffic is failing.",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U003"]}],
+        "reply_count": 2
+      },
+      "replies": [
+        {
+          "ts": "1709300002.000200",
+          "user": "U003",
+          "text": "Looking into it now...",
+          "reactions": []
+        },
+        {
+          "ts": "1709300003.000300",
+          "user": "U001",
+          "text": "Might be the target group draining settings?",
+          "reactions": []
+        }
+      ]
+    },
+    {
+      "_description": "Thread 5: K8s fix — tests resource detection",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709400001.000100",
+        "user": "U003",
+        "text": "Pod keeps crashing with OOMKilled: ```kubectl get pods\nNAME                     READY   STATUS      RESTARTS\napi-server-7d4f8-x2k    0/1     OOMKilled   5```\nkubernetes resource limits seem too low.",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U001"]}],
+        "reply_count": 1
+      },
+      "replies": [
+        {
+          "ts": "1709400002.000200",
+          "user": "U002",
+          "text": "Increase the memory limit in the deployment manifest. We had to bump from 256Mi to 512Mi for that service. Also check if there's a memory leak with `kubectl top pods`.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U003"]}]
+        }
+      ]
+    },
+    {
+      "_description": "Thread 6: Mrkdwn formatting — mentions, links, bold",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709500001.000100",
+        "user": "U001",
+        "text": "<@U002> can you look at this? *Critical*: the _terraform_ state in <https://console.aws.amazon.com/s3|AWS Console> shows drift on <#C9999999|infra-alerts>",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U002"]}],
+        "reply_count": 1
+      },
+      "replies": [
+        {
+          "ts": "1709500002.000200",
+          "user": "U002",
+          "text": "Run `terraform refresh` then `terraform plan` to reconcile. The drift was from a manual change in the console. See <https://docs.example.com/runbook|the runbook> for the full process.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U001"]}]
+        }
+      ]
+    },
+    {
+      "_description": "Thread 7: Code blocks in both root and resolution",
+      "channel_id": "C0123456",
+      "root": {
+        "ts": "1709600001.000100",
+        "user": "U002",
+        "text": "Getting this error when trying to create an IAM role:\n```Error: creating IAM Role (deploy-role): MalformedPolicyDocument: Has prohibited field Resource\n  Status code: 400```\nThe assume_role_policy looks wrong.",
+        "reactions": [{"name": "red_circle", "count": 1, "users": ["U001"]}],
+        "reply_count": 1
+      },
+      "replies": [
+        {
+          "ts": "1709600002.000200",
+          "user": "U003",
+          "text": "The assume_role_policy (trust policy) should NOT have a Resource field. Replace it with:\n```{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": {\"Service\": \"ec2.amazonaws.com\"},\n    \"Action\": \"sts:AssumeRole\"\n  }]\n}```\nTrust policies use Principal, not Resource.",
+          "reactions": [{"name": "white_check_mark", "count": 1, "users": ["U002"]}]
+        }
+      ]
+    }
+  ],
+  "users": {
+    "U001": {"display_name": "alice"},
+    "U002": {"display_name": "bob"},
+    "U003": {"display_name": "carol"}
+  }
+}

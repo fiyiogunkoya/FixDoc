@@ -1,0 +1,17 @@
+entries:
+  - category: os-upgrade
+    from_version: "debian:11"
+    to_version: "debian:12"
+    display_name: "Debian 11 to 12"
+    breaking_changes: []
+    pre_checks: ["Check libc compatibility"]
+    post_checks: ["Verify node health"]
+    tags: [debian, os-upgrade]
+  - category: ingress-controller
+    from_version: contour
+    to_version: istio
+    display_name: "Contour to Istio"
+    breaking_changes: []
+    pre_checks: ["Install Istio CRDs"]
+    post_checks: ["Verify mesh connectivity"]
+    tags: [ingress, istio]

@@ -1,0 +1,73 @@
+{
+  "issues": [
+    {
+      "key": "PROJ-001",
+      "fields": {
+        "summary": "Terraform IAM role missing assume role policy",
+        "status": {"name": "Done"},
+        "resolution": {"name": "Added trust relationship for EC2 service"},
+        "description": "aws_iam_role resource is missing assume_role_policy\n\nTerraform plan succeeds but apply fails with AccessDenied",
+        "labels": ["iam", "terraform"],
+        "components": [{"name": "Platform Team"}],
+        "comment": {
+          "comments": [
+            {"body": "First investigation comment - not the resolution"},
+            {"body": "Final fix: added trust relationship for ec2.amazonaws.com service principal"}
+          ]
+        }
+      }
+    },
+    {
+      "key": "PROJ-002",
+      "fields": {
+        "summary": "VPC subnet CIDR conflict blocking terraform apply",
+        "status": {"name": "Resolved"},
+        "resolution": {"name": "Changed subnet CIDR to non-overlapping range"},
+        "description": "aws_subnet resource has CIDR overlap with existing subnet",
+        "labels": ["vpc", "terraform"],
+        "components": [],
+        "comment": {"comments": []}
+      }
+    },
+    {
+      "key": "PROJ-003",
+      "fields": {
+        "summary": "Lambda function timeout on cold start",
+        "status": {"name": "In Progress"},
+        "resolution": null,
+        "description": "aws_lambda_function times out after 3 seconds on cold start",
+        "labels": ["lambda"],
+        "components": [{"name": "Backend"}],
+        "comment": {"comments": []}
+      }
+    },
+    {
+      "key": "PROJ-004",
+      "fields": {
+        "summary": "S3 bucket versioning not enabled causing data loss risk",
+        "status": {"name": "Closed"},
+        "resolution": null,
+        "description": "S3 bucket missing versioning configuration",
+        "labels": ["s3"],
+        "components": [],
+        "comment": {
+          "comments": [
+            {"body": "Enabled versioning via aws_s3_bucket_versioning resource in terraform"}
+          ]
+        }
+      }
+    },
+    {
+      "key": "PROJ-005",
+      "fields": {
+        "summary": "Security group allowing 0.0.0.0/0 on port 22",
+        "status": {"name": "Won't Do"},
+        "resolution": {"name": "Won't Do"},
+        "description": "aws_security_group has open SSH access",
+        "labels": [],
+        "components": [],
+        "comment": {"comments": []}
+      }
+    }
+  ]
+}

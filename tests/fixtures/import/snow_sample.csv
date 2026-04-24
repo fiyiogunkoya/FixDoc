@@ -1,0 +1,9 @@
+Number,Short description,Description,State,Close notes,Resolution notes,Work notes,Close code,Assignment group,Category,Subcategory
+INC001,Terraform apply failing with AccessDenied on S3,aws_s3_bucket resource access denied during apply,7,Added s3:PutBucketPolicy permission to deployment role,,,software,Cloud Platform,infrastructure,terraform
+INC002,RDS connection timeout from EC2 instance,Cannot connect to rds endpoint from ec2 instance,7,,Updated security group inbound rules for port 5432,,hardware,Database Team,networking,rds
+INC003,Kubernetes deployment stuck in pending state,Pod pending due to insufficient resources,6,,,Scaled up node group to accommodate resource requests,software,K8s Team,kubernetes,scheduling
+INC004,IAM role missing permissions for Lambda execution,Lambda function cannot write to CloudWatch Logs,7,Added logs:CreateLogGroup and logs:PutLogEvents to execution role,,,software,Security Team,iam,permissions
+INC005,VPC peering not routing traffic correctly,Cross-VPC communication failing,7,Added route table entries for peer VPC CIDR ranges,,,software,Network Team,networking,vpc
+INC006,Terraform plan running but not in progress,Still investigating the issue,1,,,Initial investigation,,DevOps,terraform,state
+INC007,ALB returning 503 on all targets,Targets unhealthy in ALB target group,2,,,Checking health check configuration,,Network Team,networking,alb
+INC008,Service account missing RBAC binding,Pod cannot access Kubernetes API,7,,,,Cloud Platform,kubernetes,rbac

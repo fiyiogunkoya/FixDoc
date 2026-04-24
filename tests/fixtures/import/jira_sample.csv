@@ -1,0 +1,11 @@
+Issue key,Summary,Status,Resolution,Comment,Description,Labels,Components
+PLATFORM-123,EC2 deployment failing with AccessDenied,Done,Added ec2:AuthorizeSecurityGroupIngress to deployment role,,Terraform apply fails with AccessDenied on security group,terraform,platform-team
+PLATFORM-124,S3 bucket policy blocking cross-account access,Closed,,"First comment body
+-----
+Added explicit allow for cross-account role in bucket policy",S3 bucket ARN policy shows AccessDenied,s3 iam,storage
+PLATFORM-125,RDS instance not reachable from Lambda,Resolved,Updated security group to allow port 5432 from Lambda SG,,RDS connectivity error in cloudwatch logs,rds lambda,backend
+PLATFORM-126,Kubernetes pod OOMKilled repeatedly,Done,Increased memory limit from 256Mi to 512Mi,,Pod fails with OOMKilled status,kubernetes,k8s-team
+PLATFORM-127,Terraform state lock not releasing,Closed,Used force-unlock command with lock ID from error,,Error acquiring state lock on S3 backend,terraform,devops
+PLATFORM-128,ALB health check failing intermittently,Done,Changed health check path from / to /health,,ALB target group unhealthy,alb,networking
+PLATFORM-129,Network policy blocking pod egress,Won't Do,,,Wont fix this issue,,
+PLATFORM-130,IAM role missing trust relationship,In Progress,,,Still investigating,,

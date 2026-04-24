@@ -1,0 +1,3 @@
+Number;Short description;Description;State;Close notes;Resolution notes;Work notes;Close code;Assignment group;Category;Subcategory
+INC100;EC2 instance failing IAM role assumption;aws_iam_instance_profile not attached correctly;7;Fixed by attaching instance profile to EC2 launch template;;;software;Platform Team;iam;ec2
+INC101;Terraform state backend not initialized;S3 backend configuration missing region;6;;Added region to backend config block;;software;DevOps;terraform;backend

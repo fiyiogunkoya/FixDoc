@@ -1,0 +1,274 @@
+{
+  "pages": [
+    {
+      "id": "aaa11111-1111-1111-1111-111111111111",
+      "url": "https://www.notion.so/aaa11111",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "IAM role trust policy too permissive"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Section extraction: Fix/Mitigation heading present",
+      "_blocks": [
+        {
+          "type": "heading_2",
+          "heading_2": {"rich_text": [{"plain_text": "Description"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "The aws_iam_role trust policy was open to all principals."}]}
+        },
+        {
+          "type": "heading_2",
+          "heading_2": {"rich_text": [{"plain_text": "Fix/Mitigation"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Restricted the assume_role_policy to only the specific service principal."}]}
+        },
+        {
+          "type": "bulleted_list_item",
+          "bulleted_list_item": {"rich_text": [{"plain_text": "Updated terraform aws_iam_role resource trust policy"}]}
+        },
+        {
+          "type": "heading_2",
+          "heading_2": {"rich_text": [{"plain_text": "Lessons Learned"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Always scope trust policies to minimum required principals."}]}
+        }
+      ]
+    },
+    {
+      "id": "bbb22222-2222-2222-2222-222222222222",
+      "url": "https://www.notion.so/bbb22222",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "RDS connection pool exhausted"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Resolved"}
+        }
+      },
+      "_comment": "Section extraction: Resolution heading",
+      "_blocks": [
+        {
+          "type": "heading_1",
+          "heading_1": {"rich_text": [{"plain_text": "Impact"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "API latency spiked to 30s, users saw 502 errors."}]}
+        },
+        {
+          "type": "heading_1",
+          "heading_1": {"rich_text": [{"plain_text": "Resolution"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Increased max_connections on aws_db_instance from 100 to 500."}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Added PgBouncer sidecar for connection pooling."}]}
+        }
+      ]
+    },
+    {
+      "id": "ccc33333-3333-3333-3333-333333333333",
+      "url": "https://www.notion.so/ccc33333",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "Security group allows 0.0.0.0/0 on port 22"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Full body fallback: no matching section heading",
+      "_blocks": [
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Locked down aws_security_group ingress to VPN CIDR only."}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Verified no open SSH access remains in any region."}]}
+        }
+      ]
+    },
+    {
+      "id": "ddd44444-4444-4444-4444-444444444444",
+      "url": "https://www.notion.so/ddd44444",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "EKS node group scaling issue"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": [{"plain_text": "Set min_size=2 and max_size=10 on the aws_eks_node_group resource."}]
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Property wins: resolution in property, body not needed",
+      "_blocks": [
+        {
+          "type": "heading_2",
+          "heading_2": {"rich_text": [{"plain_text": "Fix/Mitigation"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "This body text should NOT be used since property has resolution"}]}
+        }
+      ]
+    },
+    {
+      "id": "eee55555-5555-5555-5555-555555555555",
+      "url": "https://www.notion.so/eee55555",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "Kubernetes pod CrashLoopBackOff"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "In Progress"}
+        }
+      },
+      "_comment": "Open ticket: should be skipped when closed_only=True",
+      "_blocks": []
+    },
+    {
+      "id": "fff66666-6666-6666-6666-666666666666",
+      "url": "https://www.notion.so/fff66666",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "CloudFront 403 on S3 origin"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Empty resolution AND empty body: should be skipped_missing",
+      "_blocks": []
+    },
+    {
+      "id": "aab77777-7777-7777-7777-777777777777",
+      "url": "https://www.notion.so/aab77777",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "ALB health check failing"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Fix heading with empty content under it: falls back to full body",
+      "_blocks": [
+        {
+          "type": "heading_3",
+          "heading_3": {"rich_text": [{"plain_text": "Fix"}]}
+        },
+        {
+          "type": "heading_3",
+          "heading_3": {"rich_text": [{"plain_text": "Notes"}]}
+        },
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Changed health check path on aws_lb_target_group from / to /health."}]}
+        }
+      ]
+    },
+    {
+      "id": "aac88888-8888-8888-8888-888888888888",
+      "url": "https://www.notion.so/aac88888",
+      "properties": {
+        "Name": {
+          "type": "title",
+          "title": [{"plain_text": "Terraform state lock contention"}]
+        },
+        "Resolution": {
+          "type": "rich_text",
+          "rich_text": []
+        },
+        "Status": {
+          "type": "status",
+          "status": {"name": "Done"}
+        }
+      },
+      "_comment": "Blocks with no headings at all: full body fallback",
+      "_blocks": [
+        {
+          "type": "paragraph",
+          "paragraph": {"rich_text": [{"plain_text": "Cleared stale DynamoDB lock and re-ran terraform apply."}]}
+        },
+        {
+          "type": "bulleted_list_item",
+          "bulleted_list_item": {"rich_text": [{"plain_text": "Added -lock-timeout=5m to CI pipeline terraform commands."}]}
+        }
+      ]
+    },
+    {
+      "id": "aad99999-9999-9999-9999-999999999999",
+      "url": "https://www.notion.so/aad99999",
+      "properties": {
+        "Incident Title": {
+          "type": "title",
+          "title": [{"plain_text": "Custom fields: SNS topic misconfigured"}]
+        },
+        "Action Taken": {
+          "type": "rich_text",
+          "rich_text": [{"plain_text": "Updated aws_sns_topic policy and redeployed with terraform apply."}]
+        },
+        "Progress": {
+          "type": "select",
+          "select": {"name": "Shipped"}
+        }
+      },
+      "_comment": "Custom field overrides test",
+      "_blocks": []
+    }
+  ]
+}

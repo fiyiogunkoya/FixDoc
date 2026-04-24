@@ -15,5 +15,28 @@ from .resolve import resolve
 from .outcome import outcome
 from .k8s_cmd import k8s_group
 from .dedup import deduplicate
+from .login import login, logout
+from .team import team
 
-__all__ = ["capture", "search", "show", "analyze", "list_fixes", "stats", "delete", "edit", "sync", "demo", "watch", "pending", "import_group", "resolve", "outcome", "k8s_group", "deduplicate"]
+__all__ = [
+    "capture",
+    "search",
+    "show",
+    "analyze",
+    "list_fixes",
+    "stats",
+    "delete",
+    "edit",
+    "sync",
+    "demo",
+    "watch",
+    "pending",
+    "import_group",
+    "resolve",
+    "outcome",
+    "k8s_group",
+    "deduplicate",
+    "login",
+    "logout",
+    "team",
+]

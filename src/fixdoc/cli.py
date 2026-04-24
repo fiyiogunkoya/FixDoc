@@ -3,7 +3,28 @@
 import click
 
 from .config import ConfigManager, resolve_base_path
-from .commands import capture, search, show, analyze, list_fixes, stats, delete, edit, sync, demo, watch, pending, import_group, resolve, outcome, k8s_group, deduplicate
+from .commands import (
+    analyze,
+    capture,
+    deduplicate,
+    delete,
+    demo,
+    edit,
+    import_group,
+    k8s_group,
+    list_fixes,
+    login,
+    logout,
+    outcome,
+    pending,
+    resolve,
+    search,
+    show,
+    stats,
+    sync,
+    team,
+    watch,
+)
 
 
 def create_cli() -> click.Group:
@@ -19,7 +40,6 @@ def create_cli() -> click.Group:
         ctx.obj["config_manager"] = config_manager
         ctx.obj["config"] = config_manager.load()
 
-    # group commands
     cli.add_command(capture)
     cli.add_command(search)
     cli.add_command(show)
@@ -37,5 +57,8 @@ def create_cli() -> click.Group:
     cli.add_command(outcome)
     cli.add_command(k8s_group)
     cli.add_command(deduplicate)
+    cli.add_command(login)
+    cli.add_command(logout)
+    cli.add_command(team)
 
     return cli

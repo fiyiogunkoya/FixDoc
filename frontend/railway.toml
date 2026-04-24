@@ -1,0 +1,17 @@
+# Railway config for the FixDoc Next.js frontend.
+#
+# Service-local — Dockerfile expects repo-root context (COPY frontend/…), so
+# configure the Railway service with:
+#   Root directory:    /
+#   Dockerfile path:   frontend/Dockerfile
+#   Watch paths:       frontend/**
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "frontend/Dockerfile"
+watchPatterns = ["frontend/**"]
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

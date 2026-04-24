@@ -1,0 +1,17 @@
+category: os-upgrade
+from_version: "azurelinux:2.0"
+to_version: "azurelinux:3.0"
+display_name: "Azure Linux 2.0 to 3.0 (Custom Override)"
+breaking_changes:
+  - id: custom-override-glibc
+    title: "Custom glibc warning"
+    severity: critical
+    description: "Team-specific glibc migration notes."
+    consequence: "Pods using old glibc may crash."
+    detection_hints: []
+    tags: [glibc, custom]
+pre_checks:
+  - "Run team-specific glibc audit"
+post_checks:
+  - "Check custom monitoring dashboards"
+tags: [azurelinux, os-upgrade, custom]

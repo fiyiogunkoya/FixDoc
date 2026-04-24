@@ -1,0 +1,2 @@
+﻿Issue key,Summary,Status,Resolution,Description,Labels,Components
+BOM-001,Test BOM handling with terraform,Done,Fixed by updating provider version,Provider version mismatch in terraform init,terraform,devops

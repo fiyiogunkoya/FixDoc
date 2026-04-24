@@ -1,0 +1,21 @@
+category: os-upgrade
+from_version: "ubuntu:22.04"
+to_version: "ubuntu:24.04"
+display_name: "Ubuntu 22.04 to 24.04"
+breaking_changes:
+  - id: ubuntu-2404-systemd
+    title: "systemd 253 to 255"
+    severity: high
+    description: "systemd 255 changes default unit behavior."
+    consequence: "DaemonSets interacting with host systemd may break."
+    detection_hints:
+      - field: volumes
+        pattern: "/run/systemd"
+        reason: "Workload mounts host systemd paths"
+        impact: "Unit behavior may change"
+    tags: [systemd, ubuntu]
+pre_checks:
+  - "Check systemd-dependent DaemonSets"
+post_checks:
+  - "Verify node health after upgrade"
+tags: [ubuntu, os-upgrade]
