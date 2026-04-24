@@ -13,32 +13,48 @@ export default function SettingsPage() {
   const team = teams?.[0];
 
   return (
-    <div className="max-w-2xl space-y-10">
+    <div className="max-w-3xl space-y-12">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Settings</h1>
+        <span className="eyebrow mb-2">
+          <span className="pulse-dot" />
+          configuration
+        </span>
+        <h1 className="font-display text-[2rem] leading-tight">Settings</h1>
       </motion.div>
 
       <section>
         <header className="mb-4">
-          <h2 className="font-display text-base font-semibold">Profile</h2>
-          <p className="text-xs text-fg-muted">Managed by Clerk — click your avatar to edit.</p>
+          <span className="eyebrow mb-1">profile</span>
+          <p className="font-mono text-[12px] text-term-comment">
+            managed by clerk — click the avatar (top right) to edit
+          </p>
         </header>
-        <div className="rounded-xl border border-border bg-surface p-5 space-y-3">
-          <Field label="Name" value={user?.fullName || user?.username || "—"} />
-          <Field label="Email" value={user?.primaryEmailAddress?.emailAddress || "—"} />
-          {team && <Field label="Team" value={`${team.name} (${team.slug})`} />}
+
+        <div className="terminal">
+          <div className="term-hdr">
+            <span className="t-dot r" />
+            <span className="t-dot y" />
+            <span className="t-dot g" />
+            <span className="t-lbl">$ whoami</span>
+          </div>
+          <div className="p-5 space-y-2 font-mono text-[13px]">
+            <Field k="user" v={user?.fullName || user?.username || "—"} />
+            <Field k="email" v={user?.primaryEmailAddress?.emailAddress || "—"} />
+            {team && <Field k="team" v={`${team.name} (${team.slug})`} />}
+          </div>
         </div>
       </section>
 
       <section>
         <header className="mb-4">
-          <h2 className="font-display text-base font-semibold">CLI access</h2>
-          <p className="text-xs text-fg-muted">
-            Generate an API key to connect <code className="font-mono text-fg">fixdoc</code> on your machine.
+          <span className="eyebrow mb-1">cli access</span>
+          <p className="font-mono text-[12px] text-term-comment">
+            generate a team-scoped api key · paste into{" "}
+            <span className="text-brand">fixdoc login</span>
           </p>
         </header>
         <ApiKeyCreate teamId={team?.id} />
@@ -50,11 +66,11 @@ export default function SettingsPage() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-medium uppercase tracking-wider text-fg-dim">{label}</span>
-      <span className="text-sm text-fg">{value}</span>
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-fg-dim uppercase text-[10px] tracking-wider">{k}</span>
+      <span className="text-fg">{v}</span>
     </div>
   );
 }

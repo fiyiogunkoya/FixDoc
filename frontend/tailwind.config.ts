@@ -1,78 +1,130 @@
 import type { Config } from "tailwindcss";
 
+/* Design tokens mirror `fixdoc-web/index.html` verbatim. One source of truth
+ * across marketing site and app — signing in from the landing page should
+ * feel like stepping through the same door, not walking into another product. */
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // Surface palette — tuned for OLED-black dashboards (Linear/Vercel vibe)
-        bg: "#0a0a0b",
+        bg: "#0a0a0a",
         surface: {
-          DEFAULT: "#111113",
-          raised: "#16161a",
-          hover: "#1c1c21",
+          DEFAULT: "#111111",
+          raised: "#161616",
+          deep: "#0c0c0c",     // terminal inner panes
+          hover: "#1c1c1c",
         },
         border: {
-          DEFAULT: "#1f1f24",
-          subtle: "#17171b",
-          strong: "#2a2a31",
+          DEFAULT: "rgba(255,255,255,0.07)",
+          subtle: "rgba(255,255,255,0.04)",
+          strong: "rgba(255,255,255,0.12)",
+          phosphor: "rgba(0,255,136,0.2)", // green-tinged border on hover
         },
         fg: {
-          DEFAULT: "#ededed",
-          muted: "#a8a8ad",
-          dim: "#6e6e74",
+          DEFAULT: "#f0f0f0",     // tx-1 — primary text
+          muted: "#888888",       // tx-2 — secondary
+          dim: "#444444",         // tx-3 — tertiary / timestamps
         },
-        // Brand — violet primary, cyan secondary, matches fixdoc-web
+        // Terminal phosphor palette
         brand: {
-          DEFAULT: "#8b5cf6",
-          muted: "#6d4fd1",
-          glow: "rgba(139, 92, 246, 0.35)",
+          DEFAULT: "#00ff88",
+          muted: "#00cc6e",
+          glow: "rgba(0, 255, 136, 0.35)",
         },
         accent: {
-          cyan: "#06b6d4",
-          emerald: "#10b981",
+          cyan: "#00d4ff",
           amber: "#f59e0b",
-          rose: "#ef4444",
+          rose: "#ff4d6d",        // red (terminal-error)
+          emerald: "#00ff88",     // alias, for older component imports
+        },
+        // Syntax hint colors used inside terminal panes
+        term: {
+          prompt: "#00ff88",      // tp
+          comment: "#444444",     // tc
+          output: "#888888",      // to
+          error: "#ff4d6d",       // te
+          success: "#00ff88",     // ts
+          info: "#00d4ff",        // ti
+          tag: "#f59e0b",         // tt
+          write: "#f0f0f0",       // tw
         },
       },
       fontFamily: {
-        display: ["var(--font-bricolage)", "ui-sans-serif", "system-ui"],
-        sans: ["var(--font-dm-sans)", "ui-sans-serif", "system-ui"],
+        // Inter for UI (not Bricolage) — matches marketing site
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
+        display: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
         mono: ["var(--font-jetbrains)", "ui-monospace", "SFMono-Regular"],
       },
-      boxShadow: {
-        // Layered depth stack — 4 shadows for realism (see Stripe/Linear)
-        deep:
-          "0 1px 2px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.25), 0 16px 32px rgba(0,0,0,0.2), 0 32px 64px rgba(0,0,0,0.15)",
-        glow: "0 0 40px rgba(139, 92, 246, 0.25)",
-        "glow-soft": "0 0 30px rgba(139, 92, 246, 0.15)",
+      fontWeight: {
+        // Expose the full Inter weight range used in the marketing site
+        heavy: "800",
+        black: "900",
       },
-      backgroundImage: {
-        // Mesh gradient — ambient, never central
-        "mesh-dark":
-          "radial-gradient(ellipse 60% 40% at 15% 20%, rgba(139,92,246,0.12) 0%, transparent 60%), radial-gradient(ellipse 50% 50% at 85% 10%, rgba(6,182,212,0.08) 0%, transparent 55%), radial-gradient(ellipse 70% 50% at 50% 100%, rgba(139,92,246,0.06) 0%, transparent 60%)",
-        "noise": "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22/%3E%3CfeColorMatrix values=%220 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0%22/%3E%3C/filter%3E%3Crect width=%22200%22 height=%22200%22 filter=%22url(%23n)%22/%3E%3C/svg%3E')",
+      letterSpacing: {
+        "tightest": "-0.03em",
+        "tight-display": "-0.02em",
+      },
+      boxShadow: {
+        // Four-layer stack — copied from marketing --shadow-card
+        card:
+          "0 1px 2px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.12), 0 16px 32px rgba(0,0,0,0.1), 0 32px 64px rgba(0,0,0,0.08)",
+        lift:
+          "0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4), 0 32px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03)",
+        glow: "0 4px 16px rgba(0,255,136,0.3)",
+        "glow-soft": "0 0 24px rgba(0,255,136,0.15)",
+        "glow-hard": "0 0 60px rgba(0,255,136,0.45), 0 0 16px rgba(0,255,136,0.25)",
       },
       keyframes: {
+        fadeUp: {
+          "0%": { opacity: "0", transform: "translateY(24px)", filter: "blur(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)", filter: "blur(0)" },
+        },
+        pulse_dot: {
+          "0%,100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.4", transform: "scale(0.7)" },
+        },
+        blink: {
+          "0%,100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
         shimmer: {
           "0%": { backgroundPosition: "200% 0" },
           "100%": { backgroundPosition: "-200% 0" },
         },
-        "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+        sweep: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
         },
-        pulse_ring: {
-          "0%": { boxShadow: "0 0 0 0 rgba(139, 92, 246, 0.4)" },
-          "70%": { boxShadow: "0 0 0 10px rgba(139, 92, 246, 0)" },
-          "100%": { boxShadow: "0 0 0 0 rgba(139, 92, 246, 0)" },
+        floatY: {
+          "0%,100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
+        scanline: {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100%)" },
         },
       },
       animation: {
+        "fade-up": "fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both",
+        "pulse-dot": "pulse_dot 2s ease infinite",
+        blink: "blink 1s step-end infinite",
         shimmer: "shimmer 3s linear infinite",
-        "fade-up": "fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
-        "pulse-ring": "pulse_ring 2s infinite",
+        sweep: "sweep 0.4s ease forwards",
+        "float-y": "floatY 4s ease-in-out infinite",
+        scanline: "scanline 6s linear infinite",
+      },
+      backgroundImage: {
+        "phosphor-gradient":
+          "linear-gradient(135deg, #00ff88 0%, #00d4ff 100%)",
+        "hero-halo":
+          "radial-gradient(ellipse 60% 50% at 30% 20%, rgba(0,255,136,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 0%, rgba(0,212,255,0.06) 0%, transparent 60%)",
+        grid:
+          "linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        grid: "32px 32px",
       },
     },
   },

@@ -2,40 +2,52 @@
 
 import { UserButton } from "@clerk/nextjs";
 import { Search, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { TeamSwitcher } from "./TeamSwitcher";
 
 export function Header() {
+  const router = useRouter();
+
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="flex h-14 items-center justify-between gap-4 px-5">
-        <div className="flex items-center gap-3 flex-1 max-w-xl">
+        <div className="flex items-center gap-3 flex-1 max-w-2xl">
           <TeamSwitcher />
 
-          {/* Command-palette-style quick search — activates full UI later.
-              For Phase 0 this is visual affordance only; /fixes page has real search. */}
+          {/* Shell-prompt search — looks like a terminal rather than a chatbot
+              textbox. Press ⌘K to open fuzzy search. `/fixes` is the Phase 0
+              page; global command palette ships in Phase 1. */}
           <button
-            className="group hidden md:flex items-center gap-2 flex-1 px-3 py-1.5 rounded-md border border-border bg-surface-raised/60 text-fg-muted text-sm transition-colors hover:bg-surface-hover hover:border-border-strong"
-            onClick={() => (window.location.href = "/fixes")}
+            onClick={() => router.push("/fixes")}
+            className="group hidden md:flex items-center gap-2 flex-1 max-w-[520px] px-3 py-1.5 rounded-md border border-border bg-surface/60 text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
           >
-            <Search className="h-3.5 w-3.5" strokeWidth={2} />
-            <span className="flex-1 text-left">Search fixes…</span>
-            <kbd className="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border text-[10px] font-mono text-fg-dim">
+            <span className="font-mono text-xs text-brand">$</span>
+            <Search className="h-3.5 w-3.5 text-fg-dim" strokeWidth={2} />
+            <span className="font-mono text-[13px] flex-1 text-left tracking-tight">
+              search fixes…
+            </span>
+            <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border text-[10px] font-mono text-fg-dim">
               ⌘K
             </kbd>
           </button>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Primary CTA — phosphor fill, sweep on hover, spring press */}
           <button
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-brand text-white text-sm font-medium shadow-glow-soft transition-all duration-150 hover:bg-brand/90 active:scale-[0.98]"
+            onClick={() => router.push("/fixes")}
+            className="cta-sweep hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-brand text-bg font-mono text-[12px] font-bold transition-all duration-150 hover:shadow-glow active:scale-[0.97]"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-            New fix
+            new fix
           </button>
+
           <UserButton
             appearance={{
-              elements: { avatarBox: "h-7 w-7 ring-1 ring-border" },
+              elements: {
+                avatarBox: "h-7 w-7 ring-1 ring-border hover:ring-brand/60 transition-all",
+              },
             }}
           />
         </div>

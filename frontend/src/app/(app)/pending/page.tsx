@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { usePending } from "@/lib/hooks/usePending";
@@ -13,56 +13,108 @@ export default function PendingPage() {
   const { data: entries, isLoading } = usePending(teamId);
 
   const worthy = (entries ?? []).filter((e) => e.worthiness === "memory_worthy");
-  const selfExplanatory = (entries ?? []).filter((e) => e.worthiness === "self_explanatory");
+  const selfEx = (entries ?? []).filter((e) => e.worthiness === "self_explanatory");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Pending errors</h1>
-        <p className="mt-1 text-sm text-fg-muted">
-          Errors captured by <code className="font-mono text-fg">fixdoc watch</code> that haven't been resolved yet.
+        <span className="eyebrow mb-2">
+          <span className="pulse-dot" />
+          deferred errors
+        </span>
+        <h1 className="font-display text-[2rem] leading-tight">
+          Pending <span className="phosphor-text">· {(entries ?? []).length}</span>
+        </h1>
+        <p className="mt-2 font-mono text-[12px] text-fg-muted">
+          captured by <span className="text-brand">$ fixdoc watch</span> · awaiting
+          resolution
         </p>
       </div>
 
       {isLoading && (
-        <div className="rounded-xl border border-border bg-surface px-5 py-8 text-center text-sm text-fg-muted">
-          Loading…
+        <div className="terminal">
+          <div className="term-hdr">
+            <span className="t-dot r" />
+            <span className="t-dot y" />
+            <span className="t-dot g" />
+            <span className="t-lbl">$ fd pending</span>
+          </div>
+          <div className="term-body text-center">
+            <span className="tc">→ scanning …</span>
+          </div>
         </div>
       )}
 
-      {!isLoading && worthy.length === 0 && selfExplanatory.length === 0 && (
-        <div className="rounded-xl border border-border bg-surface px-5 py-16 text-center">
-          <CheckCircle2 className="mx-auto h-8 w-8 text-accent-emerald" strokeWidth={1.5} />
-          <div className="mt-3 text-sm text-fg">No pending errors.</div>
-          <div className="mt-1 text-xs text-fg-dim">All caught up.</div>
+      {!isLoading && worthy.length === 0 && selfEx.length === 0 && (
+        <div className="terminal">
+          <div className="term-hdr">
+            <span className="t-dot r" />
+            <span className="t-dot y" />
+            <span className="t-dot g" />
+            <span className="t-lbl">$ fd pending</span>
+          </div>
+          <div className="term-body text-center py-10">
+            <CheckCircle2
+              className="mx-auto h-8 w-8 text-brand"
+              strokeWidth={1.5}
+            />
+            <div className="mt-3 text-fg">
+              <span className="ts">✓</span>{" "}
+              <span className="tw">no pending errors.</span>
+            </div>
+            <div className="tc mt-1 text-[12px]">all caught up</div>
+          </div>
         </div>
       )}
 
       {worthy.length > 0 && (
         <section>
-          <h2 className="text-xs font-medium uppercase tracking-wider text-fg-dim mb-3 flex items-center gap-2">
-            <AlertCircle className="h-3.5 w-3.5 text-accent-amber" strokeWidth={2} />
-            Memory-worthy · {worthy.length}
-          </h2>
-          <ul className="space-y-2">
-            {worthy.map((entry, i) => (
-              <PendingRow key={entry.id} entry={entry} delay={i * 0.04} />
-            ))}
-          </ul>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="eyebrow">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-amber" />
+              memory-worthy · {worthy.length}
+            </span>
+            <span className="font-mono text-[11px] text-fg-dim">
+              will promote to fix on next resolve
+            </span>
+          </div>
+
+          <div className="terminal">
+            <div className="term-hdr">
+              <span className="t-dot r" />
+              <span className="t-dot y" />
+              <span className="t-dot g" />
+              <span className="t-lbl">$ fd pending --memory-worthy</span>
+            </div>
+            <ul className="divide-y divide-border-subtle">
+              {worthy.map((e, i) => (
+                <PendingRow key={e.id} entry={e} delay={i * 0.04} severity="amber" />
+              ))}
+            </ul>
+          </div>
         </section>
       )}
 
-      {selfExplanatory.length > 0 && (
+      {selfEx.length > 0 && (
         <section>
-          <h2 className="text-xs font-medium uppercase tracking-wider text-fg-dim mb-3 flex items-center gap-2">
-            <Info className="h-3.5 w-3.5 text-fg-dim" strokeWidth={2} />
-            Self-explanatory · {selfExplanatory.length}
-          </h2>
-          <ul className="space-y-2">
-            {selfExplanatory.map((entry, i) => (
-              <PendingRow key={entry.id} entry={entry} delay={i * 0.02} muted />
-            ))}
-          </ul>
+          <span className="eyebrow mb-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-fg-dim" />
+            self-explanatory · {selfEx.length}
+          </span>
+
+          <div className="terminal opacity-80">
+            <div className="term-hdr">
+              <span className="t-dot r" />
+              <span className="t-dot y" />
+              <span className="t-dot g" />
+              <span className="t-lbl">$ fd pending --all --self-explanatory</span>
+            </div>
+            <ul className="divide-y divide-border-subtle">
+              {selfEx.map((e, i) => (
+                <PendingRow key={e.id} entry={e} delay={i * 0.02} severity="dim" />
+              ))}
+            </ul>
+          </div>
         </section>
       )}
     </div>
@@ -72,7 +124,7 @@ export default function PendingPage() {
 function PendingRow({
   entry,
   delay,
-  muted,
+  severity,
 }: {
   entry: {
     id: string;
@@ -83,42 +135,44 @@ function PendingRow({
     created_at: string;
   };
   delay: number;
-  muted?: boolean;
+  severity: "amber" | "dim";
 }) {
+  const prefixColor =
+    severity === "amber" ? "text-accent-amber" : "text-fg-dim";
+
   return (
     <motion.li
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: -4 }}
+      animate={{ opacity: 1, x: 0 }}
       transition={{ delay, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(
-        "rounded-lg border bg-surface px-4 py-3 transition-colors",
-        muted ? "border-border-subtle" : "border-border hover:border-border-strong",
-      )}
+      className="row-sweep relative px-5 py-3.5 transition-colors hover:bg-surface/40"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-4 font-mono text-[13px]">
+        <span className="text-fg-dim shrink-0">
+          [{new Date(entry.created_at).toISOString().slice(0, 10)}]
+        </span>
+        <span className={cn("shrink-0 font-bold", prefixColor)}>⚠</span>
+
         <div className="min-w-0 flex-1">
-          <div className={cn("text-sm truncate", muted ? "text-fg-muted" : "text-fg")}>
+          <div
+            className={cn(
+              "truncate",
+              severity === "dim" ? "text-fg-muted" : "text-fg",
+            )}
+          >
             {entry.short_message}
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[11px] font-mono text-fg-dim">
+          <div className="mt-1 flex items-center gap-3 text-[11px] text-term-comment">
             {entry.error_code && (
-              <span className="px-1 py-0.5 rounded bg-surface-raised border border-border">
-                {entry.error_code}
-              </span>
+              <span className="text-term-tag">[{entry.error_code}]</span>
             )}
-            {entry.resource_address && (
-              <span className="truncate">{entry.resource_address}</span>
-            )}
+            {entry.resource_address && <span>{entry.resource_address}</span>}
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide text-fg-dim border border-border bg-surface-raised">
-            {entry.error_type}
-          </span>
-          <div className="mt-1 text-xs text-fg-dim tabular-nums">
-            {new Date(entry.created_at).toLocaleDateString()}
-          </div>
-        </div>
+
+        <span className="shrink-0 text-[10px] uppercase tracking-wider text-term-comment">
+          {entry.error_type}
+        </span>
       </div>
     </motion.li>
   );

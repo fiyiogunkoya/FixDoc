@@ -11,59 +11,77 @@ export default function TeamSettingsPage() {
   const { data: members } = useTeamMembers(team?.id);
 
   return (
-    <div className="max-w-2xl space-y-10">
+    <div className="max-w-3xl space-y-10">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Team</h1>
+        <span className="eyebrow mb-2">
+          <span className="pulse-dot" />
+          team
+        </span>
+        <h1 className="font-display text-[2rem] leading-tight">
+          {team ? team.name : "Team"}
+        </h1>
         {team && (
-          <p className="mt-1 text-sm text-fg-muted">
-            {team.name} · {team.slug}
+          <p className="mt-1 font-mono text-[12px] text-fg-muted">
+            slug/<span className="text-fg">{team.slug}</span>
           </p>
         )}
       </motion.div>
 
       <section>
         <header className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-base font-semibold">Members</h2>
-            <p className="text-xs text-fg-muted">
-              {members?.length ?? 0}{" "}
-              {members?.length === 1 ? "member" : "members"}
-            </p>
-          </div>
+          <span className="eyebrow">
+            members · {members?.length ?? 0}
+          </span>
           <button
             disabled
             title="Coming in Phase 1"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-surface-raised text-sm text-fg-muted cursor-not-allowed opacity-60"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-surface/60 font-mono text-[12px] text-fg-muted cursor-not-allowed opacity-60"
           >
             <Users className="h-3.5 w-3.5" strokeWidth={2} />
-            Invite
+            invite
+            <span className="ml-1 px-1 rounded bg-border text-[9px] uppercase tracking-wider">
+              phase 1
+            </span>
           </button>
         </header>
 
-        <div className="rounded-xl border border-border bg-surface overflow-hidden divide-y divide-border">
-          {(members ?? []).map((m, i) => (
-            <motion.div
-              key={m.user_id}
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.3 }}
-              className="flex items-center justify-between px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="text-sm text-fg font-mono truncate">{m.user_id.slice(0, 8)}</div>
-                <div className="text-[11px] text-fg-dim">
-                  joined {new Date(m.joined_at).toLocaleDateString()}
+        <div className="terminal">
+          <div className="term-hdr">
+            <span className="t-dot r" />
+            <span className="t-dot y" />
+            <span className="t-dot g" />
+            <span className="t-lbl">$ fd team members</span>
+          </div>
+          <ul className="divide-y divide-border-subtle">
+            {(members ?? []).map((m, i) => (
+              <motion.li
+                key={m.user_id}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04, duration: 0.3 }}
+                className="flex items-center justify-between px-4 py-3"
+              >
+                <div className="min-w-0 font-mono text-[12px]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-brand">●</span>
+                    <span className="text-fg truncate">
+                      user_{m.user_id.slice(0, 8)}
+                    </span>
+                  </div>
+                  <div className="pl-4 mt-0.5 text-[11px] text-term-comment">
+                    joined {new Date(m.joined_at).toLocaleDateString()}
+                  </div>
                 </div>
-              </div>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide border border-border bg-surface-raised text-fg-muted">
-                {m.role}
-              </span>
-            </motion.div>
-          ))}
+                <span className="font-mono text-[10px] uppercase tracking-wider text-term-comment px-1.5 py-0.5 rounded border border-border bg-surface">
+                  {m.role}
+                </span>
+              </motion.li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>
