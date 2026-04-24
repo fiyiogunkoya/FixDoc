@@ -47,6 +47,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 ENV PORT=3000
+# Next.js standalone server reads HOSTNAME from env — default binds to
+# localhost inside Docker, which Railway's edge can't reach. Force 0.0.0.0.
+ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
 CMD ["node", "server.js"]
