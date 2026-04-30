@@ -43,12 +43,15 @@ _jwks_cache = _JWKSCache()
 def verify_clerk_jwt(token: str, settings: Settings) -> dict[str, Any]:
     """Verify a Clerk-issued JWT against Clerk's JWKS.
 
-    Returns the decoded claims dict. Raises HTTPException(401) on failure.
+    Returns the decoded claims dict. Raises HTTPException(401) on any failure
+    that could plausibly be a client-side problem (bad token, expired,
+    network blip fetching JWKS). Only returns 500 when the server is
+    genuinely misconfigured (no JWKS URL set).
     """
     if not settings.clerk_jwks_url:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Clerk JWKS URL not configured",
+            detail="Clerk JWKS URL not configured (FIXDOC_CLERK_JWKS_URL)",
         )
     try:
         jwks_client = _jwks_cache.get_client(settings.clerk_jwks_url)
@@ -63,6 +66,14 @@ def verify_clerk_jwt(token: str, settings: Settings) -> dict[str, Any]:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired")
     except jwt.PyJWTError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid token: {exc}")
+    except Exception as exc:  # pragma: no cover — defense against surprises
+        # PyJWKClient raises urllib errors on JWKS fetch failures, which are
+        # not PyJWTError subclasses. Catch them so we don't 500 on transient
+        # network issues — surface as 401 with a useful detail.
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            f"Token verification failed: {type(exc).__name__}: {exc}",
+        )
 
     if claims.get("iss", "").rstrip("/").split("/")[-1] and claims.get("exp", 0) < time.time():
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired")
@@ -86,7 +97,13 @@ def get_current_user(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> User:
-    """Resolve the current user via Clerk JWT.
+    """Resolve the current user via Clerk JWT, self-provisioning if needed.
+
+    The Clerk webhook normally creates the `users` row at signup, but if the
+    webhook secret was misconfigured during the signup window the row is
+    missing. Rather than 404 the user out of every authenticated endpoint
+    until they re-sign-up, we provision lazily on the first authenticated
+    request using whatever claims Clerk sent (sub, email, name).
 
     Does NOT accept API keys — those are team-scoped and use `get_api_key_team()`.
     """
@@ -101,10 +118,37 @@ def get_current_user(
 
     user = db.query(User).filter(User.clerk_user_id == clerk_user_id).one_or_none()
     if user is None:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            "User not provisioned yet — Clerk webhook may not have fired",
+        email = (
+            claims.get("email")
+            or claims.get("primary_email_address")
+            or f"{clerk_user_id}@unknown.local"
         )
+        display_name = (
+            claims.get("name")
+            or claims.get("username")
+            or " ".join(filter(None, [claims.get("first_name"), claims.get("last_name")])).strip()
+            or email.split("@")[0]
+        )
+        user = User(
+            clerk_user_id=clerk_user_id,
+            email=email,
+            display_name=display_name,
+        )
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            # Race: another request may have provisioned while we were committing.
+            db.rollback()
+            user = (
+                db.query(User)
+                .filter(User.clerk_user_id == clerk_user_id)
+                .one_or_none()
+            )
+            if user is None:
+                raise
+
     return user
 
 
