@@ -6,12 +6,10 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
   },
-  async rewrites() {
-    const apiUrl = process.env.FIXDOC_API_URL || "http://localhost:8000";
-    return [
-      { source: "/api/proxy/:path*", destination: `${apiUrl}/:path*` },
-    ];
-  },
+  // Backend is hit directly from the browser via NEXT_PUBLIC_FIXDOC_API_URL.
+  // No proxy rewrite — see frontend/src/lib/api.ts for rationale (TL;DR:
+  // Railway service-to-service via public domain runs into Cloudflare
+  // hairpin and the backend URL is already public anyway).
 };
 
 export default nextConfig;
