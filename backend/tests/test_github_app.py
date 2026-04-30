@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from app.integrations.github_app import (
+    _normalize_pem,
     mint_app_jwt,
     upsert_pr_comment,
     verify_webhook_signature,
@@ -46,6 +47,24 @@ class TestMintAppJwt:
     def test_invalid_key_raises(self):
         with pytest.raises(Exception):
             mint_app_jwt("id", "not a key")
+
+    def test_accepts_pem_with_escaped_newlines(self, rsa_keypair):
+        private, public = rsa_keypair
+        # Simulate a CI tool that flattened the PEM to a single line
+        flattened = private.replace("\n", "\\n")
+        assert "\n" not in flattened and "\\n" in flattened
+        token = mint_app_jwt("12345", flattened)
+        claims = jwt.decode(token, public, algorithms=["RS256"])
+        assert claims["iss"] == "12345"
+
+    def test_normalize_pem_passes_through_real_newlines(self):
+        with_newlines = "-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----"
+        assert _normalize_pem(with_newlines) == with_newlines
+
+    def test_normalize_pem_unescapes_when_only_escapes_present(self):
+        flat = "-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----"
+        out = _normalize_pem(flat)
+        assert "\n" in out and "\\n" not in out
 
 
 class TestVerifyWebhookSignature:

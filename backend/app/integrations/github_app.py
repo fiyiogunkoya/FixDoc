@@ -25,6 +25,19 @@ from app.config import Settings
 GITHUB_API = "https://api.github.com"
 
 
+def _normalize_pem(pem: str) -> str:
+    """Accept either real-newline PEM or single-line-with-`\\n` escapes.
+
+    Railway's env editor preserves newlines when pasted directly, but many
+    CI tools serialize multi-line values with literal `\\n` characters. We
+    handle both so the operator doesn't have to think about which form
+    they pasted.
+    """
+    if "\\n" in pem and "\n" not in pem:
+        return pem.replace("\\n", "\n")
+    return pem
+
+
 def mint_app_jwt(app_id: str, private_key_pem: str) -> str:
     """Create a 10-minute App JWT signed with the App's RSA private key."""
     now = int(time.time())
@@ -33,7 +46,7 @@ def mint_app_jwt(app_id: str, private_key_pem: str) -> str:
         "exp": now + 9 * 60,  # max 10 min; 9 keeps margin
         "iss": app_id,
     }
-    return jwt.encode(payload, private_key_pem, algorithm="RS256")
+    return jwt.encode(payload, _normalize_pem(private_key_pem), algorithm="RS256")
 
 
 def installation_token(
