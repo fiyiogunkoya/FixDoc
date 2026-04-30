@@ -6,13 +6,14 @@ import { Database, Clock, GitPullRequest, Users } from "lucide-react";
 import Link from "next/link";
 
 import { StatCard } from "@/components/dashboard/StatCard";
+import { CreateTeamForm } from "@/components/onboarding/CreateTeamForm";
 import { useFixes } from "@/lib/hooks/useFixes";
 import { usePending } from "@/lib/hooks/usePending";
 import { useTeamMembers, useTeams } from "@/lib/hooks/useTeams";
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { data: teams } = useTeams();
+  const { data: teams, isLoading: teamsLoading } = useTeams();
   const team = teams?.[0];
   const teamId = team?.id;
 
@@ -24,6 +25,55 @@ export default function DashboardPage() {
   const pendingCount = (pending ?? []).filter((p) => p.worthiness === "memory_worthy").length;
   const memberCount = members?.length ?? 0;
   const firstName = user?.firstName || user?.username || "engineer";
+
+  // First-run state — no team yet, render the onboarding hero instead of the
+  // dashboard. Once the team is created, useTeams cache invalidates and the
+  // full dashboard renders on the same render pass.
+  if (!teamsLoading && (!teams || teams.length === 0)) {
+    return (
+      <div className="space-y-10">
+        <section className="relative -mx-5 md:-mx-8 px-5 md:px-8 py-12 md:py-16 border-b border-border overflow-hidden">
+          <div aria-hidden className="absolute inset-0 halo-bg pointer-events-none" />
+          <div aria-hidden className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative eyebrow mb-5"
+          >
+            <span className="pulse-dot" />
+            new workspace · 1 of 1 step
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="relative font-display text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.08] max-w-[20ch]"
+          >
+            <span className="font-mono text-brand text-[0.6em] align-middle mr-3">$</span>
+            Create your first <span className="phosphor-text">team.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="relative mt-4 text-fg-muted text-[0.9375rem] max-w-xl"
+          >
+            A team is the unit of fix-sharing. Solo? Make one called{" "}
+            <code className="font-mono text-fg">personal</code>. You can add
+            members and rename later.
+          </motion.p>
+
+          <div className="relative mt-10">
+            <CreateTeamForm />
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">

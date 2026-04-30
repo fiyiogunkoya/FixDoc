@@ -16,8 +16,8 @@ export function TeamSwitcher() {
   if (!team) {
     return (
       <a
-        href="/onboarding"
-        className="font-mono text-[13px] text-fg-muted hover:text-fg transition-colors"
+        href="/dashboard"
+        className="font-mono text-[13px] text-brand hover:text-brand-muted transition-colors"
       >
         → create team
       </a>
