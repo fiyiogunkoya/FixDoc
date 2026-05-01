@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, ExternalLink, Trash2, Link2 } from "lucide-react";
 
 import {
   useGitHubInstallations,
@@ -44,6 +44,39 @@ export default function IntegrationsPage() {
     teamId &&
     `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new?state=${teamId}`;
 
+  // Manual-bind affordance: GitHub doesn't redirect back to the Setup URL
+  // when the App is already installed (only on initial install), so the
+  // useEffect callback path can leave operators stranded. Keep an explicit
+  // "I already installed it" entry that takes the installation_id directly.
+  const [showManual, setShowManual] = useState(false);
+  const [manualId, setManualId] = useState("");
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualBusy, setManualBusy] = useState(false);
+
+  async function handleManualBind(e: React.FormEvent) {
+    e.preventDefault();
+    setManualError(null);
+    const id = Number(manualId.trim());
+    if (!Number.isFinite(id) || id <= 0) {
+      setManualError("Installation ID must be a positive number");
+      return;
+    }
+    setManualBusy(true);
+    try {
+      await link.mutateAsync(id);
+      setShowManual(false);
+      setManualId("");
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Failed to bind installation";
+      setManualError(detail);
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
   return (
     <div className="max-w-3xl space-y-10">
       <motion.div
@@ -72,37 +105,121 @@ export default function IntegrationsPage() {
         </header>
 
         {(installs ?? []).length === 0 ? (
-          <motion.a
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            href={installUrl || "#"}
-            target="_blank"
-            rel="noreferrer"
-            className="cta-sweep group relative block terminal border-brand/40 shadow-glow-soft hover:shadow-glow transition-all"
-          >
-            <div className="term-hdr !bg-brand/5">
-              <span className="t-dot r" />
-              <span className="t-dot y" />
-              <span className="t-dot g" />
-              <span className="t-lbl">$ gh app install fixdoc</span>
-            </div>
-            <div className="p-5 flex items-center justify-between gap-4 relative">
-              <div className="flex items-center gap-4">
-                <GitHubMark />
-                <div>
-                  <div className="font-semibold text-fg">Connect GitHub</div>
-                  <div className="font-mono text-[12px] text-term-comment mt-0.5">
-                    scopes: contents:read · pull_requests:write
+          <div className="space-y-3">
+            <motion.a
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              href={installUrl || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="cta-sweep group relative block terminal border-brand/40 shadow-glow-soft hover:shadow-glow transition-all"
+            >
+              <div className="term-hdr !bg-brand/5">
+                <span className="t-dot r" />
+                <span className="t-dot y" />
+                <span className="t-dot g" />
+                <span className="t-lbl">$ gh app install fixdoc</span>
+              </div>
+              <div className="p-5 flex items-center justify-between gap-4 relative">
+                <div className="flex items-center gap-4">
+                  <GitHubMark />
+                  <div>
+                    <div className="font-semibold text-fg">Connect GitHub</div>
+                    <div className="font-mono text-[12px] text-term-comment mt-0.5">
+                      scopes: contents:read · pull_requests:write
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 text-brand font-mono text-sm">
+                  install
+                  <ExternalLink className="h-4 w-4" strokeWidth={2} />
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-brand font-mono text-sm">
-                install
-                <ExternalLink className="h-4 w-4" strokeWidth={2} />
-              </div>
-            </div>
-          </motion.a>
+            </motion.a>
+
+            {/* Manual-bind escape hatch — for operators who already installed
+                the App via GitHub and didn't get the auto-redirect (which
+                only fires on first install, not on Configure). */}
+            {!showManual ? (
+              <button
+                onClick={() => setShowManual(true)}
+                className="font-mono text-[12px] text-term-comment hover:text-fg transition-colors"
+              >
+                already installed? bind manually →
+              </button>
+            ) : (
+              <motion.form
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                onSubmit={handleManualBind}
+                className="terminal"
+              >
+                <div className="term-hdr">
+                  <span className="t-dot r" />
+                  <span className="t-dot y" />
+                  <span className="t-dot g" />
+                  <span className="t-lbl">$ fd integrations bind --installation-id</span>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Link2 className="h-3.5 w-3.5 text-fg-dim shrink-0" strokeWidth={2} />
+                    <input
+                      type="text"
+                      autoFocus
+                      value={manualId}
+                      onChange={(e) => setManualId(e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="123456"
+                      inputMode="numeric"
+                      className="flex-1 bg-transparent outline-none font-mono text-sm text-fg placeholder-fg-dim"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!manualId || manualBusy}
+                      className={cn(
+                        "cta-sweep inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md",
+                        "bg-brand text-bg font-mono text-[12px] font-bold",
+                        "transition-all duration-150 hover:shadow-glow active:scale-[0.97]",
+                        "disabled:opacity-40 disabled:cursor-not-allowed",
+                      )}
+                    >
+                      {manualBusy ? "binding…" : "bind"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowManual(false);
+                        setManualError(null);
+                        setManualId("");
+                      }}
+                      className="font-mono text-[11px] text-fg-dim hover:text-fg"
+                    >
+                      cancel
+                    </button>
+                  </div>
+                  <p className="font-mono text-[11px] text-term-comment leading-relaxed">
+                    → find at{" "}
+                    <a
+                      href="https://github.com/settings/installations"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-brand hover:underline"
+                    >
+                      github.com/settings/installations
+                    </a>{" "}
+                    → click <span className="text-fg">configure</span> on FixDoc → the
+                    URL ends in /<span className="text-brand">&lt;id&gt;</span>
+                  </p>
+                  {manualError && (
+                    <div className="font-mono text-[12px] flex items-start gap-2">
+                      <span className="te shrink-0">✗</span>
+                      <span className="te">{manualError}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.form>
+            )}
+          </div>
         ) : (
           <div className="terminal">
             <div className="term-hdr">
