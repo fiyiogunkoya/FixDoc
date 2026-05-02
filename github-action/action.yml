@@ -63,16 +63,38 @@ runs:
           exit 1
         fi
 
-        # Build request body — include PR context only if we're actually in a PR
+        # Trim whitespace + newlines that often hitchhike on copy-pasted secrets
+        FIXDOC_INSTALLATION_ID="$(printf '%s' "$FIXDOC_INSTALLATION_ID" | tr -d '[:space:]')"
+        FIXDOC_PR="$(printf '%s' "$FIXDOC_PR" | tr -d '[:space:]')"
+
+        echo "::group::FixDoc input summary"
+        echo "  api_url:          $FIXDOC_API_URL"
+        echo "  plan:             $FIXDOC_PLAN ($(wc -c < "$FIXDOC_PLAN") bytes)"
+        echo "  pr_number:        ${FIXDOC_PR:-<none>}"
+        echo "  installation_id:  ${FIXDOC_INSTALLATION_ID:-<none>}"
+        echo "  api_key prefix:   $(printf '%s' "$FIXDOC_API_KEY" | cut -c1-9)***"
+        echo "::endgroup::"
+
+        # Validate the installation_id is a positive integer before feeding to jq
+        if [[ -n "${FIXDOC_INSTALLATION_ID:-}" && ! "$FIXDOC_INSTALLATION_ID" =~ ^[0-9]+$ ]]; then
+          echo "::error::FIXDOC_INSTALLATION_ID is not a number — got '$FIXDOC_INSTALLATION_ID'. Set the secret to the numeric ID from github.com/settings/installations/<NUM>."
+          exit 1
+        fi
+        if [[ -n "${FIXDOC_PR:-}" && ! "$FIXDOC_PR" =~ ^[0-9]+$ ]]; then
+          echo "::error::FIXDOC_PR is not a number — got '$FIXDOC_PR'."
+          exit 1
+        fi
+
+        # Build PR context only when we have both ids
         PR_BLOCK=""
         if [[ -n "${FIXDOC_PR:-}" && -n "${FIXDOC_INSTALLATION_ID:-}" ]]; then
           PR_BLOCK=$(jq -n \
-            --argjson install "$FIXDOC_INSTALLATION_ID" \
+            --arg install "$FIXDOC_INSTALLATION_ID" \
             --arg owner "$FIXDOC_OWNER" \
             --arg repo "$FIXDOC_REPO" \
-            --argjson pr "$FIXDOC_PR" \
+            --arg pr "$FIXDOC_PR" \
             --arg sha "$FIXDOC_COMMIT" \
-            '{installation_id:$install, owner:$owner, repo:$repo, pull_number:$pr, commit_sha:$sha}')
+            '{installation_id:($install|tonumber), owner:$owner, repo:$repo, pull_number:($pr|tonumber), commit_sha:$sha}')
         fi
 
         if [[ -n "$PR_BLOCK" ]]; then
@@ -85,7 +107,17 @@ runs:
         RESP=$(curl -sS -X POST "$FIXDOC_API_URL/api/v1/analyze" \
           -H "Authorization: Bearer $FIXDOC_API_KEY" \
           -H "Content-Type: application/json" \
-          -d "$BODY")
+          -d "$BODY") || {
+            echo "::error::curl failed reaching $FIXDOC_API_URL/api/v1/analyze"
+            exit 1
+          }
+
+        # Surface non-JSON responses (HTML error pages, empty body, etc.)
+        if ! echo "$RESP" | jq empty 2>/dev/null; then
+          echo "::error::Backend returned a non-JSON response — first 500 chars:"
+          echo "$RESP" | head -c 500
+          exit 1
+        fi
 
         SCORE=$(echo "$RESP" | jq -r '.score // 0')
         SEVERITY=$(echo "$RESP" | jq -r '.severity // "low"')
