@@ -31,3 +31,9 @@ class AnalyzeResponse(BaseModel):
     relevant_fixes: List[Dict[str, Any]] = []
     contextual_checks: List[Dict[str, Any]] = []
     pr_comment_id: Optional[int] = None
+    # When the analysis itself succeeds but the PR comment can't be posted
+    # (bad installation token, GitHub API error, fake repo for testing),
+    # we still return 200 with the analysis result and surface the failure
+    # here. Returning 5xx makes Cloudflare replace our JSON body with its
+    # own bare "error code: 502" template, hiding the real cause.
+    pr_comment_error: Optional[str] = None

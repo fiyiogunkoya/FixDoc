@@ -4,12 +4,17 @@ POST /api/v1/analyze
   - Accepts a Terraform plan JSON + optional DOT graph
   - Runs the `fixdoc.change_impact` engine scoped to the authenticated team
   - If a `pr` context is provided, posts/updates the PR comment via the
-    team's installed GitHub App
+    team's installed GitHub App. Failures here become a `pr_comment_error`
+    field in the 200 response — they don't fail the analysis.
 
 The PR path requires a prior GitHub App install — see webhooks.py. The plain
 analyze path works without any GitHub integration (CLI can hit it too).
 """
 from __future__ import annotations
+
+import logging
+import traceback
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -28,6 +33,7 @@ from app.services import analyze_service
 from fixdoc.outcomes import compute_plan_fingerprint
 from fixdoc.change_impact_format import FIXDOC_COMMENT_MARKER
 
+logger = logging.getLogger("fixdoc.analyze")
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
 
@@ -45,16 +51,20 @@ def analyze(
         graph_dot=payload.graph_dot,
     )
 
-    fingerprint = None
+    fingerprint: Optional[str] = None
     try:
         fingerprint = compute_plan_fingerprint(payload.plan)
     except Exception:
         # Fingerprinting is advisory; never let it fail the analysis itself.
         pass
 
-    pr_comment_id = None
+    pr_comment_id: Optional[int] = None
+    pr_comment_error: Optional[str] = None
+
     if payload.pr is not None:
-        # Verify the installation belongs to the caller's team
+        # Membership check is the one PR-side error worth a hard 4xx — it
+        # protects against another team posting comments on a repo's PR
+        # using a stranger's installation id.
         install = (
             db.query(GitHubInstallation)
             .filter(
@@ -69,7 +79,19 @@ def analyze(
                 "GitHub App installation is not linked to this team",
             )
 
+        # Everything past this point is best-effort. Engine work succeeded;
+        # PR-comment failures (bad token, GitHub API error, fake repo for
+        # smoke tests) become a string in the 200 response body. We avoid
+        # 5xx because Cloudflare replaces 5xx response bodies with its own
+        # `error code: 502` template and the actual message gets lost.
         try:
+            logger.info(
+                "Analyze: posting PR comment install_id=%s repo=%s/%s pr=%d",
+                payload.pr.installation_id,
+                payload.pr.owner,
+                payload.pr.repo,
+                payload.pr.pull_number,
+            )
             token = get_installation_token_for_settings(
                 settings, payload.pr.installation_id
             )
@@ -81,12 +103,11 @@ def analyze(
                 analysis.markdown,
                 FIXDOC_COMMENT_MARKER,
             )
-        except Exception as exc:
-            # Surface the error but don't drop the analysis itself
-            raise HTTPException(
-                status.HTTP_502_BAD_GATEWAY,
-                f"Analysis succeeded but PR comment failed: {exc}",
-            )
+            logger.info("Analyze: PR comment posted id=%s", pr_comment_id)
+        except BaseException as exc:
+            tb = traceback.format_exc()
+            logger.error("Analyze: PR comment failed:\n%s", tb)
+            pr_comment_error = f"{type(exc).__name__}: {exc}"
 
     return AnalyzeResponse(
         score=analysis.result.score,
@@ -97,4 +118,5 @@ def analyze(
         relevant_fixes=analysis.result.relevant_fixes or [],
         contextual_checks=analysis.result.contextual_checks or [],
         pr_comment_id=pr_comment_id,
+        pr_comment_error=pr_comment_error,
     )

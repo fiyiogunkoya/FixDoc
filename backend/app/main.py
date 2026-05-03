@@ -1,4 +1,7 @@
 """FastAPI application factory."""
+import logging
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,8 +19,25 @@ from app.routers import (
 )
 
 
+def _configure_logging() -> None:
+    """Mirror uvicorn's INFO+stdout setup for our `fixdoc.*` loggers so
+    integration failures show up in Railway logs without extra config.
+    """
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+    for name in ("fixdoc", "fixdoc.analyze"):
+        log = logging.getLogger(name)
+        if not log.handlers:
+            log.addHandler(handler)
+        log.setLevel(logging.INFO)
+        log.propagate = False
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
+    _configure_logging()
 
     app = FastAPI(
         title="FixDoc API",

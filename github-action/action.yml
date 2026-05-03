@@ -121,11 +121,22 @@ runs:
 
         SCORE=$(echo "$RESP" | jq -r '.score // 0')
         SEVERITY=$(echo "$RESP" | jq -r '.severity // "low"')
+        PR_COMMENT_ID=$(echo "$RESP" | jq -r '.pr_comment_id // empty')
+        PR_COMMENT_ERROR=$(echo "$RESP" | jq -r '.pr_comment_error // empty')
         echo "score=$SCORE" >> "$GITHUB_OUTPUT"
         echo "severity=$SEVERITY" >> "$GITHUB_OUTPUT"
 
         echo "## Terraform Risk Analysis" >> "$GITHUB_STEP_SUMMARY"
         echo "$RESP" | jq -r '.markdown // empty' >> "$GITHUB_STEP_SUMMARY"
+
+        # PR comment status — succeeded, failed (warn but don't break), or skipped
+        if [[ -n "$PR_COMMENT_ERROR" ]]; then
+          echo "::warning::PR comment posting failed: $PR_COMMENT_ERROR"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> :warning: PR comment failed: \`$PR_COMMENT_ERROR\`" >> "$GITHUB_STEP_SUMMARY"
+        elif [[ -n "$PR_COMMENT_ID" ]]; then
+          echo "PR comment posted (id=$PR_COMMENT_ID)"
+        fi
 
         # Gating
         declare -A SEV_RANK=([low]=0 [medium]=1 [high]=2 [critical]=3 [never]=99)
