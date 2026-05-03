@@ -66,6 +66,25 @@ class TestMintAppJwt:
         out = _normalize_pem(flat)
         assert "\n" in out and "\\n" not in out
 
+    def test_accepts_base64_encoded_pem(self, rsa_keypair):
+        import base64
+
+        private, public = rsa_keypair
+        encoded = base64.b64encode(private.encode()).decode().rstrip()
+        # Mimic what Railway's form field stores after a pbcopy paste
+        token = mint_app_jwt("12345", encoded)
+        claims = jwt.decode(token, public, algorithms=["RS256"])
+        assert claims["iss"] == "12345"
+
+    def test_normalize_pem_decodes_base64_when_no_begin_marker(self, rsa_keypair):
+        import base64
+
+        private, _ = rsa_keypair
+        encoded = base64.b64encode(private.encode()).decode().rstrip()
+        out = _normalize_pem(encoded)
+        assert "-----BEGIN" in out
+        assert "-----END" in out
+
 
 class TestVerifyWebhookSignature:
     def test_valid_signature(self):

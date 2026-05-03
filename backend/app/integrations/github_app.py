@@ -26,15 +26,39 @@ GITHUB_API = "https://api.github.com"
 
 
 def _normalize_pem(pem: str) -> str:
-    """Accept either real-newline PEM or single-line-with-`\\n` escapes.
+    """Accept the PEM in any of three forms:
 
-    Railway's env editor preserves newlines when pasted directly, but many
-    CI tools serialize multi-line values with literal `\\n` characters. We
-    handle both so the operator doesn't have to think about which form
-    they pasted.
+      1. Multi-line PEM with real newlines (paste via Railway's Raw Editor).
+      2. Single-line PEM with literal `\\n` escapes (some CI serializers).
+      3. Base64-encoded single-line PEM (when Railway's form field truncates
+         multi-line values at the first newline). Encode locally with:
+             base64 < private-key.pem | tr -d '\\n' | pbcopy
+         and paste the result.
+
+    We sniff which form was pasted and convert all of them to canonical
+    real-newline PEM before passing to pyjwt/cryptography.
     """
+    import base64
+    import binascii
+
+    pem = pem.strip()
+    # Strip UTF-8 BOM if a Windows editor added one
+    if pem.startswith("﻿"):
+        pem = pem[1:]
+
+    # Form 3: no BEGIN marker → assume base64-wrapped PEM
+    if "-----BEGIN" not in pem:
+        try:
+            decoded = base64.b64decode(pem, validate=True).decode("utf-8")
+        except (binascii.Error, ValueError, UnicodeDecodeError):
+            return pem  # not base64; let pyjwt raise its own error
+        if "-----BEGIN" in decoded:
+            pem = decoded.strip()
+
+    # Form 2: literal `\n` characters and no real newlines → unescape
     if "\\n" in pem and "\n" not in pem:
-        return pem.replace("\\n", "\n")
+        pem = pem.replace("\\n", "\n")
+
     return pem
 
 
